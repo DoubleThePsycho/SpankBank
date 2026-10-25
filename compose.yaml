@@ -17,6 +17,8 @@ services:
       # Host folder : fixed container path. Repoint the left side to move the data.
       - ./data/db:/data/db
       - ./data/imports:/data/imports
+      # Downloaded files: <md5[0:2]>/<md5[2:4]>/<md5>.<ext>, plus preview/ and sample/ like e621.
+      - ./data/media:/data/media
 
   web:
     image: spankbank-web:latest
@@ -28,3 +30,5 @@ services:
     volumes:
       # Read-write: SQLite in WAL mode needs write access even to read, and the UI writes queue/settings rows.
       - ./data/db:/data/db
+      # Read-only: the web app only shows the files.
+      - ./data/media:/data/media:ro

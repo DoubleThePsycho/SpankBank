@@ -1,4 +1,6 @@
 using SpankBank.Data;
+using Microsoft.Extensions.FileProviders;
+using SpankBank.Data.Downloads;
 using SpankBank.Data.Import;
 using SpankBank.Data.Repositories;
 using SpankBank.Web.Services;
@@ -14,12 +16,17 @@ builder.Services.AddSingleton(new PostsRepository(paths.ServerDatabasePath));
 builder.Services.AddSingleton(new DownloadedPostsRepository(paths.DeviceDatabasePath));
 builder.Services.AddSingleton(new TagsRepository(paths.ServerDatabasePath));
 builder.Services.AddSingleton(new WatchesRepository(paths.AppDatabasePath, paths.ServerDatabasePath));
+builder.Services.AddSingleton(new DownloadStore(paths));
 builder.Services.AddSingleton(new SettingsRepository(paths.AppDatabasePath));
 builder.Services.AddSingleton(new ImportHistoryRepository(paths.AppDatabasePath));
 
 var app = builder.Build();
 
 app.UseStaticFiles();
+
+// Downloaded files, read-only. The folder exists once the compose volume is mounted.
+if (Directory.Exists(WebPaths.MediaDir))
+    app.UseStaticFiles(new StaticFileOptions { FileProvider = new PhysicalFileProvider(WebPaths.MediaDir), RequestPath = "/media" });
 app.MapRazorPages();
 
 // e621ng-compatible tag autocomplete (js/components/autocomplete/providers/TagProvider.ts).

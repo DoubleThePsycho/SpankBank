@@ -7,4 +7,5 @@ public static class WorkerPaths
     public static readonly string DataDir = Environment.GetEnvironmentVariable("SPANKBANK_DATA_DIR") ?? "/data";
     public static readonly string DbDir = Path.Combine(DataDir, "db");
     public static readonly string ImportsDir = Path.Combine(DataDir, "imports");
+    public static readonly string MediaDir = Path.Combine(DataDir, "media");
 }

@@ -10,4 +10,9 @@ public static class WorkerSettingsKeys
     public const string LastRunStartedAt = "Worker.LastRunStartedAt";
     public const string LastRunCompletedAt = "Worker.LastRunCompletedAt";
     public const string LastRunResult = "Worker.LastRunResult";
+
+    /// <summary>"false" pauses the downloader (default: on).</summary>
+    public const string DownloadEnabled = "Download.Enabled";
+    /// <summary>Most files fetched per UTC day (default 2000), so a new watch cannot hammer e621 in one go.</summary>
+    public const string DownloadMaxPerDay = "Download.MaxPerDay";
 }

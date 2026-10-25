@@ -1,6 +1,8 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
+using SpankBank.Data.Downloads;
 using SpankBank.Data.Repositories;
+using SpankBank.Web.Services;
 
 namespace SpankBank.Web.Pages.Posts;
 
@@ -35,10 +37,19 @@ public class IndexModel : PageModel
 
     public string PageUrl(int page) => $"/posts?page={page}" + (string.IsNullOrWhiteSpace(Tags) ? "" : $"&tags={Uri.EscapeDataString(Tags)}");
 
+    /// <summary>The best local picture for a post: its preview, else the recovered sample, else the image itself.</summary>
     public static string PreviewUrl(PostListItem post)
-        => post.Md5 is { Length: >= 4 } md5
-            ? $"https://static1.e621.net/data/preview/{md5[..2]}/{md5[2..4]}/{md5}.jpg"
-            : "/dist/assets/blank.png";
+    {
+        if (post.Md5 is not { Length: 32 } md5)
+            return "/dist/assets/blank.png";
+
+        if (System.IO.File.Exists(MediaPaths.Preview(WebPaths.MediaDir, md5))) return MediaPaths.PreviewUrl(md5);
+        if (System.IO.File.Exists(MediaPaths.Sample(WebPaths.MediaDir, md5))) return MediaPaths.SampleUrl(md5);
+        if (post.FileExt is "jpg" or "png" or "gif" or "webp" && System.IO.File.Exists(MediaPaths.Original(WebPaths.MediaDir, md5, post.FileExt)))
+            return MediaPaths.OriginalUrl(md5, post.FileExt);
+
+        return "/dist/assets/blank.png";
+    }
 
     public static string Short(int value)
     {

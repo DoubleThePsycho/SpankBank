@@ -253,6 +253,29 @@ public static class DatabaseInitializer
         EnsureColumn(connection, "WatchedItems", "LocalName", "TEXT");
         EnsureColumn(connection, "WatchedItems", "MatchCount", "INTEGER NOT NULL DEFAULT 0");
 
+        // Posts the downloader could not fetch (yet): when to try again, and why it failed last time.
+        Execute(connection, """
+            CREATE TABLE IF NOT EXISTS DownloadAttempts (
+                PostId        INTEGER PRIMARY KEY,
+                Attempts      INTEGER NOT NULL DEFAULT 0,
+                LastAttemptAt TEXT    NOT NULL,
+                NextAttemptAt TEXT    NOT NULL,
+                LastError     TEXT
+            );
+            """);
+        Execute(connection, "CREATE INDEX IF NOT EXISTS IX_DownloadAttempts_NextAttemptAt ON DownloadAttempts (NextAttemptAt);");
+
+        // One row per file obtained, so the daily limit can be counted.
+        Execute(connection, """
+            CREATE TABLE IF NOT EXISTS DownloadLog (
+                Id     INTEGER PRIMARY KEY,
+                PostId INTEGER NOT NULL,
+                At     TEXT    NOT NULL,
+                Status INTEGER NOT NULL
+            );
+            """);
+        Execute(connection, "CREATE INDEX IF NOT EXISTS IX_DownloadLog_At ON DownloadLog (At);");
+
         // Catalog posts each watch currently matches (written by the worker). Position is the order inside a pool.
         Execute(connection, """
             CREATE TABLE IF NOT EXISTS WatchMatches (

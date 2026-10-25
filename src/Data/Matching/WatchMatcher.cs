@@ -150,6 +150,8 @@ public sealed class WatchMatcher
                     if (artistTags.TryGetValue(id, out var characters)) tags.AddRange(characters);
                     watches.Add(new ScanWatch(id)
                     {
+                        // An artist's deleted posts are included: the downloader tries to recover them.
+                        Query = PostSearchQuery.Parse("status:any"),
                         AnyOf = tags.SelectMany(Expand).Distinct().ToArray(),
                         NeedsAnyTag = true,
                     });
