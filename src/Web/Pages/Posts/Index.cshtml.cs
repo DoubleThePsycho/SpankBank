@@ -8,9 +8,9 @@ public class IndexModel : PageModel
 {
     public const int PageSize = 75;
 
-    private readonly PostsRepository _posts;
+    private readonly DownloadedPostsRepository _posts;
 
-    public IndexModel(PostsRepository posts) => _posts = posts;
+    public IndexModel(DownloadedPostsRepository posts) => _posts = posts;
 
     [BindProperty(SupportsGet = true, Name = "tags")]
     public string? Tags { get; set; }
@@ -26,11 +26,11 @@ public class IndexModel : PageModel
     {
         if (PageNumber < 1) PageNumber = 1;
 
-        // Tag search is not implemented yet: the query text is kept in the box but not applied.
+        // Lists downloaded posts only. Tag search is not implemented yet: the query text is kept in the box but not applied.
         Total = _posts.CountPosts();
         LastPage = (int)Math.Max(1, (Total + PageSize - 1) / PageSize);
         if (PageNumber > LastPage) PageNumber = LastPage;
-        Items = _posts.GetRecentPosts(PageSize, offset: (PageNumber - 1) * PageSize);
+        Items = _posts.GetRecentlyDownloaded(PageSize, offset: (PageNumber - 1) * PageSize);
     }
 
     public string PageUrl(int page) => $"/posts?page={page}" + (string.IsNullOrWhiteSpace(Tags) ? "" : $"&tags={Uri.EscapeDataString(Tags)}");

@@ -33,9 +33,9 @@
     <div class="posts-info-bar">
       @if (Model.Items.Count == 0)
       {
-        <span class="posts-info-empty">Nobody here but us chickens!</span>
+        <span class="posts-info-empty">Nothing downloaded yet.</span>
       }
-      <span class="posts-info-count">@Model.Total.ToString("N0") posts</span>
+      <span class="posts-info-count">@Model.Total.ToString("N0") downloaded posts</span>
     </div>
 
     <div id="posts" class="post-index-gallery">
