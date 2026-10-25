@@ -1,0 +1,224 @@
+@* Ported from e621ng app/views/posts/partials/index/_controls.html.erb (BSD-2, see THIRD-PARTY-NOTICES.md). *@
+<div class="search-controls">
+  <button id="toggle-fullscreen" class="st-button sc-btn" title="Toggle fullscreen">
+    <svg-icon name="fullscreen" />
+  </button>
+  <button id="advanced-search-open" class="st-button sc-btn" title="Search options">
+    <svg-icon name="sliders" />
+  </button>
+  <button id="layout-settings-open" class="st-button sc-btn" title="Layout settings">
+    <svg-icon name="layout" />
+  </button>
+</div>
+
+<div id="advanced-search-container">
+  <h3>
+    Advanced Options
+    <button id="advanced-search-close" class="st-button" title="Close settings">
+      <svg-icon name="times" />
+    </button>
+  </h3>
+
+  <div class="ssc-entry">
+
+    <div class="ssc-label">
+      <label for="ssc-rating">Rating</label>
+    </div>
+
+
+    <div class="ssc-body stm-toggle">
+      <input type="checkbox" id="ssc-rating-s" name="advanced-search-rating" value="s">
+      <label for="ssc-rating-s">
+        <svg-icon name="rating_s" />
+        Safe
+      </label>
+
+      <input type="checkbox" id="ssc-rating-q" name="advanced-search-rating" value="q">
+      <label for="ssc-rating-q">
+        <svg-icon name="rating_q" />
+        Questionable
+      </label>
+
+      <input type="checkbox" id="ssc-rating-e" name="advanced-search-rating" value="e">
+      <label for="ssc-rating-e">
+        <svg-icon name="rating_e" />
+        Explicit
+      </label>
+    </div>
+
+  </div>
+
+  <div class="ssc-entry">
+
+    <div class="ssc-label">
+      <label for="ssc-order">Order</label>
+    </div>
+
+    <div class="ssc-body stm-toggle">
+      <input type="radio" id="advanced-search-sort-default" name="advanced-search-sort" value="">
+      <label for="advanced-search-sort-default">
+        <svg-icon name="sparkles" />
+        Default
+      </label>
+
+      <input type="radio" id="advanced-search-sort-score" name="advanced-search-sort" value="score">
+      <label for="advanced-search-sort-score">
+        <svg-icon name="trending_up" />
+        Score
+      </label>
+
+      <input type="radio" id="advanced-search-sort-hot" name="advanced-search-sort" value="hot">
+      <label for="advanced-search-sort-hot">
+        <svg-icon name="flame" />
+        Hot
+      </label>
+
+      <input type="radio" id="advanced-search-sort-favcount" name="advanced-search-sort" value="favcount">
+      <label for="advanced-search-sort-favcount">
+        <svg-icon name="star" />
+        Favorites
+      </label>
+
+    </div>
+  </div>
+
+  <div class="ssc-entry">
+
+    <div class="ssc-label">
+      <label for="ssc-in-pool">In pool</label>
+    </div>
+
+    <div class="ssc-body">
+      <label class="sto-toggle sto-toggle--tri" id="ssc-in-pool" data-advanced-search="inpool" data-state="unset">
+        <span class="sto-tri">Any</span>
+        <span class="sto-tri">Yes</span>
+        <span class="sto-tri">No</span>
+      </label>
+    </div>
+  </div>
+
+  <div class="ssc-header">Post relationships</div>
+
+  <div class="ssc-entry">
+
+    <div class="ssc-label">
+      <label for="ssc-has-parent">Has parent</label>
+    </div>
+
+    <div class="ssc-body">
+      <label class="sto-toggle sto-toggle--tri" id="ssc-has-parent" data-advanced-search="ischild" data-state="unset">
+        <span class="sto-tri">Any</span>
+        <span class="sto-tri">Yes</span>
+        <span class="sto-tri">No</span>
+      </label>
+    </div>
+  </div>
+
+  <div class="ssc-entry">
+
+    <div class="ssc-label">
+      <label for="ssc-has-child">Has child</label>
+    </div>
+
+    <div class="ssc-body">
+      <label class="sto-toggle sto-toggle--tri" id="ssc-has-child" data-advanced-search="isparent" data-state="unset">
+        <span class="sto-tri">Any</span>
+        <span class="sto-tri">Yes</span>
+        <span class="sto-tri">No</span>
+      </label>
+    </div>
+  </div>
+
+</div>
+
+<div id="layout-settings-container">
+  <h3>
+    Layout Settings
+    <button id="layout-settings-close" class="st-button" title="Close settings">
+      <svg-icon name="times" />
+    </button>
+  </h3>
+
+  <div class="ssc-entry">
+    <div class="ssc-label">
+      <label for="ssc-image-contain">Image Crop</label>
+    </div>
+    <div class="ssc-body">
+      <input class="boolean optional sto-toggle" type="checkbox" id="ssc-image-contain" data-toggle="Contain">
+      <label class="sto-toggle" for="ssc-image-contain">
+        <span class="sto-off">Crop</span>
+        <span class="sto-on">Full</span>
+      </label>
+    </div>
+  </div>
+
+  <div class="ssc-entry">
+    <div class="ssc-label">
+      <label for="ssc-card-medium">Card Size</label>
+    </div>
+    <div class="ssc-body stm-toggle">
+      <input type="radio" id="ssc-card-small" name="ssc-card-size" value="s">
+      <label for="ssc-card-small">
+        <svg-icon name="square_nine" stroke-width="1" />
+        Small
+      </label>
+
+      <input type="radio" id="ssc-card-medium" name="ssc-card-size" value="m">
+      <label for="ssc-card-medium">
+        <svg-icon name="square_four" stroke-width="1" />
+        Medium
+      </label>
+
+      <input type="radio" id="ssc-card-large" name="ssc-card-size" value="l">
+      <label for="ssc-card-large">
+        <svg-icon name="square" stroke-width="1" />
+        Large
+      </label>
+    </div>
+  </div>
+
+  <div class="ssc-entry">
+    <div class="ssc-label">
+      <label for="ssc-hover-text">Hover Text</label>
+    </div>
+    <div class="ssc-body stm-toggle">
+      <input type="radio" id="ssc-hover-text-short" name="ssc-hover-text" value="short">
+      <label for="ssc-hover-text-short">
+        <svg-icon name="short_hover_text" stroke-width="1" />
+        Short
+      </label>
+
+      <input type="radio" id="ssc-hover-text-long" name="ssc-hover-text" value="long">
+      <label for="ssc-hover-text-long">
+        <svg-icon name="long_hover_text" stroke-width="1" />
+        Long
+      </label>
+
+      <input type="radio" id="ssc-hover-text-none" name="ssc-hover-text" value="none">
+      <label for="ssc-hover-text-none">
+        <svg-icon name="hidden_hover_text" stroke-width="1" />
+        None
+      </label>
+    </div>
+  </div>
+
+  <div class="ssc-entry">
+    <div class="ssc-label">
+      <label for="ssc-corner-ribbons">Corner Ribbons</label>
+    </div>
+    <div class="ssc-body">
+      <input class="boolean optional st-toggle" type="checkbox" id="ssc-corner-ribbons">
+      <label class="st-toggle" for="ssc-corner-ribbons">!</label>
+    </div>
+  </div>
+
+  <div class="ssc-entry ssc-desktop-only">
+    <div class="ssc-label">
+      <label for="ssc-sticky-searchbar">Sticky Searchbar</label>
+    </div>
+    <div class="ssc-body">
+      <input class="boolean optional st-toggle" type="checkbox" id="ssc-sticky-searchbar">
+      <label class="st-toggle" for="ssc-sticky-searchbar">!</label>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,21 @@
+div#c-staff-moderator-dashboards {
+  .activity-container {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+    column-gap: 2em;
+
+    .activity {
+      margin-bottom: 1em;
+    }
+  }
+
+  div#activity-search {
+    margin-bottom: 2em;
+  }
+
+  caption {
+    font-size: 1.1em;
+    font-weight: bold;
+    text-align: left;
+  }
+}

@@ -1,0 +1,99 @@
+.simple_form {
+  margin: 0 0 1em 0;
+
+  div.input.boolean label {
+    display: inline;
+    margin-right: 0.25em;
+  }
+
+  div.input {
+    margin-bottom: 1em;
+
+    input[type=text], input[type=file], input[type=password], input[type=email] {
+      max-width: 80%;
+    }
+
+    span.hint {
+      display: block;
+      font-size: 70%;
+    }
+
+    textarea {
+      width: 80%;
+    }
+
+    label {
+      display: block;
+      font-weight: bold;
+      line-height: 1.5em;
+    }
+
+    fieldset {
+      border: none;
+      display: inline;
+      margin: 0;
+      padding: 0;
+
+      label, .input {
+        font-weight: normal;
+        width: auto;
+        margin-right: 2em;
+        display: inline;
+      }
+    }
+  }
+
+  div.collection-radio-buttons {
+    input {
+      display: none;
+    }
+
+    input + label { 
+      @extend .button;
+      // Overwrite the themed color from the imported class, which has higher specificity
+      color: black !important;
+      background-color: white;
+      margin: 0 0.75rem 0.25rem 0;
+      font-weight: normal;
+      cursor: pointer;
+    }
+
+    input:checked + label { 
+      background-color: themed("color-button-active");
+    }
+  }
+}
+
+.inline-form {
+  display: table;
+
+  > div.input {
+    display: table-row;
+    line-height: 2em;
+
+    label {
+      text-align: right;
+    }
+
+    // Reset style from simple_form boolean workaround
+    // The specificity is higher, so it wouldn't get set correctly
+    &.boolean label {
+      display: table-cell;
+    }
+
+    label, input {
+      display: table-cell;
+      padding-right: $base-padding;
+      white-space: nowrap;
+    }
+  }
+}
+
+div.ui-dialog {
+  div.input {
+    input[type="text"] {
+      width: 100%;
+      max-width: 100%;
+    }
+  }
+}

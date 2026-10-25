@@ -1,0 +1,9 @@
+div.error-messages {
+  margin: 1em 0;
+  padding: $base-padding;
+
+  h1 {
+    font-size: 1em;
+    color: $error-notice-color;
+  }
+}

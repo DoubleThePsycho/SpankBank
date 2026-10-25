@@ -1,0 +1,178 @@
+// Font
+$inverted-text-color: invert(#fff);
+
+// Main background colors
+$lighten-background-5: rgba(255,255,255,0.05);
+
+// Mixin/state colors
+$state-success-color: #3e9e49;
+$state-error-color: #e45f5f;
+
+// DText
+$dtext-code-background: rgba(255,255,255,0.2);
+
+// Forms
+$form-focus-color: black;
+$form-focus-background: #FFC;
+$form-disabled-background: #DDD;
+$button-background: white;
+$button-hover-background: darken($button-background, 10%);
+$form-submit-button-background: #eee;
+
+// Page Header
+$page-header-sign-in-link-color: #e00;
+
+// Post previews
+$preview-has-children-color: palette("plain-green");
+$preview-has-parent-color: palette("plain-yellow");
+$preview-deleted-color: palette("plain-black");
+$preview-pending-color: palette("plain-blue");
+$preview-flagged-color: palette("plain-red");
+
+// Autocomplete
+$autocomplete-border: #C5C5C5;
+$autocomplete-arrow-color: black;
+
+// Paginator
+$paginator-more-color: grey;
+$paginator-hover-color: white;
+$paginator-hover-background: #2e76b4;
+
+// Spoilers
+$spoiler-color: black;
+$spoiler-background: black;
+$spoiler-hover-color: white;
+
+// Tag types
+$tag-selected-color: white;
+
+// Diffs
+$diff-tag-added-color: green;
+$diff-tag-added-obsolete-color: darkGreen;
+$diff-tag-removed-color: red;
+$diff-tag-removed-obsolete-color: darkRed;
+$diff-text-added-color: rgba(46, 160, 67, 0.25);
+$diff-text-added-strong-color: rgba(46, 160, 67, 0.4);
+$diff-text-removed-color: rgba(248, 81, 73, 0.25);
+$diff-text-removed-strong-color: rgba(248 ,81, 73, 0.4);
+
+// Notices
+$error-notice-color: #a00;
+
+$grey-color: hsl(0, 0%, 90%); // Light grey
+
+$red-color: #e45f5f;
+$green-color: #3e9e49;
+$dark-grey-color: hsl(0, 0%, 50%);
+
+// User Feedback page
+$neutral-record-background: #666;
+$positive-record-background: green;
+$negative-record-background: #822828;
+$positive-record-color: $green-color;
+$negative-record-color: $red-color;
+$neutral-record-color: $dark-grey-color;
+
+$comment-highlight-background: rgba(255,255,255,0.25);
+$comment-vote-background: rgba(255, 255, 255, 0.2);
+
+// Keyboard shortcuts
+$keyboard-key-background: #333;
+$keyboard-key-color: white;
+
+// JQUI
+$widget-error-border: border_color($state-error-color);
+$widget-error-background: $state-error-color;
+$widget-button-color: $inverted-text-color;
+$widget-button-background: $button-background;
+$widget-button-border: silver;
+$widget-button-hover-background: $button-hover-background;
+$widget-button-shadow: grey;
+
+// Forum
+$forum-post-highlight-background: rgba(255,255,255,0.25);
+$forum-vote-up-color: green;
+$forum-vote-down-color: red;
+$forum-vote-meh-color: goldenrod;
+$forum-topic-new-color: red;
+$forum-topic-except-color: gray;
+
+// IQDB lookup
+$iqdb-post-border: lightgrey;
+
+// Notes
+$note-color: $inverted-text-color;
+$note-highlight-color: $preview-pending-color;
+$note-background: #FFE;
+$note-border: black;
+$note-box-border: white;
+$note-box-background: transparent;
+$note-box-inner-border: black;
+$note-box-inner-background: #FFE;
+$note-box-inner-unsaved-border: red;
+$note-box-highlighted-outline: $note-highlight-color;
+$note-preview-background: white;
+
+// Edit History / Post Versions
+$post-version-grid-border: black;
+$post-version-content-background: inherit;
+
+// Posts
+$post-rating-explicit-color: $red-color;
+$post-rating-questionable-color: hsl(50, 100%, 70%);
+$post-rating-safe-color: $green-color;
+$post-preview-highlight-background: rgba(0,0,0,0.1);
+$post-tag-low-count-color: red;
+
+// Post Mode
+$post-mode-edit: palette("background-yellow");
+$post-mode-tag-script: #4f114f;
+$post-mode-add-fav: #104e17;
+$post-mode-remove-fav: darken($post-mode-add-fav, 10%);
+$post-mode-vote-up: palette("background-green");
+$post-mode-vote-down: palette("background-red");
+$post-mode-add-pool: #104b57;
+$post-mode-lock-rating: #AA3;
+$post-mode-lock-note: #3AA;
+$post-mode-approve: #48C;
+$post-mode-delete: #4e1010;
+$post-mode-add-to-set: #A51;
+$post-mode-remove-from-set: darken($post-mode-add-to-set, 10%);
+$post-mode-rating-s: darken($post-rating-safe-color, 25%);
+$post-mode-rating-q: darken($post-rating-questionable-color, 50%);
+$post-mode-rating-e: darken($post-rating-explicit-color, 25%);
+$post-mode-remove-parent: #38F;
+$post-mode-undelete: #818;
+$post-mode-unflag: #304;
+
+// Tags
+$tags-vote-down-color: red;
+$tags-vote-meh-color: darkkhaki;
+$tags-vote-up-color: green;
+
+// Users
+$user-home-greeting-color: gold;
+
+$tag-categories: (
+  "0": "general",
+  "1": "artist",
+  "2": "contributor",
+  "3": "copyright",
+  "4": "character",
+  "5": "species",
+  "6": "invalid",
+  "7": "meta",
+  "8": "lore"
+);
+
+$tag-categories-short: (
+  "gen": "general",
+  "art": "artist",
+  "cont": "contributor",
+  "copy": "copyright",
+  "char": "character",
+  "spec": "species",
+  "inv": "invalid",
+  "meta": "meta",
+  "lor": "lore"
+)

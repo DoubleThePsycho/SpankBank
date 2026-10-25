@@ -1,0 +1,13 @@
+.box-section {
+  background-color: themed("color-section");
+  padding: $base-padding;
+  margin-bottom: 1.5rem;
+  border-radius: $border-radius-half;
+
+  // For some reason, link hover color was overriden in the original stylesheet.
+  &.background-green, &.background-grey, &.background-red, &.background-yellow {
+    a:hover {
+      color: themed("color-text");
+    }
+  }
+}

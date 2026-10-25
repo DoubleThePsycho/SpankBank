@@ -1,0 +1,56 @@
+
+
+div#c-tags {
+  div#a-index table.striped {
+    td:nth-child(1), th:nth-child(1) {
+      width: 5em;
+      text-align: right;
+    }
+
+    td:nth-child(2), th:nth-child(2) {
+      padding-left: 1em;
+      width: 40em;
+    }
+  }
+}
+
+#tags-container {
+  max-width: 70em;
+
+  div.header {
+    margin: 0;
+    display: grid;
+    grid-template-columns: 50% 50%;
+    width: 100%;
+
+    label {
+      grid-column: 1;
+    }
+
+    // posts#show header positioning; the counter's own look is in .tag-counter below.
+    .tag-counter {
+      grid-column: 2;
+      justify-self: end;
+    }
+  }
+}
+
+// Component-intrinsic styling for tag_counter.vue — kept out of any page scope so
+// it applies wherever <tag-counter> is used (posts#show, uploads#new).
+.tag-counter {
+  .count {
+    text-decoration: italic;
+    margin-left: 0.25em;
+    padding-bottom: 0.2em;
+  }
+
+  .face {
+    height: 1em;
+    width: 1em;
+    margin: -0.125em;
+
+    &.face-frown { color: palette("text-red"); }
+    &.face-meh { color: palette("text-yellow"); }
+    &.face-smile { color: palette("text-green"); }
+  }
+}

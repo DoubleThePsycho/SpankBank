@@ -1,0 +1,27 @@
+.styled-dtext .spoiler {
+  background: $spoiler-background;
+  // Also hides emojis
+  &, a {
+    color: transparent;
+    text-shadow: 0 0 0 $spoiler-color;
+  }
+
+  .inline-code, pre, blockquote, details {
+    background-color: $spoiler-background;
+  }
+
+  &:hover, &.spoiler-revealed {
+    color: $spoiler-hover-color;
+
+    a {
+      color: themed('color-spoiler-link');
+      &:hover {
+        color: themed('color-spoiler-link-hover');
+      }
+    }
+
+    .inline-code {
+      background-color: $dtext-code-background;
+    }
+  }
+}

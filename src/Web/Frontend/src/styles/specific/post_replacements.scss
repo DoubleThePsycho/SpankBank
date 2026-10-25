@@ -1,0 +1,43 @@
+div#c-post-replacements {
+  .disabled-link {
+    pointer-events: none;
+    cursor: default;
+    text-decoration: none;
+    color: themed("color-text-muted");
+  }
+
+  .upload_preview_img {
+    max-width: 100%;
+  }
+
+  .upload_preview_container {
+    margin-top: 0.5rem;
+  }
+
+  .error_message, .source_warning {
+    padding: 0.5rem;
+    margin-bottom: 0.5rem;
+    font-weight: bold;
+    width: fit-content;
+  }
+
+  #avoid-posting-notice ul {
+    margin-left: 1em;
+  }
+
+  #a-new {
+    input[type="text"] { max-width: unset !important; }
+  }
+
+  .replacement-embedded {
+    margin-bottom: 1rem;
+  }
+}
+
+// Lost both thumbs in an industrial accident.
+// Made replacements out of highest quality wood.
+img.replacement-thumb {
+  max-width: 256px;
+  max-height: 256px;
+  width: auto;
+}

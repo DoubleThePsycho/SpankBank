@@ -1,6 +1,7 @@
 # Deployed as the Komodo stack "spankbank", run from this repo checkout (/srv/repos/SpankBank).
 # Runtime data and .env live next to this file (both git-ignored): ./data and ./.env.
-# The image is built by the Komodo Build "spankbank-worker" from docker/worker.Dockerfile.
+# Images are built by the Komodo Builds "spankbank-worker" and "spankbank-web"
+# from docker/worker.Dockerfile and docker/web.Dockerfile (context = repo root).
 services:
   worker:
     image: spankbank-worker:latest
@@ -16,3 +17,14 @@ services:
       # Host folder : fixed container path. Repoint the left side to move the data.
       - ./data/db:/data/db
       - ./data/imports:/data/imports
+
+  web:
+    image: spankbank-web:latest
+    pull_policy: never
+    restart: unless-stopped
+    user: "1000:1000"
+    ports:
+      - "8621:8080"
+    volumes:
+      # Read-write: SQLite in WAL mode needs write access even to read, and the UI writes queue/settings rows.
+      - ./data/db:/data/db

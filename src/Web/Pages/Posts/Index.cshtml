@@ -1,0 +1,112 @@
+@page "/posts"
+@model SpankBank.Web.Pages.Posts.IndexModel
+@* Markup ported from e621ng app/views/posts/index.html.erb and its partials (BSD-2, see THIRD-PARTY-NOTICES.md). *@
+@{
+    ViewData["Title"] = "Posts";
+    var current = Model.PageNumber;
+    var last = Model.LastPage;
+}
+@section Scripts {
+  <script src="~/dist/posts.js" asp-append-version="true"></script>
+}
+
+<div id="c-posts"><div id="a-index"><div class="post-index">
+
+  <div class="search">
+    <section class="post-search">
+      <label for="tags" class="post-search-title">Posts</label>
+      <span class="post-search-help"></span>
+
+      <form method="get" action="/posts" rel="search" class="post-search-form">
+        <textarea name="tags" id="tags" placeholder="Search posts by tag" rows="1">@Model.Tags</textarea>
+        <button type="submit" title="Search"><svg-icon name="search" /></button>
+      </form>
+    </section>
+
+    <partial name="_SearchControls" />
+  </div>
+
+  <div class="sidebar">
+  </div>
+
+  <div class="content">
+    <div class="posts-info-bar">
+      @if (Model.Items.Count == 0)
+      {
+        <span class="posts-info-empty">Nobody here but us chickens!</span>
+      }
+      <span class="posts-info-count">@Model.Total.ToString("N0") posts</span>
+    </div>
+
+    <div id="posts" class="post-index-gallery">
+      <section class="posts-container">
+        @foreach (var post in Model.Items)
+        {
+          var rating = post.Rating.ToString().ToLowerInvariant();
+          var ratingLetter = post.Rating switch { SpankBank.Core.Models.PostRating.Safe => "s", SpankBank.Core.Models.PostRating.Questionable => "q", _ => "e" };
+          var ratingClass = post.Rating switch { SpankBank.Core.Models.PostRating.Safe => "rating-safe", SpankBank.Core.Models.PostRating.Questionable => "rating-questionable", _ => "rating-explicit" };
+          var scoreClass = post.Score == 0 ? "neutral" : post.Score > 0 ? "positive" : "negative";
+          var scoreIcon = post.Score == 0 ? "square_slash" : post.Score > 0 ? "arrow_up_dash" : "arrow_down_dash";
+          <article class="thumbnail @ratingClass blacklistable" data-id="@post.Id" data-rating="@ratingLetter" data-score="@post.Score" data-file-ext="@post.FileExt">
+            <a href="/posts/@post.Id" class="thm-link" data-hover-text="Rating: @ratingLetter&#10;ID: @post.Id&#10;Date: @post.CreatedAt.ToString("yyyy-MM-dd HH:mm")&#10;Score: @post.Score" data-file-ext="@post.FileExt">
+              <picture>
+                <img src="@IndexModel.PreviewUrl(post)" alt="post #@post.Id" loading="lazy">
+              </picture>
+            </a>
+            <div class="thm-desc thm-rating-@ratingLetter">
+              <span class="thm-desc-a">
+                <span class="thm-desc-m thm-score thm-score-@scoreClass">
+                  <svg-icon name="@scoreIcon" width="16" height="16" />
+                  @IndexModel.Short(post.Score)
+                </span>
+                <span class="thm-desc-m thm-favorites">
+                  <svg-icon name="star" width="16" height="16" />
+                  @IndexModel.Short(post.FavCount)
+                </span>
+              </span>
+              <span class="thm-desc-b thm-rating">@ratingLetter.ToUpperInvariant()</span>
+            </div>
+          </article>
+        }
+      </section>
+
+      <nav class="pagination numbered" aria-label="Pagination" data-total="@last" data-current="@current">
+        @if (current > 1)
+        {
+          <a class="prev" id="paginator-prev" aria-label="Previous Page" href="@Model.PageUrl(current - 1)"><svg-icon name="chevron_left" /><span>Prev</span></a>
+        }
+        else
+        {
+          <span class="prev" id="paginator-prev"><svg-icon name="chevron_left" /><span>Prev</span></span>
+        }
+
+        <div class="break"></div>
+        @foreach (var (pg, spacer) in SpankBank.Web.Services.Pager.NumberedPages(current, last))
+        {
+          if (spacer)
+          {
+            <span class="page spacer"><svg-icon name="ellipsis" /></span>
+          }
+          else if (pg == current)
+          {
+            <span class="page current" aria-current="page">@pg</span>
+          }
+          else
+          {
+            <a class="page" href="@Model.PageUrl(pg)">@pg</a>
+          }
+        }
+
+        @if (current < last)
+        {
+          <a class="next" id="paginator-next" aria-label="Next Page" href="@Model.PageUrl(current + 1)"><span>Next</span><svg-icon name="chevron_right" /></a>
+        }
+        else
+        {
+          <span class="next" id="paginator-next"><span>Next</span><svg-icon name="chevron_right" /></span>
+        }
+      </nav>
+    </div>
+  </div>
+
+</div></div></div>

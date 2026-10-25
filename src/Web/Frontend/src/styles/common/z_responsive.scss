@@ -1,0 +1,190 @@
+.mobile-only {
+  display: none;
+}
+
+@media screen and (max-width: 800px) {
+  .mobile-only {
+    display: unset;
+  }
+
+  body.resp {
+    #c-posts #a-show {
+      .nav-block li {
+        padding: 0 0.5em;
+        
+        .first span, .last span {
+          display: none;
+        }
+      }
+    }
+
+    .mobile-search {
+      display: block;
+      margin: $padding-050 $padding-050 $padding-150;
+      .search-help {
+        font-size: $font-size;
+      }
+    }
+    .mobile-search > .search-form > form {
+      box-sizing: border-box;
+      display: flex;
+      width: 100%;
+      margin-bottom: $padding-025;
+      .search-input {
+        width: 100%;
+        input {
+          width: 100%;
+          box-sizing: border-box;
+          border-radius: $border-radius-half 0 0 $border-radius-half;
+        }
+        flex-grow: 1;
+      }
+      .search-button > button {
+        width: 32px;
+        height: 32px;
+        border-left: 1px solid #ccc; //HACK: hardcoded color
+        border-radius: 0 $border-radius-half $border-radius-half 0;
+      }
+    }
+
+    div#page {
+
+      > div /* div#c-$controller */
+      {
+        > div /* div#a-$action */
+        {
+          display: flex;
+          flex-direction: column;
+
+          /* Move #sidebar below #content. */
+          > aside#sidebar {
+            font-size: 1.5em;
+            float: none;
+            width: auto;
+            order: 2;
+          }
+        }
+      }
+    }
+
+    header {
+      position: relative;
+    }
+
+    /* Make the quick search box in the navbar full width. */
+    header#top menu form input {
+      width: auto;
+    }
+
+    form {
+      select, input, textarea, button {
+        max-width: 100%;
+      }
+
+      select {
+        vertical-align: top;
+        font-size: 18pt;
+      }
+
+      input[type=text], input[type=email], input[type=password], input[type=number] {
+        vertical-align: top;
+        font-size: 18pt;
+        border: 1px solid #c5c5c5;
+        width: 90%;
+      }
+
+      textarea {
+        width: 90%;
+        vertical-align: top;
+        border: 1px solid #c5c5c5;
+      }
+
+      button, input[type=button] {
+        font-size: 160%;
+      }
+
+      input[type=submit] {
+        font-size: 160%;
+      }
+
+      input[type=submit].tiny {
+        font-size: 120%;
+        vertical-align: top;
+      }
+    }
+
+    form.simple_form {
+      div.input {
+        input[type=text], input[type=email], input[type=password], input[type=number] {
+          width: 90%;
+          max-width: 90%;
+        }
+
+        textarea {
+          width: 90%;
+          max-width: 90%;
+        }
+      }
+    }
+
+    div#page section#content {
+      margin: 0;
+      padding: 0;
+    }
+
+    div#options {
+      margin-top: 10px;
+      font-size: 24pt;
+      font-weight: bold;
+    }
+
+    div#tags {
+      margin-top: 30px;
+
+      li {
+        margin: 10px 0;
+      }
+
+      a.search-tag {
+        font-size: 24pt;
+        font-weight: bold;
+      }
+    }
+
+    header {
+      text-align: center;
+      line-height: 2em;
+
+      h1 {
+        display: inline; //Needed for menu button
+      }
+    }
+  }
+}
+
+@media screen and (max-width: 660px) {
+  body.resp {
+    #c-forum-topics, #c-forum-posts {
+
+      .creator {
+        display: none;
+      }
+
+      .created-at {
+        display: none;
+      }
+    }
+  }
+}
+
+@media screen and (max-width: 440px) {
+  body.resp {
+    body {
+      width: 100%;
+    }
+
+    #post-sections {
+      font-size: 1em;
+    }
+  }
+}

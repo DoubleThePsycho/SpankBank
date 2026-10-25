@@ -8,5 +8,7 @@ public sealed record PostListItem(
     DateTimeOffset CreatedAt,
     DateTimeOffset UpdatedAt,
     int Score,
-    string? FileExt
+    string? FileExt,
+    string? Md5,
+    int FavCount
 );

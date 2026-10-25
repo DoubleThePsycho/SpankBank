@@ -1,0 +1,38 @@
+.score-negative,                                                // Scores and rating are bold everywhere now
+.score-neutral,                                                 // Except if they don't have the class associated (like 'rating' in posts and comments pages)
+.score-positive,
+.post-score-rating {
+  font-weight: 700;
+}
+
+.score-positive, span.score-positive {
+  color: palette("text-green");
+
+  a {
+    color: palette("text-green");
+  }
+}
+.score-negative, span.score-negative {
+  color: palette("text-red");
+
+  a {
+    color: palette("text-red");
+  }
+}
+.score-neutral, span.score-neutral {
+  color: palette("text-grey");
+
+  a {
+    color: palette("text-grey");
+  }
+}
+
+.post-rating-text-safe {
+  color: palette("text-green");
+}
+.post-rating-text-questionable {
+  color: palette("text-yellow");
+}
+.post-rating-text-explicit {
+  color: palette("text-red");
+}

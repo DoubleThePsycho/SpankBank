@@ -6,10 +6,11 @@ CLAUDE.local.md
 
 # web / docker
 node_modules/
-Web/wwwroot/dist/
+src/Web/wwwroot/dist/
 .env
 /data/
 media/
 *.sqlite
 *.sqlite-wal
 *.sqlite-shm
+.playwright-mcp/

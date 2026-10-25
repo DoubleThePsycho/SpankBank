@@ -1,0 +1,51 @@
+
+.user-greeting-outer {
+  padding: $padding-025 0 $padding-025;
+  span.user-greeting {
+    color: $user-home-greeting-color;
+    cursor: help;
+  }
+}
+
+// User signup and login
+#c-maintenance-user-password-resets #a-new,
+#c-maintenance-user-login-reminders #a-new {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(auto, 360px));
+  gap: 1em;
+
+  margin-bottom: 1em;
+}
+
+.simple_form.session_form {
+  box-sizing: border-box;
+  max-width: 360px;
+  margin: 0;
+
+  h1 {
+    margin-bottom: 0.5em;
+    text-align: center;
+  }
+
+  div.input {
+    input[type="text"], input[type="email"], input[type="password"], select {
+      // z_responsive is the absolute worst
+      width: 100% !important;
+      max-width: unset !important;
+      box-sizing: border-box;
+    }
+  }
+}
+
+.session_info {
+  display: flex;
+  flex-flow: column;
+  justify-content: center;
+  box-sizing: border-box;
+  max-width: 360px;
+  padding: 0.5rem;
+  border-radius: 3px;
+  background-color: themed("color-section");
+
+  h3 { margin-bottom: 1em; }
+}

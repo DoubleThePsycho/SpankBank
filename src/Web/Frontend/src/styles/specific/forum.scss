@@ -1,0 +1,84 @@
+div.list-of-forum-posts {
+  article.forum-post {
+    margin: 1em 0em;
+
+    a.voted {
+      font-weight: bold;
+    }
+
+    span.desc {
+      color: grey;
+    }
+
+    &:target {
+      background-color: $forum-post-highlight-background;
+    }
+
+    &[data-is-hidden="true"] {
+      background-color: $background-article-hidden;
+    }
+
+    .vote-score-up {
+      color: palette("text-green");
+    }
+
+    .vote-score-meh {
+      color: palette("text-yellow");
+    }
+
+    .vote-score-down {
+      color: palette("text-red");
+    }
+
+    div.content-menu {
+      .edit_forum_post, .edit_forum_topic {
+        display: none;
+      }
+
+      menu {
+        margin-top: 0.5em;
+
+        li {
+          margin-right: 1em;
+        }
+      }
+    }
+  }
+}
+
+div#c-forum-topics {
+  span.new {
+    font-size: 80%;
+    color: $forum-topic-new-color;
+    margin-right: 0.5em;
+  }
+
+  span.locked-topic {
+    color: themed("color-link-last-page");
+  }
+
+  tr.forum-topic-row {
+    &[data-topic-is-hidden="true"] {
+      background-color: $background-article-hidden;
+    }
+
+    td:last-child {
+      white-space: nowrap;
+    }
+
+    .forum-post-link {
+      word-break: break-word;
+    }
+  }
+}
+
+#c-forum-posts #a-index {
+  tr[data-topic-is-hidden="true"] .forum-post-topic-title::after,
+  tr[data-is-hidden="true"] .forum-post-excerpt::after {
+    content: " (hidden)";
+    color: $forum-topic-except-color;
+  }
+  tr[data-is-hidden="true"], tr[data-topic-is-hidden="true"] {
+    background-color: $background-article-hidden;
+  }
+}

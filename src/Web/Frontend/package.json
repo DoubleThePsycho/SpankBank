@@ -1,0 +1,19 @@
+{
+  "name": "spankbank-web-frontend",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "vite build",
+    "watch": "vite build --watch",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "jquery": "3.7.1"
+  },
+  "devDependencies": {
+    "@types/jquery": "3.5.32",
+    "sass": "1.89.2",
+    "typescript": "5.8.3",
+    "vite": "6.3.5"
+  }
+}

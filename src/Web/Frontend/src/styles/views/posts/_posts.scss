@@ -1,0 +1,26 @@
+// Common
+@import "common/common";
+
+// Main themes
+@import "index/index";
+@import "show/show";
+
+@include window-larger-than(50rem) {
+  @import "index/index.desktop";
+  @import "show/show.desktop";
+}
+
+// Features
+@import "index/partials/mode_menu";
+@import "index/partials/wiki_excerpt";
+@import "index/partials/info_bar";
+@import "index/partials/settings";
+
+@include window-larger-than(50rem) {
+  @include with-setting("fullscreen", "true") {
+    @import "index/partials/fullscreen";
+  }
+  @include with-setting("stickysearch", "true") {
+    @import "index/partials/sticky";
+  }
+}

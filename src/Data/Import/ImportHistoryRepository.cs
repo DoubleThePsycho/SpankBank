@@ -60,6 +60,36 @@ public sealed class ImportHistoryRepository
         );
     }
 
+    public IReadOnlyList<ImportHistoryEntry> GetRecent(int limit)
+    {
+        using var connection = new SqliteConnection(_connectionString);
+        connection.Open();
+        using var cmd = connection.CreateCommand();
+        cmd.CommandText = """
+            SELECT Id, ImportType, SourcePath, StartedAt, CompletedAt, Succeeded, RowsProcessed, ErrorMessage
+            FROM ImportHistory
+            ORDER BY StartedAt DESC, Id DESC
+            LIMIT $limit;
+            """;
+        cmd.Parameters.AddWithValue("$limit", limit);
+
+        using var reader = cmd.ExecuteReader();
+        var entries = new List<ImportHistoryEntry>();
+        while (reader.Read())
+        {
+            entries.Add(new ImportHistoryEntry(
+                Id: reader.GetInt64(0),
+                ImportType: reader.GetString(1),
+                SourcePath: reader.GetString(2),
+                StartedAt: DateTimeOffset.Parse(reader.GetString(3)),
+                CompletedAt: reader.IsDBNull(4) ? null : DateTimeOffset.Parse(reader.GetString(4)),
+                Succeeded: reader.GetInt32(5) != 0,
+                RowsProcessed: reader.GetInt64(6),
+                ErrorMessage: reader.IsDBNull(7) ? null : reader.GetString(7)));
+        }
+        return entries;
+    }
+
     public bool HasSuccessfulImport(string importType, string fileName)
     {
         using var connection = new SqliteConnection(_connectionString);

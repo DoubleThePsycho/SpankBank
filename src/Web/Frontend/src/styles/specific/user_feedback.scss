@@ -1,0 +1,51 @@
+.user-feedback-positive {
+  color: palette("text-green");
+}
+
+.user-feedback-neutral {
+  color: palette("text-grey");
+}
+
+.user-feedback-negative {
+  color: palette("text-red");
+}
+
+.user-feedback-deleted {
+  color: palette("text-yellow");
+}
+
+div#c-user-feedbacks, div#c-staff-moderator-dashboards .activity-container {
+  .feedback-category-positive {
+    background: palette("background-green");
+  }
+
+  .feedback-category-neutral {
+    background: palette("background-grey");
+  }
+
+  .feedback-category-negative {
+    background: palette("background-red");
+  }
+
+  tr.user-feedback[data-is-deleted="true"] {
+    background: palette("background-yellow");
+  }
+
+  blockquote {
+    padding: 0.5em;
+  }
+
+  .show-all-user-feedbacks-link {
+    font-size: 1.5em;
+    width: 100%;
+    text-align: center;
+    padding: 0.5em 0;
+  }
+}
+
+div#c-user-feedbacks #a-index {
+  .user-feedback-expired {
+    margin-top: 0.5rem;
+    font-weight: bold;
+  }
+}

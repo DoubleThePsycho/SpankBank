@@ -1,0 +1,96 @@
+div.related-tags {
+  display: flex;
+  flex-wrap: wrap;
+  overflow: hidden;
+  gap: 0.5rem 0.25rem;
+
+  width: 100%;
+  padding: 0.5rem;
+  box-sizing: border-box;
+
+  background: themed("color-section-lighten-5");
+  @include st-radius;
+
+  .related-section {
+    display: flex;
+    flex-flow: row wrap;
+    flex: 0 1 auto;
+    align-content: flex-start;
+    gap: 0.25rem;
+
+    .related-title {
+      flex: 0 0 0;
+      min-width: 100%;
+      font-weight: bold;
+    }
+  }
+
+  .related-items {
+    display: flex;
+    flex-direction: column;
+
+    background: rgba(1, 1, 1, 0.15);
+    border: 1px solid rgba(0, 0, 0, 0.15);
+    @include st-radius;
+
+    .related-item {
+      max-width: 15rem;
+      overflow-wrap: break-word;
+      word-wrap: break-word;
+      padding: 0.125rem 0.25rem;
+    }
+  }
+
+  .tag-active {
+    background: themed("color-active-tag");
+    color: white;
+  }
+}
+
+div.tag-preview-area {
+  margin-top: 0.5em;
+  margin-bottom: 0.75em;
+}
+
+div.tag-preview {
+  box-sizing: border-box;
+
+  display: grid;
+  grid-template-columns: repeat(auto-fill, 16rem);
+  grid-auto-rows: auto;
+  align-content: start;
+
+  width: 100%;
+  height: 400px;
+  max-height: 50vh;
+
+  overflow: hidden;
+  overflow-y: auto;
+  margin-bottom: 0.25em;
+  padding: 2px;
+
+  background: themed("color-section-lighten-5");
+
+  border-radius: $border-radius-half;
+
+  .tag-preview-tag {
+    padding: 1px;
+    padding-right: 5px;
+
+    & .post-count {
+      color: themed("color-text-muted");
+    }
+
+    & .implied {
+      color: themed("palette-text-green");
+    }
+
+    & .empty,
+    .underused,
+    .invalid,
+    .duplicate,
+    .new {
+      color: themed("palette-text-red");
+    }
+  }
+}

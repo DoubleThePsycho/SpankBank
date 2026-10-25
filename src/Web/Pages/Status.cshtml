@@ -1,0 +1,49 @@
+@page "/status"
+@model SpankBank.Web.Pages.StatusModel
+@{
+    ViewData["Title"] = "Status";
+}
+<div id="c-status"><div id="a-index">
+  <h1>Worker status</h1>
+
+  @if (Model.Message is not null)
+  {
+    <div class="notice notice-info" style="margin-bottom: 1em;">@Model.Message</div>
+  }
+
+  <table class="striped">
+    <tbody>
+      <tr><th>Last run started</th><td>@(Model.LastRunStartedAt ?? "never")</td></tr>
+      <tr><th>Last run completed</th><td>@(Model.LastRunCompletedAt ?? "never")</td></tr>
+      <tr><th>Last result</th><td>@(Model.LastRunResult ?? "-")</td></tr>
+      <tr><th>Daily run (UTC)</th><td>@Model.DailyRunTimeUtc</td></tr>
+      <tr><th>Run requested</th><td>@(Model.RunRequested ? "yes, waiting for the worker" : "no")</td></tr>
+      <tr><th>Posts in catalog</th><td>@Model.PostCount.ToString("N0")</td></tr>
+    </tbody>
+  </table>
+
+  <form method="post" style="margin-top: 1em;">
+    <button type="submit" class="st-button">Run export refresh now</button>
+  </form>
+
+  <h2 style="margin-top: 1.5em;">Recent imports</h2>
+  <table class="striped">
+    <thead><tr><th>Type</th><th>File</th><th>Started</th><th>Rows</th><th>Result</th></tr></thead>
+    <tbody>
+      @foreach (var entry in Model.Imports)
+      {
+        <tr>
+          <td>@entry.ImportType</td>
+          <td>@System.IO.Path.GetFileName(entry.SourcePath)</td>
+          <td>@entry.StartedAt.ToString("u")</td>
+          <td>@entry.RowsProcessed.ToString("N0")</td>
+          <td>@(entry.Succeeded ? "ok" : entry.ErrorMessage)</td>
+        </tr>
+      }
+      @if (Model.Imports.Count == 0)
+      {
+        <tr><td colspan="5">No imports yet.</td></tr>
+      }
+    </tbody>
+  </table>
+</div></div>

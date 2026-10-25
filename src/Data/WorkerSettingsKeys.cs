@@ -1,4 +1,4 @@
-namespace SpankBank.Worker;
+namespace SpankBank.Data;
 
 public static class WorkerSettingsKeys
 {

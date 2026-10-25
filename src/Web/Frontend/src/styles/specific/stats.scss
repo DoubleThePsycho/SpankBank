@@ -1,0 +1,16 @@
+.stats-column {
+  width: 400px;
+  display: inline-block;
+  vertical-align: top;
+  padding-right: 1em;
+
+  table {
+    margin-bottom: 1em;
+    box-shadow: 2px 2px 5px themed("color-background");
+
+    .stats-pct {
+      text-align: right;
+      padding-right: 0.5em;
+    }
+  }
+}

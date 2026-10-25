@@ -28,7 +28,8 @@ public sealed class PostsRepository
         int limit,
         PostOrderField orderBy = PostOrderField.DateUploaded,
         SortDirection direction = SortDirection.Descending,
-        PostListFilter? filter = null)
+        PostListFilter? filter = null,
+        int offset = 0)
     {
         var directionSql = direction == SortDirection.Ascending ? "ASC" : "DESC";
         var orderClause = orderBy switch
@@ -47,12 +48,13 @@ public sealed class PostsRepository
         connection.Open();
         using var cmd = connection.CreateCommand();
         cmd.CommandText = $"""
-            SELECT Id, Rating, CreatedAt, UpdatedAt, Score, FileExt
+            SELECT Id, Rating, CreatedAt, UpdatedAt, Score, FileExt, Md5, FavCount
             FROM Posts{where}
             ORDER BY {orderClause}
-            LIMIT $limit;
+            LIMIT $limit OFFSET $offset;
             """;
         cmd.Parameters.AddWithValue("$limit", limit);
+        cmd.Parameters.AddWithValue("$offset", offset);
         foreach (var (name, value) in parameters)
             cmd.Parameters.AddWithValue(name, value);
 
@@ -66,7 +68,9 @@ public sealed class PostsRepository
                 CreatedAt: DateTimeOffset.Parse(reader.GetString(2)),
                 UpdatedAt: DateTimeOffset.Parse(reader.GetString(3)),
                 Score: reader.GetInt32(4),
-                FileExt: reader.IsDBNull(5) ? null : reader.GetString(5)
+                FileExt: reader.IsDBNull(5) ? null : reader.GetString(5),
+                Md5: reader.IsDBNull(6) ? null : reader.GetString(6),
+                FavCount: reader.GetInt32(7)
             ));
         }
         return results;

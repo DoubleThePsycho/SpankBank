@@ -1,0 +1,14 @@
+// SpankBank: the upstream logo set is not used. The nav shows the app name as text instead.
+// (Upstream: e621ng app/javascript/src/styles/base/_logos.scss)
+nav.navigation .nav-logo a.nav-logo-link {
+  background-image: none;
+  align-items: center;
+  width: auto !important;
+  margin: 0.125rem 0.75rem !important;
+  font-weight: bold;
+  font-size: 1.25rem;
+  text-decoration: none;
+  white-space: nowrap;
+
+  &::before { content: "SpankBank"; }
+}

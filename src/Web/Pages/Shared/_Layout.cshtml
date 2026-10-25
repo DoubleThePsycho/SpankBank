@@ -1,0 +1,78 @@
+@* Structure ported from e621ng app/views/layouts/default.html.erb and layouts/navigation (BSD-2, see THIRD-PARTY-NOTICES.md). *@
+@{
+    var path = Context.Request.Path.Value ?? "/";
+}
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>@(ViewData["Title"] ?? "SpankBank")</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#00549e">
+  <meta name="blacklisted-tags" content="[]">
+  <meta name="blacklist-users" content="false">
+  <link rel="stylesheet" href="~/dist/application.css" asp-append-version="true">
+  <script src="~/dist/application.js" asp-append-version="true"></script>
+  @await RenderSectionAsync("Head", required: false)
+</head>
+<body lang="en" class="resp" data-user-id="" data-user-name="Anonymous" data-user-level="0" data-user-level-string="Member" data-user-is-anonymous="true">
+  <script>
+    (function () {
+      try {
+        const values = {
+          "th-main": localStorage.getItem("theme") || "hexagon",
+          "th-extra": localStorage.getItem("theme-extra") || "hexagon",
+          "th-stickyheader": localStorage.getItem("theme-sheader") || false,
+          "th-palette": localStorage.getItem("theme-palette") || "default",
+          "th-font": localStorage.getItem("theme-font") || "Verdana",
+          "th-nav": localStorage.getItem("theme-nav") || "top",
+          "th-logo": localStorage.getItem("theme-logo") || "default",
+          "st-fullscreen": localStorage.getItem("e6.posts.fusk") || false,
+          "st-cornerribbons": localStorage.getItem("e6.posts.cribbons") || true,
+          "st-stickysearch": localStorage.getItem("e6.posts.ssearch") || false,
+          "st-contain": localStorage.getItem("e6.posts.contain") || false,
+          "st-size": localStorage.getItem("e6.posts.size") || "m",
+        };
+        for (const [name, value] of Object.entries(values))
+          document.body.setAttribute("data-" + name, value);
+      } catch (e) {}
+    })();
+  </script>
+
+  <nav class="navigation" role="navigation">
+    <menu class="nav-logo">
+      <a href="/" class="nav-logo-link" aria-label="Home Page"></a>
+    </menu>
+
+    <menu class="nav-primary desktop">
+      @foreach (var (text, icon, url) in new[] { ("Posts", "images", "/posts"), ("Pools", "library", "/pools"), ("Tags", "tags", "/tags"), ("Status", "settings", "/status") })
+      {
+        var id = "nav-" + text.ToLowerInvariant();
+        <li id="@id" class="@(path.StartsWith(url, StringComparison.OrdinalIgnoreCase) ? "current" : null)">
+          <a href="@url" id="@id-link"><svg-icon name="@icon" /> <span>@text</span></a>
+        </li>
+      }
+    </menu>
+
+    <menu class="nav-secondary desktop empty"></menu>
+    <menu class="nav-controls desktop"></menu>
+    <menu class="nav-tools desktop"></menu>
+    <menu class="nav-help desktop"></menu>
+  </nav>
+
+  <div id="page" role="main">
+    @RenderBody()
+  </div>
+
+  <footer class="footer-wrapper">
+    <div class="footer-grid">
+      <span class="footer-left"></span>
+      <span class="footer-right">
+        <span class="footer-running">Running SpankBank</span>
+      </span>
+    </div>
+  </footer>
+
+  @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>

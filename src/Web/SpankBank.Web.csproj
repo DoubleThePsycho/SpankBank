@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <RootNamespace>SpankBank.Web</RootNamespace>
+    <AssemblyName>SpankBank.Web</AssemblyName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Core\SpankBank.Core.csproj" />
+    <ProjectReference Include="..\Data\SpankBank.Data.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Frontend sources and node_modules are not part of the .NET build. -->
+    <Content Remove="Frontend\**" />
+    <None Remove="Frontend\**" />
+    <Compile Remove="Frontend\**" />
+  </ItemGroup>
+
+</Project>

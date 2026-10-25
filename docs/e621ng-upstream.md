@@ -1,0 +1,17 @@
+# e621ng upstream reference
+
+Files under `src/Web` that were copied or adapted from https://github.com/e621ng/e621ng carry the upstream BSD-2 notice
+(see `THIRD-PARTY-NOTICES.md`). Pinned upstream commit: `da51d7ae5d72efbae27c86852fa274f7c6689ff1` (2026-10-25).
+
+| Local | Upstream |
+|---|---|
+| `src/Web/Frontend/src/styles/**` | `app/javascript/src/styles/**` (unchanged, except `base/_logos.scss`, which drops the logo set) |
+| `src/Web/Frontend/fonts`, `images/themes` | `app/javascript/fonts`, `app/javascript/images/themes` |
+| `src/Web/Frontend/src/js/pages/posts/SearchControls.ts`, `SearchFilters.ts`, `SearchQuery.ts` | `app/javascript/src/js/pages/posts/*` (unchanged) |
+| `src/Web/Frontend/src/js/utility/{Offclick,Logger,SVGIcon}.ts`, `storage/**` | `app/javascript/src/js/utility/*` (unchanged) |
+| `src/Web/Services/IconPaths.cs` | generated from `app/helpers/icon_helper.rb` (lucide icons) |
+| `src/Web/Pages/Shared/_Layout.cshtml` | `app/views/layouts/default.html.erb`, `layouts/navigation/*`, `layouts/_theme_include.html.erb` |
+| `src/Web/Pages/Shared/_SearchControls.cshtml` | `app/views/posts/partials/index/_controls.html.erb` |
+| `src/Web/Pages/Posts/Index.cshtml` | `app/views/posts/index.html.erb`, `components/post_thumbnail_component.html.erb`, `components/paginator_component.html.erb` |
+
+To update: diff the upstream files against the local copies and re-apply. The site's logo, landing page and mascots are intentionally not ported.

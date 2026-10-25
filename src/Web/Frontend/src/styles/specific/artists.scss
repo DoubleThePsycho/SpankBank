@@ -1,0 +1,22 @@
+
+
+div#c-artists {
+  ul ul {
+    margin-left: 1em;
+  }
+
+  div#a-edit, div#a-new {
+    #artist_other_names_string {
+      width: 100%;
+    }
+  }
+
+  div.recent-posts {
+    margin-top: 1em;
+
+    h1 {
+      font-size: $h2-size;
+      margin: 0;
+    }
+  }
+}

@@ -1,0 +1,36 @@
+.ui-autocomplete-dropdown {
+  position: absolute;
+  z-index: 1000;
+
+  max-height: 226px;
+  box-sizing: border-box;
+  overflow-y: auto;
+  margin: 0;
+  padding: 0;
+
+  font-size: 0.9em;
+  list-style: none;
+  border: 1px solid themed("color-section-darken-5");
+  border-top: none;
+  background-color: themed("color-section-lighten-5");
+  box-shadow: 0 0.25rem 0.5rem -0.25rem themed("color-background");
+  border-radius: 0.25rem;
+
+  > li {
+    padding: 3px .5em 3px .4em;
+    cursor: pointer;
+
+    > a {
+      margin-right: 1em;
+    }
+
+    &:hover,
+    &[aria-selected="true"] {
+      background-color: var(--color-section-darken-5);
+    }
+
+    .ui-autocomplete-count {
+      float: right;
+    }
+  }
+}

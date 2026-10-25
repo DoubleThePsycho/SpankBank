@@ -1,0 +1,13 @@
+div#c-wiki-page-versions {
+  #a-index {
+    table {
+      margin-bottom: 1em;
+    }
+  }
+
+  #a-show {
+    span.version {
+      color: themed("color-text-muted");
+    }
+  }
+}
