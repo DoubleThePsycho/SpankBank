@@ -7,7 +7,7 @@
     var last = Model.LastPage;
 }
 @section Scripts {
-  <script src="~/dist/posts.js" asp-append-version="true"></script>
+  <script type="module" src="~/dist/posts.js" asp-append-version="true"></script>
 }
 
 <div id="c-posts"><div id="a-index"><div class="post-index">
@@ -18,7 +18,7 @@
       <span class="post-search-help"></span>
 
       <form method="get" action="/posts" rel="search" class="post-search-form">
-        <textarea name="tags" id="tags" placeholder="Search posts by tag" rows="1">@Model.Tags</textarea>
+        <textarea name="tags" id="tags" data-autocomplete="tag-query" placeholder="Search posts by tag" rows="1">@Model.Tags</textarea>
         <button type="submit" title="Search"><svg-icon name="search" /></button>
       </form>
     </section>

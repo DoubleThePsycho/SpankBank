@@ -92,7 +92,7 @@ public enum ExportDownloadStatus
 public sealed class E621ExportDownloadService
 {
     private static readonly Uri ExportIndexUri = new("https://e621.net/db_exports.json");
-    public static readonly IReadOnlyList<string> ImportableExportTypes = ["tags", "tag_aliases", "posts"];
+    public static readonly IReadOnlyList<string> ImportableExportTypes = ["tags", "tag_aliases", "pools", "posts"];
     private static readonly string[] ExportTypes =
     [
         "posts",

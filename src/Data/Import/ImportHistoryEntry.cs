@@ -41,6 +41,12 @@ public sealed record PostsImportResult(
     long RowsImported
 );
 
+public sealed record PoolsImportResult(
+    ImportSmokeTestResult History,
+    long RowsRead,
+    long RowsImported
+);
+
 public sealed record PostsImportProgress(
     long RowsRead,
     long RowsImported,

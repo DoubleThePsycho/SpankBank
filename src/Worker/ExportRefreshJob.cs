@@ -4,7 +4,7 @@ using SpankBank.Data.Repositories;
 
 namespace SpankBank.Worker;
 
-/// <summary>Downloads the latest e621 CSV exports and imports tags, aliases and posts.</summary>
+/// <summary>Downloads the latest e621 CSV exports and imports tags, aliases, pools and posts.</summary>
 public sealed class ExportRefreshJob
 {
     private readonly DatabasePaths _paths;
@@ -53,7 +53,7 @@ public sealed class ExportRefreshJob
         var detected = E621ExportFileDetector.DetectLatest(_importsDir);
         var summary = new List<string>();
 
-        // Order matters: tags first, then aliases (which update tags), then posts. Stop on the first failure.
+        // Order matters: tags first, then aliases (which update tags), then pools, then posts. Stop on the first failure.
         if (detected.TagsPath is { } tagsPath)
         {
             var result = await _importer.ImportTagsAsync(tagsPath, cancellationToken: cancellationToken);
@@ -70,6 +70,15 @@ public sealed class ExportRefreshJob
                 return $"Aliases import failed: {result.History.ErrorMessage}";
             Cleanup(aliasesPath);
             summary.Add($"aliases {result.TagsUpdated:N0}");
+        }
+
+        if (detected.PoolsPath is { } poolsPath)
+        {
+            var result = await _importer.ImportPoolsAsync(poolsPath, cancellationToken);
+            if (!result.History.Succeeded)
+                return $"Pools import failed: {result.History.ErrorMessage}";
+            Cleanup(poolsPath);
+            summary.Add($"pools {result.RowsImported:N0}");
         }
 
         if (detected.PostsPath is { } postsPath)

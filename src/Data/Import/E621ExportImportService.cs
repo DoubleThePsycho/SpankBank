@@ -86,6 +86,106 @@ public sealed class E621ExportImportService
         CancellationToken cancellationToken = default)
         => Task.Run(() => ImportPosts(sourcePath, progress, cancellationToken), cancellationToken);
 
+    public Task<PoolsImportResult> ImportPoolsAsync(
+        string sourcePath,
+        CancellationToken cancellationToken = default)
+        => Task.Run(() => ImportPools(sourcePath, cancellationToken), cancellationToken);
+
+    // Pools are small (tens of thousands of rows), so the table is replaced in one transaction.
+    private PoolsImportResult ImportPools(string sourcePath, CancellationToken cancellationToken)
+    {
+        var startedAt = DateTimeOffset.UtcNow;
+        long rowsRead = 0;
+        long rowsImported = 0;
+        ImportSmokeTestResult result;
+
+        try
+        {
+            ValidateSourcePath(sourcePath);
+
+            using var stream = OpenReadStream(sourcePath);
+            using var reader = new StreamReader(stream);
+            using var records = ReadCsvRecords(reader).GetEnumerator();
+            if (!records.MoveNext())
+                throw new InvalidOperationException("Pools export is empty or missing a header row.");
+
+            var columns = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+            for (var i = 0; i < records.Current.Count; i++)
+                columns[records.Current[i].Trim()] = i;
+            int Column(string name) => columns.TryGetValue(name, out var index)
+                ? index
+                : throw new InvalidOperationException($"Pools export is missing required column '{name}'.");
+            var (idCol, nameCol, createdCol, updatedCol, descCol, activeCol, categoryCol, postIdsCol) = (
+                Column("id"), Column("name"), Column("created_at"), Column("updated_at"),
+                Column("description"), Column("is_active"), Column("category"), Column("post_ids"));
+
+            using var connection = new SqliteConnection(_connectionString);
+            connection.Open();
+            using var transaction = connection.BeginTransaction();
+
+            using (var deleteCmd = connection.CreateCommand())
+            {
+                deleteCmd.Transaction = transaction;
+                deleteCmd.CommandText = "DELETE FROM Pools;";
+                deleteCmd.ExecuteNonQuery();
+            }
+
+            using var insertCmd = connection.CreateCommand();
+            insertCmd.Transaction = transaction;
+            insertCmd.CommandText = """
+                INSERT OR REPLACE INTO Pools (Id, Name, CreatedAt, UpdatedAt, Description, IsActive, Category, PostIds, PostCount)
+                VALUES ($id, $name, $createdAt, $updatedAt, $description, $isActive, $category, $postIds, $postCount);
+                """;
+            insertCmd.Parameters.Add("$id", SqliteType.Integer);
+            insertCmd.Parameters.Add("$name", SqliteType.Text);
+            insertCmd.Parameters.Add("$createdAt", SqliteType.Text);
+            insertCmd.Parameters.Add("$updatedAt", SqliteType.Text);
+            insertCmd.Parameters.Add("$description", SqliteType.Text);
+            insertCmd.Parameters.Add("$isActive", SqliteType.Integer);
+            insertCmd.Parameters.Add("$category", SqliteType.Text);
+            insertCmd.Parameters.Add("$postIds", SqliteType.Text);
+            insertCmd.Parameters.Add("$postCount", SqliteType.Integer);
+            insertCmd.Prepare();
+
+            while (records.MoveNext())
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                rowsRead++;
+                var fields = records.Current;
+                if (!long.TryParse(ReadString(fields, idCol), NumberStyles.Integer, CultureInfo.InvariantCulture, out var id))
+                    continue;
+
+                // post_ids is a Postgres array literal: {1,2,3}. Keep the order, drop the braces.
+                var postIds = ReadString(fields, postIdsCol).Trim('{', '}');
+                var postCount = postIds.Length == 0 ? 0 : postIds.Count(c => c == ',') + 1;
+
+                insertCmd.Parameters["$id"].Value = id;
+                insertCmd.Parameters["$name"].Value = ReadString(fields, nameCol);
+                insertCmd.Parameters["$createdAt"].Value = NormalizeDate(ReadString(fields, createdCol));
+                insertCmd.Parameters["$updatedAt"].Value = NormalizeDate(ReadString(fields, updatedCol));
+                insertCmd.Parameters["$description"].Value = DbString(EmptyToNull(ReadString(fields, descCol)));
+                insertCmd.Parameters["$isActive"].Value = ReadBool(fields, activeCol) ? 1 : 0;
+                insertCmd.Parameters["$category"].Value = ReadString(fields, categoryCol);
+                insertCmd.Parameters["$postIds"].Value = postIds;
+                insertCmd.Parameters["$postCount"].Value = postCount;
+                insertCmd.ExecuteNonQuery();
+                rowsImported++;
+            }
+
+            transaction.Commit();
+            result = new ImportSmokeTestResult("pools", sourcePath, startedAt, DateTimeOffset.UtcNow,
+                Succeeded: true, rowsImported, ErrorMessage: null);
+        }
+        catch (Exception ex)
+        {
+            result = new ImportSmokeTestResult("pools", sourcePath, startedAt, DateTimeOffset.UtcNow,
+                Succeeded: false, rowsImported, ErrorMessage: ex.Message);
+        }
+
+        _historyRepository.Add(result);
+        return new PoolsImportResult(result, rowsRead, rowsImported);
+    }
+
     private PostsImportResult ImportPosts(
         string sourcePath,
         IProgress<PostsImportProgress>? progress,

@@ -1,0 +1,75 @@
+@page "/watches/artists"
+@model SpankBank.Web.Pages.Watches.ArtistsModel
+@using SpankBank.Core.Models
+@{
+    ViewData["Title"] = "Watched artists";
+    Layout = "_WatchesLayout";
+}
+
+<div class="watches-header">
+  <h1>Artists</h1>
+  <button type="button" class="st-button" data-open-modal="modal-add">Add artist</button>
+</div>
+
+@if (Model.Message is not null) { <div class="notice notice-info">@Model.Message</div> }
+@if (Model.Error is not null) { <div class="notice notice-error">@Model.Error</div> }
+
+@if (Model.Entries.Count == 0)
+{
+  <p>No artists watched.</p>
+}
+else
+{
+  <table class="striped watches-table">
+    <thead><tr><th>Artist</th><th>Aliases</th><th>Characters</th><th>Status</th></tr></thead>
+    <tbody>
+      @foreach (var artist in Model.Entries)
+      {
+        <tr data-open-modal="modal-@artist.Id" tabindex="0">
+          <td><a href="#" class="tag-type-1">@artist.SourceValue</a></td>
+          <td data-field="aliases">@artist.ArtistTags.Count(t => t.Kind == ArtistTagKind.Alias)</td>
+          <td data-field="characters">@artist.ArtistTags.Count(t => t.Kind == ArtistTagKind.Character && t.Enabled) / @artist.ArtistTags.Count(t => t.Kind == ArtistTagKind.Character)</td>
+          <td data-field="status">@(artist.Enabled ? "enabled" : "disabled")</td>
+        </tr>
+      }
+    </tbody>
+  </table>
+}
+
+<div class="st-overlay hidden" id="modal-add" role="dialog" aria-modal="true" aria-labelledby="modal-add-title" tabindex="-1">
+  <div class="st-overlay-wrapper">
+    <button type="button" class="st-button close-button" aria-label="Close">&times;</button>
+    <form method="post" asp-page-handler="Add" class="simple_form">
+      <h1 id="modal-add-title">Add artist</h1>
+      <div class="input">
+        <label for="add-artist">Artist tag</label>
+        <input type="text" name="artist" id="add-artist" data-autocomplete="artist-tag" autocomplete="off" required>
+      </div>
+      <p class="hint">Discovers characters automatically.</p>
+      <button type="submit" class="st-button submit">Add</button>
+    </form>
+  </div>
+</div>
+
+@foreach (var artist in Model.Entries)
+{
+  <div class="st-overlay hidden" id="modal-@artist.Id" role="dialog" aria-modal="true" aria-labelledby="modal-@artist.Id-title" tabindex="-1">
+    <div class="st-overlay-wrapper wide">
+      <button type="button" class="st-button close-button" aria-label="Close">&times;</button>
+      <div class="simple_form">
+        <h1 id="modal-@artist.Id-title"><a href="#" class="tag-type-1">@artist.SourceValue</a></h1>
+
+        <form method="post" asp-page-handler="AddTag" data-ajax class="watch-add-tag">
+          <input type="hidden" name="id" value="@artist.Id">
+          <input type="text" name="tag" data-autocomplete="character-tag" data-validate-tag="4" autocomplete="off" placeholder="Add a character" required>
+          <button type="submit" class="st-button" disabled>Add</button>
+        </form>
+        <div class="st-overlay-error" data-error></div>
+
+        <div data-slot>
+          <partial name="_ArtistModalBody" model="artist" />
+        </div>
+      </div>
+    </div>
+  </div>
+}

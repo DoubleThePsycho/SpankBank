@@ -131,10 +131,12 @@ public static class DatabaseInitializer
                 Description TEXT,
                 IsActive    INTEGER NOT NULL DEFAULT 1,
                 Category    TEXT NOT NULL DEFAULT '',
-                PostIds     TEXT NOT NULL DEFAULT ''
+                PostIds     TEXT NOT NULL DEFAULT '',
+                PostCount   INTEGER NOT NULL DEFAULT 0
             );
             """);
 
+        EnsureColumn(connection, "Pools", "PostCount", "INTEGER NOT NULL DEFAULT 0");
         Execute(connection, "CREATE INDEX IF NOT EXISTS IX_Pools_Name ON Pools (Name);");
         Execute(connection, "CREATE INDEX IF NOT EXISTS IX_Pools_Category ON Pools (Category);");
         Execute(connection, "CREATE INDEX IF NOT EXISTS IX_Pools_IsActive ON Pools (IsActive);");
@@ -248,6 +250,7 @@ public static class DatabaseInitializer
             );
             """);
 
+        EnsureColumn(connection, "WatchedItems", "LocalName", "TEXT");
         Execute(connection, "CREATE INDEX IF NOT EXISTS IX_WatchedItems_ItemType ON WatchedItems (ItemType);");
         Execute(connection, "CREATE INDEX IF NOT EXISTS IX_WatchedItems_Enabled ON WatchedItems (Enabled);");
 
@@ -285,6 +288,18 @@ public static class DatabaseInitializer
             """);
 
         Execute(connection, "CREATE INDEX IF NOT EXISTS IX_ImportHistory_StartedAt ON ImportHistory (StartedAt);");
+    }
+
+    // Adds a column to a table created by an older version of the schema.
+    private static void EnsureColumn(SqliteConnection connection, string table, string column, string definition)
+    {
+        using (var cmd = connection.CreateCommand())
+        {
+            cmd.CommandText = $"SELECT 1 FROM pragma_table_info('{table}') WHERE name = '{column}';";
+            if (cmd.ExecuteScalar() is not null) return;
+        }
+
+        Execute(connection, $"ALTER TABLE {table} ADD COLUMN {column} {definition};");
     }
 
     public static DatabaseDiagnostics GetDiagnostics(string databasePath)

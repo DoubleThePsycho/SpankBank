@@ -114,4 +114,85 @@ public sealed class TagsRepository
             .Replace("\\", "\\\\", StringComparison.Ordinal)
             .Replace("%", "\\%", StringComparison.Ordinal)
             .Replace("_", "\\_", StringComparison.Ordinal);
+
+    /// <summary>
+    /// e621ng-style tag autocomplete: names (or active aliases) matching the term, most used first.
+    /// Counts are the export's post counts, not local ones. "*" is a wildcard; without one the term is a prefix.
+    /// </summary>
+    public IReadOnlyList<TagSuggestion> Autocomplete(string term, int? category = null, int limit = 20)
+    {
+        var pattern = term.Trim().ToLowerInvariant().Replace(' ', '_');
+        if (pattern.Length == 0) return [];
+
+        using var connection = new SqliteConnection(_connectionString);
+        connection.Open();
+
+        var results = new List<TagSuggestion>();
+        var categoryClause = category is null ? "" : " AND t.Category = $category";
+
+        using (var cmd = connection.CreateCommand())
+        {
+            cmd.CommandText = $"""
+                SELECT t.Id, t.Name, t.Category, t.PostCount, NULL
+                FROM Tags t
+                WHERE {NameCondition("t.Name", pattern, cmd)} AND t.PostCount > 0{categoryClause}
+                ORDER BY t.PostCount DESC
+                LIMIT $limit;
+                """;
+            AddCommon(cmd, category, limit);
+            ReadSuggestions(cmd, results);
+        }
+
+        if (results.Count < limit)
+        {
+            using var cmd = connection.CreateCommand();
+            cmd.CommandText = $"""
+                SELECT t.Id, t.Name, t.Category, t.PostCount, a.AntecedentName
+                FROM TagAliases a
+                JOIN Tags t ON t.Name = a.ConsequentName
+                WHERE {NameCondition("a.AntecedentName", pattern, cmd)} AND a.Status = 'active' AND t.PostCount > 0{categoryClause}
+                ORDER BY t.PostCount DESC
+                LIMIT $limit;
+                """;
+            AddCommon(cmd, category, limit);
+            var aliasMatches = new List<TagSuggestion>();
+            ReadSuggestions(cmd, aliasMatches);
+            foreach (var match in aliasMatches)
+                if (results.All(r => r.Id != match.Id) && results.Count < limit)
+                    results.Add(match);
+        }
+
+        return results.OrderByDescending(r => r.PostCount).ToList();
+    }
+
+    // Plain prefixes use a range scan on the name index; wildcards fall back to LIKE.
+    private static string NameCondition(string column, string pattern, SqliteCommand cmd)
+    {
+        if (!pattern.Contains('*'))
+        {
+            cmd.Parameters.AddWithValue("$lo", pattern);
+            cmd.Parameters.AddWithValue("$hi", pattern + "\uffff");
+            return $"{column} >= $lo AND {column} < $hi";
+        }
+
+        var like = pattern.Replace("\\", "\\\\").Replace("%", "\\%").Replace("_", "\\_").Replace("*", "%");
+        cmd.Parameters.AddWithValue("$like", like);
+        return $"{column} LIKE $like ESCAPE '\\'";
+    }
+
+    private static void AddCommon(SqliteCommand cmd, int? category, int limit)
+    {
+        cmd.Parameters.AddWithValue("$limit", limit);
+        if (category is not null) cmd.Parameters.AddWithValue("$category", category.Value);
+    }
+
+    private static void ReadSuggestions(SqliteCommand cmd, List<TagSuggestion> into)
+    {
+        using var reader = cmd.ExecuteReader();
+        while (reader.Read())
+            into.Add(new TagSuggestion(reader.GetInt64(0), reader.GetString(1), reader.GetInt32(2), reader.GetInt64(3),
+                reader.IsDBNull(4) ? null : reader.GetString(4)));
+    }
 }
+
+public sealed record TagSuggestion(long Id, string Name, int Category, long PostCount, string? AntecedentName);

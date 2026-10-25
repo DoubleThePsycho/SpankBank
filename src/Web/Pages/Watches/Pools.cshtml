@@ -1,0 +1,66 @@
+@page "/watches/pools"
+@model SpankBank.Web.Pages.Watches.PoolsModel
+@{
+    ViewData["Title"] = "Watched pools";
+    Layout = "_WatchesLayout";
+}
+
+<div class="watches-header">
+  <h1>Pools</h1>
+  <button type="button" class="st-button" data-open-modal="modal-add">Add pool</button>
+</div>
+
+@if (Model.Message is not null) { <div class="notice notice-info">@Model.Message</div> }
+@if (Model.Error is not null) { <div class="notice notice-error">@Model.Error</div> }
+
+@if (Model.Entries.Count == 0)
+{
+  <p>Nothing watched.</p>
+}
+else
+{
+  <table class="striped watches-table">
+    <thead><tr><th>Pool</th><th>Type</th><th>Pages</th><th>Status</th></tr></thead>
+    <tbody>
+      @foreach (var pool in Model.Entries)
+      {
+        <tr data-open-modal="modal-@pool.Id" tabindex="0">
+          <td data-field="name">@pool.DisplayName</td>
+          <td data-field="type">@(pool.Pool?.Category ?? "-")</td>
+          <td data-field="pages">@(pool.Pool?.PostCount.ToString("N0") ?? "-")</td>
+          <td data-field="status">@(pool.Enabled ? "enabled" : "disabled")</td>
+        </tr>
+      }
+    </tbody>
+  </table>
+}
+
+<div class="st-overlay hidden" id="modal-add" role="dialog" aria-modal="true" aria-labelledby="modal-add-title" tabindex="-1">
+  <div class="st-overlay-wrapper">
+    <button type="button" class="st-button close-button" aria-label="Close">&times;</button>
+    <form method="post" asp-page-handler="Add" class="simple_form">
+      <h1 id="modal-add-title">Add pool</h1>
+      <div class="input">
+        <label for="add-pool">Pool ID or URL</label>
+        <input type="text" name="pool" id="add-pool" autocomplete="off" required>
+      </div>
+      <button type="submit" class="st-button submit">Add</button>
+    </form>
+  </div>
+</div>
+
+@foreach (var pool in Model.Entries)
+{
+  <div class="st-overlay hidden" id="modal-@pool.Id" role="dialog" aria-modal="true" aria-labelledby="modal-@pool.Id-title" tabindex="-1">
+    <div class="st-overlay-wrapper">
+      <button type="button" class="st-button close-button" aria-label="Close">&times;</button>
+      <div class="simple_form">
+        <h1 id="modal-@pool.Id-title">Pool #@pool.SourceValue</h1>
+        <div class="st-overlay-error" data-error></div>
+        <div data-slot>
+          <partial name="_PoolModalBody" model="pool" />
+        </div>
+      </div>
+    </div>
+  </div>
+}

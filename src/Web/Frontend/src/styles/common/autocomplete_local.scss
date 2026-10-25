@@ -1,0 +1,5 @@
+// SpankBank addition: show the export post count in parentheses.
+.ui-autocomplete-dropdown > li .ui-autocomplete-count {
+  &::before { content: "("; }
+  &::after { content: ")"; }
+}

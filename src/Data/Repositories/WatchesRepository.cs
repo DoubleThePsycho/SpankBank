@@ -5,13 +5,18 @@ namespace SpankBank.Data.Repositories;
 
 public sealed record WatchedArtistTag(long Id, string Tag, ArtistTagKind Kind, bool IsManual, bool Enabled);
 
+/// <summary>Pool details from the imported catalog; null on a WatchEntry when the pool is not in the export yet.</summary>
+public sealed record PoolInfo(string Name, string Category, int PostCount);
+
 public sealed record WatchEntry(
     long Id,
     WatchedItemType Type,
     string SourceValue,
     string DisplayName,
     bool Enabled,
-    IReadOnlyList<WatchedArtistTag> ArtistTags);
+    IReadOnlyList<WatchedArtistTag> ArtistTags,
+    string? LocalName = null,
+    PoolInfo? Pool = null);
 
 /// <summary>Watched artists, pools and searches (SpankBank.sqlite). Artist alias/character discovery reads the catalog.</summary>
 public sealed class WatchesRepository
@@ -30,14 +35,14 @@ public sealed class WatchesRepository
         using var connection = new SqliteConnection(_appConnectionString);
         connection.Open();
 
-        var entries = new List<(long Id, string Source, string Display, bool Enabled)>();
+        var entries = new List<(long Id, string Source, string Display, bool Enabled, string? LocalName)>();
         using (var cmd = connection.CreateCommand())
         {
-            cmd.CommandText = "SELECT Id, SourceValue, DisplayName, Enabled FROM WatchedItems WHERE ItemType = $type ORDER BY SourceValue COLLATE NOCASE;";
+            cmd.CommandText = "SELECT Id, SourceValue, DisplayName, Enabled, LocalName FROM WatchedItems WHERE ItemType = $type ORDER BY SourceValue COLLATE NOCASE;";
             cmd.Parameters.AddWithValue("$type", (int)type);
             using var reader = cmd.ExecuteReader();
             while (reader.Read())
-                entries.Add((reader.GetInt64(0), reader.GetString(1), reader.GetString(2), reader.GetInt32(3) != 0));
+                entries.Add((reader.GetInt64(0), reader.GetString(1), reader.GetString(2), reader.GetInt32(3) != 0, reader.IsDBNull(4) ? null : reader.GetString(4)));
         }
 
         var tagsByItem = new Dictionary<long, List<WatchedArtistTag>>();
@@ -63,10 +68,59 @@ public sealed class WatchesRepository
             }
         }
 
+        var pools = type == WatchedItemType.Pool ? LoadPools(entries.Select(e => e.Source)) : [];
+
         return entries
-            .Select(e => new WatchEntry(e.Id, type, e.Source, e.Display, e.Enabled,
-                tagsByItem.TryGetValue(e.Id, out var tags) ? tags : []))
+            .Select(e =>
+            {
+                PoolInfo? pool = long.TryParse(e.Source, out var poolId) && pools.TryGetValue(poolId, out var info) ? info : null;
+                var display = !string.IsNullOrWhiteSpace(e.LocalName) ? e.LocalName
+                    : pool is not null ? pool.Name.Replace('_', ' ')
+                    : e.Display;
+                return new WatchEntry(e.Id, type, e.Source, display, e.Enabled,
+                    tagsByItem.TryGetValue(e.Id, out var tags) ? tags : [], e.LocalName, pool);
+            })
             .ToList();
+    }
+
+    private Dictionary<long, PoolInfo> LoadPools(IEnumerable<string> ids)
+    {
+        var wanted = ids.Select(i => long.TryParse(i, out var id) ? id : (long?)null).Where(i => i is not null).Select(i => i!.Value).ToList();
+        var result = new Dictionary<long, PoolInfo>();
+        if (wanted.Count == 0) return result;
+
+        using var connection = new SqliteConnection(_serverConnectionString);
+        connection.Open();
+        using var cmd = connection.CreateCommand();
+        var placeholders = wanted.Select((_, i) => $"$id{i}").ToList();
+        cmd.CommandText = $"SELECT Id, Name, Category, PostCount FROM Pools WHERE Id IN ({string.Join(", ", placeholders)});";
+        for (var i = 0; i < wanted.Count; i++) cmd.Parameters.AddWithValue(placeholders[i], wanted[i]);
+        using var reader = cmd.ExecuteReader();
+        while (reader.Read())
+            result[reader.GetInt64(0)] = new PoolInfo(reader.GetString(1), reader.GetString(2), reader.GetInt32(3));
+        return result;
+    }
+
+    /// <summary>Sets the local-only name of an entry. An empty name goes back to the catalog name.</summary>
+    public void SetLocalName(long id, string? name)
+    {
+        using var connection = new SqliteConnection(_appConnectionString);
+        connection.Open();
+        using var cmd = connection.CreateCommand();
+        cmd.CommandText = "UPDATE WatchedItems SET LocalName = $name WHERE Id = $id;";
+        cmd.Parameters.AddWithValue("$id", id);
+        cmd.Parameters.AddWithValue("$name", string.IsNullOrWhiteSpace(name) ? DBNull.Value : name.Trim());
+        cmd.ExecuteNonQuery();
+    }
+
+    public bool IsCharacterTag(string name)
+    {
+        using var connection = new SqliteConnection(_serverConnectionString);
+        connection.Open();
+        using var cmd = connection.CreateCommand();
+        cmd.CommandText = "SELECT 1 FROM Tags WHERE Name = $name AND Category = 4 LIMIT 1;";
+        cmd.Parameters.AddWithValue("$name", name);
+        return cmd.ExecuteScalar() is not null;
     }
 
     /// <summary>Adds a watch. Returns null when the same source is already watched.</summary>
@@ -166,42 +220,6 @@ public sealed class WatchesRepository
             foreach (var tag in ReadStrings(cmd)) found.Add(tag);
         }
         return found.ToList();
-    }
-
-    /// <summary>Artist tags (and artists reachable through an alias) starting with the given text.</summary>
-    public IReadOnlyList<string> SuggestArtists(string term, int limit = 10)
-    {
-        if (string.IsNullOrWhiteSpace(term)) return [];
-        var prefix = EscapeLike(Normalize(term)) + "%";
-
-        using var connection = new SqliteConnection(_serverConnectionString);
-        connection.Open();
-        using var cmd = connection.CreateCommand();
-        cmd.CommandText = """
-            SELECT Name FROM Tags
-            WHERE Category = 1 AND Name LIKE $prefix ESCAPE '\'
-            ORDER BY PostCount DESC
-            LIMIT $limit;
-            """;
-        cmd.Parameters.AddWithValue("$prefix", prefix);
-        cmd.Parameters.AddWithValue("$limit", limit);
-        var results = ReadStrings(cmd).ToList();
-
-        if (results.Count < limit)
-        {
-            using var aliasCmd = connection.CreateCommand();
-            aliasCmd.CommandText = """
-                SELECT DISTINCT a.ConsequentName FROM TagAliases a
-                JOIN Tags t ON t.Name = a.ConsequentName AND t.Category = 1
-                WHERE a.Status = 'active' AND a.AntecedentName LIKE $prefix ESCAPE '\'
-                LIMIT $limit;
-                """;
-            aliasCmd.Parameters.AddWithValue("$prefix", prefix);
-            aliasCmd.Parameters.AddWithValue("$limit", limit);
-            foreach (var name in ReadStrings(aliasCmd))
-                if (!results.Contains(name) && results.Count < limit) results.Add(name);
-        }
-        return results;
     }
 
     /// <summary>Resolves an alias to its artist tag when the name is an active alias.</summary>

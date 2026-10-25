@@ -1,0 +1,46 @@
+@page "/watches/searches"
+@model SpankBank.Web.Pages.Watches.SearchesModel
+@{
+    ViewData["Title"] = "Watched searches";
+    Layout = "_WatchesLayout";
+}
+
+<div class="watches-header">
+  <h1>Searches</h1>
+  <button type="button" class="st-button" data-open-modal="modal-add">Add search</button>
+</div>
+
+@if (Model.Message is not null) { <div class="notice notice-info">@Model.Message</div> }
+@if (Model.Error is not null) { <div class="notice notice-error">@Model.Error</div> }
+
+<partial name="_EntryTable" model="Model.Entries" />
+
+<div class="st-overlay hidden" id="modal-add" role="dialog" aria-modal="true" aria-labelledby="modal-add-title" tabindex="-1">
+  <div class="st-overlay-wrapper">
+    <button type="button" class="st-button close-button" aria-label="Close">&times;</button>
+    <form method="post" asp-page-handler="Add" class="simple_form">
+      <h1 id="modal-add-title">Add search</h1>
+      <div class="input">
+        <label for="add-search">Search</label>
+        <textarea name="query" id="add-search" rows="5" data-autocomplete="tag-query" placeholder="Search posts by tag" required></textarea>
+      </div>
+      <button type="submit" class="st-button submit">Add</button>
+    </form>
+  </div>
+</div>
+
+@foreach (var entry in Model.Entries)
+{
+  <div class="st-overlay hidden" id="modal-@entry.Id" role="dialog" aria-modal="true" aria-labelledby="modal-@entry.Id-title" tabindex="-1">
+    <div class="st-overlay-wrapper">
+      <button type="button" class="st-button close-button" aria-label="Close">&times;</button>
+      <div class="simple_form">
+        <h1 id="modal-@entry.Id-title">@entry.DisplayName</h1>
+        <div class="st-overlay-error" data-error></div>
+        <div data-slot>
+          <partial name="_SearchModalBody" model="entry" />
+        </div>
+      </div>
+    </div>
+  </div>
+}

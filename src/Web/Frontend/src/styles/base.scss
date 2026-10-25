@@ -17,8 +17,10 @@
 @import "common/helper_classes";
 @import "common/helper_palette";
 @import "common/autocomplete.scss";
+@import "common/autocomplete_local.scss";
 @import "common/blacklists.scss";
 @import "common/containers.scss";
+@import "common/container_local.scss";
 @import "common/comment_container";
 @import "common/diffs.scss";
 @import "common/dtext.scss";
@@ -29,6 +31,7 @@
 @import "common/main_layout.scss";
 @import "common/navigation.scss";
 @import "common/news.scss";
+@import "common/overlay_modal.scss";
 @import "common/notices.scss";
 @import "common/post_search.scss";
 @import "common/scores";
@@ -75,6 +78,7 @@
 @import "views/wiki_pages/wiki_pages";
 
 @import "specific/admin_dashboards.scss";
+@import "specific/watches.scss";
 @import "specific/api_keys.scss";
 @import "specific/oauth_applications.scss";
 @import "specific/artists.scss";

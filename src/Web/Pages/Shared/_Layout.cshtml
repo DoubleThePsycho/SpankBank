@@ -11,8 +11,12 @@
   <meta name="theme-color" content="#00549e">
   <meta name="blacklisted-tags" content="[]">
   <meta name="blacklist-users" content="false">
+  @* Read by the autocomplete (js/components/autocomplete/Constants.ts). Subset of e621ng's TagQuery lists. *@
+  <meta name="tag-categories" content='["general","artist","copyright","character","species","invalid","meta","lore"]'>
+  <meta name="metatags" content='["md5","order","limit","child","id","filetype","type","rating","description","parent","user","approver","source","status","pool","set","fav","favoritedby","note","locked","width","height","mpixels","ratio","filesize","duration","score","favcount","date","age","change","tagcount","comment_count","hassource","hasdescription","isparent","ischild","inpool"]'>
+  <meta name="order-metatags" content='["id","id_desc","score","score_asc","favcount","favcount_asc","tagcount","tagcount_asc","mpixels","mpixels_asc","filesize","filesize_asc","landscape","portrait","duration","duration_asc","random","hot","change","change_asc"]'>
   <link rel="stylesheet" href="~/dist/application.css" asp-append-version="true">
-  <script src="~/dist/application.js" asp-append-version="true"></script>
+  <script type="module" src="~/dist/application.js" asp-append-version="true"></script>
   @await RenderSectionAsync("Head", required: false)
 </head>
 <body lang="en" class="resp" data-user-id="" data-user-name="Anonymous" data-user-level="0" data-user-level-string="Member" data-user-is-anonymous="true">
@@ -54,7 +58,9 @@
       }
     </menu>
 
-    <menu class="nav-secondary desktop empty"></menu>
+    <menu class="nav-secondary desktop @(IsSectionDefined("SecondaryNav") ? null : "empty")">
+      @await RenderSectionAsync("SecondaryNav", required: false)
+    </menu>
     <menu class="nav-controls desktop"></menu>
     <menu class="nav-tools desktop"></menu>
     <menu class="nav-help desktop"></menu>

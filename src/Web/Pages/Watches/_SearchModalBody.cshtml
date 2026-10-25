@@ -1,0 +1,19 @@
+@model SpankBank.Data.Repositories.WatchEntry
+<div data-summary data-status="@(Model.Enabled ? "enabled" : "disabled")">
+  <table class="striped">
+    <tbody>
+      <tr><th>Status</th><td>@(Model.Enabled ? "enabled" : "disabled")</td></tr>
+    </tbody>
+  </table>
+
+  <div class="watch-actions">
+    <form method="post" asp-page-handler="Toggle" data-ajax>
+      <input type="hidden" name="id" value="@Model.Id"><input type="hidden" name="enabled" value="@((!Model.Enabled).ToString().ToLowerInvariant())">
+      <button type="submit" class="st-button">@(Model.Enabled ? "Disable" : "Enable")</button>
+    </form>
+    <form method="post" asp-page-handler="Delete" data-ajax data-confirm="Remove this entry?">
+      <input type="hidden" name="id" value="@Model.Id">
+      <button type="submit" class="st-button">Remove</button>
+    </form>
+  </div>
+</div>

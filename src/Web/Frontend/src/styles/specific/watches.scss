@@ -1,0 +1,57 @@
+// SpankBank page: watched artists, pools and searches. Built from the shared site styles.
+#c-watches {
+  .watches-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 0.75rem;
+
+    h1 { margin: 0; }
+  }
+
+  .watches-table tbody tr[data-open-modal] {
+    cursor: pointer;
+    &:hover, &:focus { background: themed("color-section-lighten-5"); }
+  }
+
+  .notice { margin-bottom: 0.75rem; }
+
+  .st-overlay-wrapper {
+    &.wide { grid-template-columns: minmax(0, min(30rem, 90vw)); }
+
+    .simple_form { max-height: 80vh; overflow-y: auto; }
+
+    .simple_form div.input input[type="text"], .simple_form div.input textarea {
+      width: 100%;
+      max-width: none;
+      box-sizing: border-box;
+    }
+
+    .hint { max-width: none; margin: 0; }
+    .watch-aliases { margin: 0; opacity: 0.8; }
+    .watch-rename { display: flex; flex-flow: column; gap: 0.25rem; margin: 0; }
+    .watch-rename-row { display: flex; gap: 0.5rem; input { flex: 1; } }
+
+    .watch-tags { width: 100%; }
+    .watch-tags td { padding-top: 0.15rem; padding-bottom: 0.15rem; }
+    .watch-manual { white-space: nowrap; opacity: 0.7; }
+    .watch-tags .watch-row-actions { width: 1%; white-space: nowrap; text-align: right; }
+    .watch-row-actions {
+      a[data-submit] { text-decoration: underline; }
+      form { display: inline-block; margin: 0 0 0 0.75rem; }
+    }
+    .watch-actions { margin-top: 0.5rem; }
+
+    .watch-actions, .watch-add-tag {
+      display: flex;
+      gap: 0.5rem;
+      form { margin: 0; }
+    }
+
+    .watch-add-tag input { flex: 1; }
+
+    .st-button:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    tr.disabled td { opacity: 0.5; }
+  }
+}

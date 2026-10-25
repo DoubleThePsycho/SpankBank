@@ -1,0 +1,6 @@
+// SpankBank addition: a centered, width-limited wrapper (e621ng has none; #page is full width).
+.st-container {
+  width: 100%;
+  max-width: 60rem;
+  margin: 0 auto;
+}
