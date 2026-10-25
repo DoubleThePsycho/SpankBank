@@ -1,0 +1,15 @@
+bin/
+obj/
+.vs/
+CLAUDE.local.md
+*.user
+
+# web / docker
+node_modules/
+Web/wwwroot/dist/
+.env
+/data/
+media/
+*.sqlite
+*.sqlite-wal
+*.sqlite-shm
