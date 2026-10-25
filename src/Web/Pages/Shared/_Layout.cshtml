@@ -45,7 +45,7 @@
     </menu>
 
     <menu class="nav-primary desktop">
-      @foreach (var (text, icon, url) in new[] { ("Posts", "images", "/posts"), ("Pools", "library", "/pools"), ("Tags", "tags", "/tags"), ("Status", "settings", "/status") })
+      @foreach (var (text, icon, url) in new[] { ("Posts", "images", "/posts"), ("Pools", "library", "/pools"), ("Tags", "tags", "/tags"), ("Watches", "heart", "/watches"), ("Status", "settings", "/status") })
       {
         var id = "nav-" + text.ToLowerInvariant();
         <li id="@id" class="@(path.StartsWith(url, StringComparison.OrdinalIgnoreCase) ? "current" : null)">

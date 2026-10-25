@@ -251,6 +251,19 @@ public static class DatabaseInitializer
         Execute(connection, "CREATE INDEX IF NOT EXISTS IX_WatchedItems_ItemType ON WatchedItems (ItemType);");
         Execute(connection, "CREATE INDEX IF NOT EXISTS IX_WatchedItems_Enabled ON WatchedItems (Enabled);");
 
+        // Aliases and characters that belong to a watched artist. Each can be switched off; IsManual rows were added by hand.
+        Execute(connection, """
+            CREATE TABLE IF NOT EXISTS WatchedArtistTags (
+                Id            INTEGER PRIMARY KEY,
+                WatchedItemId INTEGER NOT NULL REFERENCES WatchedItems (Id) ON DELETE CASCADE,
+                Tag           TEXT    NOT NULL,
+                Kind          INTEGER NOT NULL DEFAULT 0,
+                IsManual      INTEGER NOT NULL DEFAULT 0,
+                Enabled       INTEGER NOT NULL DEFAULT 1,
+                UNIQUE (WatchedItemId, Tag)
+            );
+            """);
+
         Execute(connection, """
             CREATE TABLE IF NOT EXISTS Settings (
                 Key   TEXT PRIMARY KEY,

@@ -12,6 +12,7 @@ builder.Services.AddRazorPages();
 builder.Services.AddSingleton(paths);
 builder.Services.AddSingleton(new PostsRepository(paths.ServerDatabasePath));
 builder.Services.AddSingleton(new DownloadedPostsRepository(paths.DeviceDatabasePath));
+builder.Services.AddSingleton(new WatchesRepository(paths.AppDatabasePath, paths.ServerDatabasePath));
 builder.Services.AddSingleton(new SettingsRepository(paths.AppDatabasePath));
 builder.Services.AddSingleton(new ImportHistoryRepository(paths.AppDatabasePath));
 

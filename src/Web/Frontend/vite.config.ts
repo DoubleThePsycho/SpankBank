@@ -26,6 +26,7 @@ export default defineConfig({
       input: {
         application: `${root}src/application.ts`,
         posts: `${root}src/posts.ts`,
+        watches: `${root}src/watches.ts`,
       },
       output: {
         entryFileNames: "[name].js",

@@ -1,0 +1,104 @@
+@page "/watches"
+@model SpankBank.Web.Pages.Watches.IndexModel
+@using SpankBank.Core.Models
+@{
+    ViewData["Title"] = "Watches";
+}
+@section Scripts {
+  <script src="~/dist/watches.js" asp-append-version="true"></script>
+}
+
+<div id="c-watches"><div id="a-index">
+  <h1>Watches</h1>
+
+  @if (Model.Message is not null) { <div class="notice notice-info" style="margin-bottom: 1em;">@Model.Message</div> }
+  @if (Model.Error is not null) { <div class="notice notice-error" style="margin-bottom: 1em;">@Model.Error</div> }
+
+  <section id="watch-artists">
+    <h2>Artists</h2>
+    <form method="post" asp-page-handler="AddArtist" class="watch-add">
+      <input type="text" name="artist" list="artist-suggestions" autocomplete="off" placeholder="Artist tag" data-suggest-url="/watches?handler=Suggest" required>
+      <datalist id="artist-suggestions"></datalist>
+      <button type="submit" class="st-button">Add artist</button>
+    </form>
+
+    @if (Model.Artists.Count == 0) { <p>No artists watched.</p> }
+    @foreach (var artist in Model.Artists)
+    {
+      var aliases = artist.ArtistTags.Where(t => t.Kind == ArtistTagKind.Alias).ToList();
+      var characters = artist.ArtistTags.Where(t => t.Kind == ArtistTagKind.Character).ToList();
+      <details class="watch-artist" style="margin: 0.75em 0;">
+        <summary>
+          <strong>@artist.SourceValue</strong>
+          <span>@(artist.Enabled ? "" : "(disabled)")</span>
+          <span>· @aliases.Count aliases · @characters.Count(c => c.Enabled)/@characters.Count characters</span>
+        </summary>
+        <div style="margin: 0.5em 0 0 1.5em;">
+          <form method="post" asp-page-handler="Toggle" style="display:inline">
+            <input type="hidden" name="id" value="@artist.Id"><input type="hidden" name="enabled" value="@((!artist.Enabled).ToString().ToLowerInvariant())">
+            <button type="submit" class="st-button">@(artist.Enabled ? "Disable" : "Enable")</button>
+          </form>
+          <form method="post" asp-page-handler="Rescan" style="display:inline">
+            <input type="hidden" name="id" value="@artist.Id"><input type="hidden" name="artist" value="@artist.SourceValue">
+            <button type="submit" class="st-button">Rescan aliases &amp; characters</button>
+          </form>
+          <form method="post" asp-page-handler="Delete" style="display:inline" onsubmit="return confirm('Remove @artist.SourceValue?');">
+            <input type="hidden" name="id" value="@artist.Id">
+            <button type="submit" class="st-button">Remove</button>
+          </form>
+
+          <table class="striped" style="margin-top: 0.75em;">
+            <thead><tr><th>Tag</th><th>Type</th><th>Source</th><th></th></tr></thead>
+            <tbody>
+              @foreach (var tag in artist.ArtistTags)
+              {
+                <tr>
+                  <td>@tag.Tag @(tag.Enabled ? "" : "(disabled)")</td>
+                  <td>@tag.Kind</td>
+                  <td>@(tag.IsManual ? "manual" : "discovered")</td>
+                  <td>
+                    <form method="post" asp-page-handler="ToggleTag" style="display:inline">
+                      <input type="hidden" name="tagId" value="@tag.Id"><input type="hidden" name="enabled" value="@((!tag.Enabled).ToString().ToLowerInvariant())">
+                      <button type="submit" class="st-button">@(tag.Enabled ? "Disable" : "Enable")</button>
+                    </form>
+                    @if (tag.IsManual)
+                    {
+                      <form method="post" asp-page-handler="RemoveTag" style="display:inline">
+                        <input type="hidden" name="tagId" value="@tag.Id">
+                        <button type="submit" class="st-button">Remove</button>
+                      </form>
+                    }
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+
+          <form method="post" asp-page-handler="AddTag" style="margin-top: 0.5em;">
+            <input type="hidden" name="id" value="@artist.Id">
+            <input type="text" name="tag" placeholder="Add a character tag" required>
+            <button type="submit" class="st-button">Add tag</button>
+          </form>
+        </div>
+      </details>
+    }
+  </section>
+
+  <section id="watch-pools" style="margin-top: 2em;">
+    <h2>Pools</h2>
+    <form method="post" asp-page-handler="AddPool" class="watch-add">
+      <input type="text" name="pool" placeholder="Pool ID or URL" required>
+      <button type="submit" class="st-button">Add pool</button>
+    </form>
+    <partial name="_WatchList" model="@Model.Pools" />
+  </section>
+
+  <section id="watch-searches" style="margin-top: 2em;">
+    <h2>Searches</h2>
+    <form method="post" asp-page-handler="AddSearch" class="watch-add">
+      <input type="text" name="query" placeholder="Search, like on the posts page" size="50" required>
+      <button type="submit" class="st-button">Add search</button>
+    </form>
+    <partial name="_WatchList" model="@Model.Searches" />
+  </section>
+</div></div>
