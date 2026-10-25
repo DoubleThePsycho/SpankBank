@@ -1,0 +1,18 @@
+# Deployed as the Komodo stack "spankbank", run from this repo checkout (/srv/repos/SpankBank).
+# Runtime data and .env live next to this file (both git-ignored): ./data and ./.env.
+# The image is built by the Komodo Build "spankbank-worker" from docker/worker.Dockerfile.
+services:
+  worker:
+    image: spankbank-worker:latest
+    # Built locally by Komodo; there is no registry to pull from.
+    pull_policy: never
+    restart: unless-stopped
+    # Must own the bind-mounted folders below. Change if your user is not 1000.
+    user: "1000:1000"
+    env_file:
+      - path: .env
+        required: false
+    volumes:
+      # Host folder : fixed container path. Repoint the left side to move the data.
+      - ./data/db:/data/db
+      - ./data/imports:/data/imports

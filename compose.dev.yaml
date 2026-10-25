@@ -1,0 +1,7 @@
+# Development overlay: build the image from this checkout instead of using the Komodo-built one.
+# Data stays in ./data (git-ignored), same as the deployed stack.
+services:
+  worker:
+    build:
+      context: .
+      dockerfile: docker/worker.Dockerfile
