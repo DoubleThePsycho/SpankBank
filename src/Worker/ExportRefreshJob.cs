@@ -33,13 +33,20 @@ public sealed class ExportRefreshJob
 
         var download = await _downloader.DownloadLatestExportsAsync(
             _importsDir,
-            progress: new Progress<ExportDownloadProgress>(p => _logger.LogInformation("{Message}", p.Message)),
+            progress: new Progress<ExportDownloadProgress>(LogDownloadProgress),
             cancellationToken: cancellationToken,
             exportTypes: E621ExportDownloadService.ImportableExportTypes,
             alreadyImportedFileNames: _history.GetSuccessfullyImportedFileNames(E621ExportDownloadService.ImportableExportTypes));
 
         if (!download.Succeeded)
             return $"Download failed: {download.ErrorMessage}";
+
+        var missing = download.Items
+            .Where(item => item.Status == ExportDownloadStatus.MissingFromIndex)
+            .Select(item => item.ExportType)
+            .ToList();
+        if (missing.Count > 0)
+            return $"Export index is missing: {string.Join(", ", missing)}.";
 
         _settings.Set(ImportSettingsKeys.LastExportDownloadAt, DateTimeOffset.UtcNow.ToString("o"));
 
@@ -75,6 +82,19 @@ public sealed class ExportRefreshJob
         }
 
         return summary.Count == 0 ? "Nothing new to import." : "Imported " + string.Join(", ", summary) + ".";
+    }
+
+    private DateTimeOffset _lastProgressLog = DateTimeOffset.MinValue;
+
+    // The downloader reports every 128 KB chunk; log those at most every 10 seconds.
+    private void LogDownloadProgress(ExportDownloadProgress progress)
+    {
+        var now = DateTimeOffset.UtcNow;
+        if (progress.State == ExportDownloadProgressState.Downloading && now - _lastProgressLog < TimeSpan.FromSeconds(10))
+            return;
+
+        _lastProgressLog = now;
+        _logger.LogInformation("{Message}", progress.Message);
     }
 
     private void Cleanup(string path)

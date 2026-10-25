@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Http.Headers;
-using System.Text.RegularExpressions;
+using System.Security.Cryptography;
+using System.Text.Json;
 
 namespace SpankBank.Data.Import;
 
@@ -90,7 +91,7 @@ public enum ExportDownloadStatus
 
 public sealed class E621ExportDownloadService
 {
-    private static readonly Uri ExportIndexUri = new("https://e621.net/db_export/");
+    private static readonly Uri ExportIndexUri = new("https://e621.net/db_exports.json");
     public static readonly IReadOnlyList<string> ImportableExportTypes = ["tags", "tag_aliases", "posts"];
     private static readonly string[] ExportTypes =
     [
@@ -100,10 +101,6 @@ public sealed class E621ExportDownloadService
         "tag_aliases",
         "tag_implications",
     ];
-
-    private static readonly Regex ExportFileRegex = new(
-        @"(?<file>(?<type>posts|tags|pools|tag_aliases|tag_implications)-(?<date>\d{4}-\d{2}-\d{2})\.csv\.gz)",
-        RegexOptions.Compiled | RegexOptions.IgnoreCase);
 
     private readonly HttpClient _httpClient;
 
@@ -245,7 +242,8 @@ public sealed class E621ExportDownloadService
                     overallTotal,
                     progress,
                     cancellationToken,
-                    forceOverwrite: forceRedownload);
+                    forceOverwrite: forceRedownload,
+                    expectedSha256: exportFile.Sha256);
 
                 completedBytes += downloadedBytes;
                 progress?.Report(new ExportDownloadProgress(
@@ -350,25 +348,35 @@ public sealed class E621ExportDownloadService
     private async Task<IReadOnlyDictionary<string, ExportIndexFile>> GetLatestExportIndexAsync(
         CancellationToken cancellationToken)
     {
-        var indexHtml = await _httpClient.GetStringAsync(ExportIndexUri, cancellationToken);
-        return ParseLatestExports(indexHtml);
+        var indexJson = await _httpClient.GetStringAsync(ExportIndexUri, cancellationToken);
+        return ParseLatestExports(indexJson);
     }
 
-    private static IReadOnlyDictionary<string, ExportIndexFile> ParseLatestExports(string indexHtml)
-        => ExportFileRegex
-            .Matches(indexHtml)
-            .Select(match => new ExportIndexFile(
-                Type: match.Groups["type"].Value.ToLowerInvariant(),
-                FileName: WebUtility.HtmlDecode(match.Groups["file"].Value),
-                Date: DateOnly.Parse(match.Groups["date"].Value),
-                DownloadUri: new Uri(ExportIndexUri, WebUtility.HtmlDecode(match.Groups["file"].Value))))
-            .GroupBy(file => file.Type)
-            .ToDictionary(
-                group => group.Key,
-                group => group
-                    .OrderByDescending(file => file.Date)
-                    .ThenByDescending(file => file.FileName, StringComparer.OrdinalIgnoreCase)
-                    .First());
+    // e621 publishes one undated file per export (e.g. posts.csv.gz) and lists its update time in
+    // /db_exports.json. Local files are named <type>-<yyyy-MM-dd>.csv.gz so the detector, import
+    // history and cleanup can tell one day's export from the next.
+    private static IReadOnlyDictionary<string, ExportIndexFile> ParseLatestExports(string indexJson)
+    {
+        var files = new Dictionary<string, ExportIndexFile>();
+        using var document = JsonDocument.Parse(indexJson);
+        foreach (var entry in document.RootElement.EnumerateArray())
+        {
+            var type = entry.GetProperty("name").GetString();
+            if (type is null || !ExportTypes.Contains(type))
+                continue;
+
+            var updatedAt = entry.GetProperty("updated_at").GetDateTimeOffset().UtcDateTime;
+            var date = DateOnly.FromDateTime(updatedAt);
+            files[type] = new ExportIndexFile(
+                Type: type,
+                FileName: $"{type}-{date:yyyy-MM-dd}.csv.gz",
+                Date: date,
+                DownloadUri: new Uri(entry.GetProperty("url").GetString()!),
+                Sha256: entry.TryGetProperty("checksum", out var checksum) ? checksum.GetString() : null);
+        }
+
+        return files;
+    }
 
     private async Task<long> DownloadFileAsync(
         Uri downloadUri,
@@ -378,44 +386,50 @@ public sealed class E621ExportDownloadService
         long? overallTotalBytes,
         IProgress<ExportDownloadProgress>? progress,
         CancellationToken cancellationToken,
-        bool forceOverwrite)
+        bool forceOverwrite,
+        string? expectedSha256 = null)
     {
         var partialPath = localPath + ".partial";
-        if (File.Exists(partialPath))
-            File.Delete(partialPath);
-
-        using var response = await _httpClient.GetAsync(
-            downloadUri,
-            HttpCompletionOption.ResponseHeadersRead,
-            cancellationToken);
-        response.EnsureSuccessStatusCode();
-        currentTotalBytes ??= response.Content.Headers.ContentLength;
         var fileName = Path.GetFileName(localPath);
 
-        await using (var remoteStream = await response.Content.ReadAsStreamAsync(cancellationToken))
-        await using (var localStream = new FileStream(
-            partialPath,
-            FileMode.CreateNew,
-            FileAccess.Write,
-            FileShare.None,
-            bufferSize: 1024 * 128,
-            FileOptions.Asynchronous | FileOptions.SequentialScan))
+        // A leftover .partial from an earlier attempt is resumed with a Range request, not restarted.
+        // The checksum below catches a resumed file that does not match the current export.
+        const int maxAttempts = 20;
+        for (var attempt = 1; ; attempt++)
         {
-            var buffer = new byte[1024 * 128];
-            long downloadedBytes = 0;
-            int read;
-            while ((read = await remoteStream.ReadAsync(buffer, cancellationToken)) > 0)
+            try
             {
-                await localStream.WriteAsync(buffer.AsMemory(0, read), cancellationToken);
-                downloadedBytes += read;
+                await DownloadChunkAsync(
+                    downloadUri, partialPath, fileName, currentTotalBytes,
+                    completedBytesBeforeFile, overallTotalBytes, progress, cancellationToken);
+                break;
+            }
+            catch (Exception ex) when (attempt < maxAttempts
+                && !cancellationToken.IsCancellationRequested
+                && ex is IOException or HttpRequestException or OperationCanceledException)
+            {
                 progress?.Report(new ExportDownloadProgress(
-                    $"{fileName}: {FormatSize(downloadedBytes)} / {(currentTotalBytes.HasValue ? FormatSize(currentTotalBytes.Value) : "total unknown")}",
+                    $"{fileName}: transfer interrupted ({ex.Message}); retrying {attempt}/{maxAttempts - 1} and resuming...",
                     fileName,
-                    downloadedBytes,
+                    File.Exists(partialPath) ? new FileInfo(partialPath).Length : 0,
                     currentTotalBytes,
-                    completedBytesBeforeFile + downloadedBytes,
+                    completedBytesBeforeFile,
                     overallTotalBytes,
                     ExportDownloadProgressState.Downloading));
+                await Task.Delay(TimeSpan.FromSeconds(Math.Min(60, 5 * attempt)), cancellationToken);
+            }
+        }
+
+        if (!string.IsNullOrWhiteSpace(expectedSha256))
+        {
+            string actual;
+            await using (var verifyStream = File.OpenRead(partialPath))
+                actual = Convert.ToHexString(await SHA256.HashDataAsync(verifyStream, cancellationToken));
+
+            if (!actual.Equals(expectedSha256, StringComparison.OrdinalIgnoreCase))
+            {
+                File.Delete(partialPath);
+                throw new InvalidOperationException($"{fileName}: checksum mismatch (expected {expectedSha256}, got {actual}).");
             }
         }
 
@@ -432,6 +446,87 @@ public sealed class E621ExportDownloadService
 
         File.Move(partialPath, localPath);
         return new FileInfo(localPath).Length;
+    }
+
+    // Downloads (or resumes) into partialPath. Throws if no bytes arrive for StallTimeout.
+    private static readonly TimeSpan StallTimeout = TimeSpan.FromSeconds(90);
+
+    private async Task DownloadChunkAsync(
+        Uri downloadUri,
+        string partialPath,
+        string fileName,
+        long? currentTotalBytes,
+        long completedBytesBeforeFile,
+        long? overallTotalBytes,
+        IProgress<ExportDownloadProgress>? progress,
+        CancellationToken cancellationToken)
+    {
+        var resumeFrom = File.Exists(partialPath) ? new FileInfo(partialPath).Length : 0;
+
+        using var request = new HttpRequestMessage(HttpMethod.Get, downloadUri);
+        if (resumeFrom > 0)
+            request.Headers.Range = new RangeHeaderValue(resumeFrom, null);
+
+        using var response = await _httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+
+        if (response.StatusCode == HttpStatusCode.RequestedRangeNotSatisfiable)
+        {
+            // The partial is complete or larger than the file; leave it for the checksum to judge.
+            return;
+        }
+
+        response.EnsureSuccessStatusCode();
+
+        // 200 means the server ignored the Range header: start over from zero.
+        if (resumeFrom > 0 && response.StatusCode != HttpStatusCode.PartialContent)
+        {
+            resumeFrom = 0;
+            File.Delete(partialPath);
+        }
+
+        if (currentTotalBytes is null && response.Content.Headers.ContentLength is { } length)
+            currentTotalBytes = resumeFrom + length;
+
+        await using var remoteStream = await response.Content.ReadAsStreamAsync(cancellationToken);
+        await using var localStream = new FileStream(
+            partialPath,
+            resumeFrom > 0 ? FileMode.Append : FileMode.Create,
+            FileAccess.Write,
+            FileShare.None,
+            bufferSize: 1024 * 128,
+            FileOptions.Asynchronous | FileOptions.SequentialScan);
+
+        var buffer = new byte[1024 * 128];
+        var downloadedBytes = resumeFrom;
+        while (true)
+        {
+            using var stallCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            stallCts.CancelAfter(StallTimeout);
+
+            int read;
+            try
+            {
+                read = await remoteStream.ReadAsync(buffer, stallCts.Token);
+            }
+            catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+            {
+                throw new IOException($"no data received for {StallTimeout.TotalSeconds:0} seconds");
+            }
+
+            if (read == 0)
+                break;
+
+            await localStream.WriteAsync(buffer.AsMemory(0, read), cancellationToken);
+            downloadedBytes += read;
+            progress?.Report(new ExportDownloadProgress(
+                $"{fileName}: {FormatSize(downloadedBytes)} / {(currentTotalBytes.HasValue ? FormatSize(currentTotalBytes.Value) : "total unknown")}",
+                fileName,
+                downloadedBytes,
+                currentTotalBytes,
+                completedBytesBeforeFile + downloadedBytes,
+                overallTotalBytes,
+                ExportDownloadProgressState.Downloading));
+        }
     }
 
     private async Task<long?> TryGetContentLengthAsync(Uri downloadUri, CancellationToken cancellationToken)
@@ -467,7 +562,8 @@ public sealed class E621ExportDownloadService
         string Type,
         string FileName,
         DateOnly Date,
-        Uri DownloadUri
+        Uri DownloadUri,
+        string? Sha256
             );
 
     private static long? GetKnownTotal(IReadOnlyDictionary<string, long> totals, string fileName)
