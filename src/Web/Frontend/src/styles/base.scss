@@ -41,6 +41,7 @@
 @import "common/tags.scss";
 @import "common/user_styles.scss";
 @import "common/voting.scss";
+@import "common/layout_local.scss"; // after navigation.scss: overrides its desktop grid
 
 @import "components/karma_badge.scss";
 @import "components/paginator_component.scss";

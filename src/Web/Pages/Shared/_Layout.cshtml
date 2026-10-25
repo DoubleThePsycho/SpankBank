@@ -19,7 +19,7 @@
   <script type="module" src="~/dist/application.js" asp-append-version="true"></script>
   @await RenderSectionAsync("Head", required: false)
 </head>
-<body lang="en" class="resp" data-user-id="" data-user-name="Anonymous" data-user-level="0" data-user-level-string="Member" data-user-is-anonymous="true">
+<body lang="en" class="resp" data-user-id="" data-user-name="Anonymous" data-user-level="0" data-user-level-string="Member" data-user-is-anonymous="false">
   <script>
     (function () {
       try {
@@ -49,7 +49,7 @@
     </menu>
 
     <menu class="nav-primary desktop">
-      @foreach (var (text, icon, url) in new[] { ("Posts", "images", "/posts"), ("Pools", "library", "/pools"), ("Tags", "tags", "/tags"), ("Watches", "heart", "/watches"), ("Status", "settings", "/status") })
+      @foreach (var (text, icon, url) in new[] { ("Artists", "brush", "/artists"), ("Posts", "images", "/posts"), ("Pools", "library", "/pools"), ("Tags", "tags", "/tags"), ("Watches", "heart", "/watches"), ("Status", "settings", "/status") })
       {
         var id = "nav-" + text.ToLowerInvariant();
         <li id="@id" class="@(path.StartsWith(url, StringComparison.OrdinalIgnoreCase) ? "current" : null)">
@@ -61,8 +61,17 @@
     <menu class="nav-secondary desktop @(IsSectionDefined("SecondaryNav") ? null : "empty")">
       @await RenderSectionAsync("SecondaryNav", required: false)
     </menu>
-    <menu class="nav-controls desktop"></menu>
-    <menu class="nav-tools desktop"></menu>
+    <menu class="nav-controls desktop">
+      <a role="button" id="nav-toggle" class="nav-controls-toggle" aria-label="Toggle Navigation">
+        <span>
+          <svg-icon name="hamburger" class="off" />
+          <svg-icon name="times" class="on" />
+        </span>
+      </a>
+    </menu>
+    <menu class="nav-tools desktop">
+      <li id="nav-settings" class="nav-tools-settings" title="Settings"><a id="nav-settings-link" aria-label="Settings" href="/settings"><svg-icon name="settings" /> <span>Settings</span></a></li>
+    </menu>
     <menu class="nav-help desktop"></menu>
   </nav>
 

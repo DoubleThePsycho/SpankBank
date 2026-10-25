@@ -14,3 +14,6 @@ media/
 *.sqlite-wal
 *.sqlite-shm
 .playwright-mcp/
+
+# browser snapshots of e621 used as design reference
+*.mhtml

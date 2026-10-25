@@ -1,0 +1,20 @@
+// SpankBank additions.
+
+// The posts sidebar sits on the plain foreground colour, without the theme's hexagon pattern.
+.post-index > .sidebar {
+  background-color: themed("color-foreground");
+  background-image: none;
+}
+
+// No avatar column on desktop: the nav bar runs out to the page's right edge.
+nav.navigation, html.nav-toggled nav.navigation {
+  @include window-larger-than(50rem) {
+    grid-template-columns: min-content min-content minmax(0, 1fr) min-content 0;
+
+    .nav-tools { margin-right: 0; }
+  }
+}
+
+// z_responsive.scss makes every `div#page > div > div` a flex box on small screens, which also
+// un-hid the closed modals (they are such divs). Keep hidden overlays hidden.
+body.resp div#page div.st-overlay.hidden { display: none; }

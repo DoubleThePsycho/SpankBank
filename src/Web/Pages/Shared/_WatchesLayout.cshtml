@@ -9,7 +9,7 @@
     <li id="@id" class="@(path.StartsWith(url, StringComparison.OrdinalIgnoreCase) ? "current" : null)"><a href="@url" id="@id-link">@text</a></li>
   }
 }
-<div id="c-watches" class="st-container">
+<div id="c-watches" class="container">
   @RenderBody()
 </div>
 <script type="module" src="~/dist/watches.js" asp-append-version="true"></script>

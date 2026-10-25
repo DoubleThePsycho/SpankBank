@@ -19,3 +19,5 @@ Files under `src/Web` that were copied or adapted from https://github.com/e621ng
 To update: diff the upstream files against the local copies and re-apply. The site's logo, landing page and mascots are intentionally not ported.
 
 The autocomplete and modal files were copied from the local e621ng checkout in `/srv/stacks/e621ng` (commit `b548347e5e5ca06472f8d6abfe642b816d67583b`), which is newer than the pinned commit above. The watches pages (`src/Web/Pages/Watches`) and `styles/specific/watches.scss` are SpankBank's own.
+
+`js/core/Navigation.ts` is a trimmed copy (main-menu toggle only). `images/logo/default.svg` is e621's logo shape with the lettering replaced by "SB". `common/container_local.scss` (Bootstrap container sizing) and `common/layout_local.scss` are SpankBank's own.

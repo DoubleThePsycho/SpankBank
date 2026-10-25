@@ -1,6 +1,28 @@
-// SpankBank addition: a centered, width-limited wrapper (e621ng has none; #page is full width).
-.st-container {
+// SpankBank addition: Bootstrap 5.3 container sizing (MIT, see THIRD-PARTY-NOTICES.md), which e621ng does not have.
+// .container is fluid up to the first breakpoint, then steps up to a fixed max-width; .container-fluid never limits.
+$container-gutter: 1.5rem;
+$container-max-widths: (576px: 540px, 768px: 720px, 992px: 960px, 1200px: 1140px, 1400px: 1320px);
+$container-names: (576px: "sm", 768px: "md", 992px: "lg", 1200px: "xl", 1400px: "xxl");
+
+.container, .container-fluid, .container-sm, .container-md, .container-lg, .container-xl, .container-xxl {
   width: 100%;
-  max-width: 60rem;
-  margin: 0 auto;
+  padding-right: calc(#{$container-gutter} * 0.5);
+  padding-left: calc(#{$container-gutter} * 0.5);
+  margin-right: auto;
+  margin-left: auto;
+  box-sizing: border-box;
+}
+
+@each $breakpoint, $max-width in $container-max-widths {
+  @media (min-width: $breakpoint) {
+    .container, .container-#{map-get($container-names, $breakpoint)} { max-width: $max-width; }
+  }
+}
+// .container-{sm..xxl} also step up at their own breakpoint and every one above it.
+@each $breakpoint, $name in $container-names {
+  @each $higher, $max-width in $container-max-widths {
+    @if $higher >= $breakpoint {
+      @media (min-width: $higher) { .container-#{$name} { max-width: $max-width; } }
+    }
+  }
 }
