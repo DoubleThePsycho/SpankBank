@@ -19,7 +19,7 @@
   <script type="module" src="~/dist/application.js" asp-append-version="true"></script>
   @await RenderSectionAsync("Head", required: false)
 </head>
-<body lang="en" class="resp" data-user-id="" data-user-name="Anonymous" data-user-level="0" data-user-level-string="Member" data-user-is-anonymous="false">
+<body lang="en" class="resp @(ViewData["BodyClass"])" data-user-id="" data-user-name="Anonymous" data-user-level="0" data-user-level-string="Member" data-user-is-anonymous="false">
   <script>
     (function () {
       try {

@@ -76,6 +76,22 @@ public sealed class PostsRepository
         return results;
     }
 
+    /// <summary>What only the catalog knows about a post: favorite count, source links and whether e621 deleted it.</summary>
+    public PostCatalogExtras? GetExtras(long id)
+    {
+        using var connection = new SqliteConnection(_connectionString);
+        connection.Open();
+        using var cmd = connection.CreateCommand();
+        cmd.CommandText = "SELECT FavCount, Source, IsDeleted FROM Posts WHERE Id = $id;";
+        cmd.Parameters.AddWithValue("$id", id);
+        using var reader = cmd.ExecuteReader();
+        if (!reader.Read()) return null;
+
+        var sources = (reader.IsDBNull(1) ? "" : reader.GetString(1))
+            .Split(['\n', ' '], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        return new PostCatalogExtras(reader.GetInt32(0), sources, reader.GetInt32(2) != 0);
+    }
+
     public PostDetail? GetPostById(long id)
     {
         using var connection = new SqliteConnection(_connectionString);
@@ -301,3 +317,5 @@ public sealed class PostsRepository
         }
     }
 }
+
+public sealed record PostCatalogExtras(int FavCount, IReadOnlyList<string> Sources, bool IsDeleted);

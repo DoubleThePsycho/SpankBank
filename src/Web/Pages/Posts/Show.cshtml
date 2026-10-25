@@ -1,0 +1,188 @@
+@page "/posts/{id:long}"
+@model SpankBank.Web.Pages.Posts.ShowModel
+@using SpankBank.Core.Models
+@* Markup follows e621ng app/views/posts/show.html.erb and its sidebar partials (BSD-2, see THIRD-PARTY-NOTICES.md). *@
+@{
+    var post = Model.Post;
+    ViewData["Title"] = $"Post #{post.Id}";
+    ViewData["BodyClass"] = "c-posts a-show";
+    var ratingLetter = post.Rating switch { PostRating.Safe => "s", PostRating.Questionable => "q", _ => "e" };
+    var ratingName = post.Rating switch { PostRating.Safe => "Safe", PostRating.Questionable => "Questionable", _ => "Explicit" };
+    var scoreClass = post.Score == 0 ? "neutral" : post.Score > 0 ? "positive" : "negative";
+}
+
+<div id="c-posts"><div id="a-show">
+  <div class="post-display" id="post-show-display" data-tab-state="tags">
+
+    <div class="search">
+      <section class="post-search">
+        <label for="tags" class="post-search-title">Posts</label>
+        <span class="post-search-help"></span>
+        <form method="get" action="/posts" rel="search" class="post-search-form">
+          <textarea name="tags" id="tags" data-autocomplete="tag-query" placeholder="Search posts by tag" rows="1"></textarea>
+          <button type="submit" title="Search"><svg-icon name="search" /></button>
+        </form>
+      </section>
+    </div>
+
+    <div class="sidebar">
+      <section id="tag-list">
+        @foreach (var (cssName, header, tags) in Model.TagGroups)
+        {
+          <h5 class="tag-list-header @cssName-tag-list-header" data-category="@cssName">@header</h5>
+          <ul class="tag-list @cssName-tag-list">
+            @foreach (var tag in tags)
+            {
+              <li class="tag-list-item tag-@cssName" data-name="@tag.Name" data-category="@cssName" data-count="@tag.PostCount">
+                <a class="tag-list-wiki" rel="nofollow" href="https://e621.net/wiki_pages/show_or_new?title=@Uri.EscapeDataString(tag.Name)">?</a>
+                <a rel="nofollow tag" class="tag-list-search" href="/posts?tags=@Uri.EscapeDataString(tag.Name)">
+                  <span class="tag-list-name">@tag.Name.Replace('_', ' ')</span>
+                  <span data-count="@tag.PostCount" class="tag-list-count">@ShowModel.CountLabel(tag.PostCount)</span>
+                </a>
+              </li>
+            }
+          </ul>
+        }
+      </section>
+
+      <section id="post-information">
+        <h3>Information</h3>
+        @if (Model.Extras is { Sources.Count: > 0 } extras)
+        {
+          <ul class="post-sidebar-info">
+            <li class="source-links">Source:
+              @foreach (var source in extras.Sources)
+              {
+                <div class="source-link">
+                  @if (source.StartsWith("http://") || source.StartsWith("https://"))
+                  {
+                    <a href="@source" rel="nofollow noopener">@source</a>
+                  }
+                  else
+                  {
+                    @source
+                  }
+                </div>
+              }
+            </li>
+          </ul>
+        }
+
+        <div class="post-sidebar-info post-sidebar-grid">
+          <div class="post-sidebar-label">ID</div>
+          <div class="post-sidebar-value selectable">@post.Id</div>
+
+          <div class="post-sidebar-label">MD5</div>
+          <div class="post-sidebar-value selectable no-overflow">@post.Md5</div>
+
+          <div class="post-sidebar-label">Size</div>
+          <div class="post-sidebar-value">
+            <span class="selectable">@post.Width x @post.Height</span>
+            @if (post.FileSize is { } size) { <text>(<span class="selectable">@ShowModel.HumanSize(size)</span>)</text> }
+          </div>
+
+          <div class="post-sidebar-label">Type</div>
+          <div class="post-sidebar-value selectable">@post.FileExt.ToUpperInvariant()</div>
+
+          <div class="post-sidebar-label">Status</div>
+          <div class="post-sidebar-value">
+            <span class="selectable">@(Model.Extras?.IsDeleted == true ? "Deleted" : "Active")</span>
+          </div>
+
+          <div class="post-sidebar-break"></div>
+
+          <div class="post-sidebar-label">Rating</div>
+          <div class="post-sidebar-value"><span class="selectable" id="sidebar-rating">@ratingName</span></div>
+
+          <div class="post-sidebar-label">Score</div>
+          <div class="post-sidebar-value"><span class="selectable" id="sidebar-score">@post.Score</span></div>
+
+          @if (Model.Extras is { } favs)
+          {
+            <div class="post-sidebar-label">Faves</div>
+            <div class="post-sidebar-value"><span class="selectable" id="sidebar-favcount">@favs.FavCount</span></div>
+          }
+
+          <div class="post-sidebar-break"></div>
+
+          <div class="post-sidebar-label">On this device</div>
+          <div class="post-sidebar-value">
+            @(post.Status switch
+            {
+                LocalPostStatus.Recovered => "Recovered (Wayback Machine)",
+                LocalPostStatus.SampleOnly => "Sample only",
+                _ => "Original",
+            })
+          </div>
+        </div>
+
+        <ul class="post-sidebar-info">
+          <li>Posted: <span title="@post.CreatedAt.ToString("u")">@post.CreatedAt.ToString("yyyy-MM-dd")</span></li>
+          <li>Saved: <span title="@post.SavedAt.ToString("u")">@post.SavedAt.ToString("yyyy-MM-dd")</span></li>
+          <li><a href="https://e621.net/posts/@post.Id" rel="nofollow noopener">View on e621</a></li>
+        </ul>
+      </section>
+    </div>
+
+    <div class="content">
+      <div id="image-and-nav">
+        @if (post.Status == LocalPostStatus.Recovered)
+        {
+          <div class="notice notice-info">e621 has deleted this post. The original was recovered from the Wayback Machine.</div>
+        }
+        else if (post.Status == LocalPostStatus.SampleOnly || Model.ShowingSample)
+        {
+          <div class="notice notice-info">e621 has deleted this post. Only its downsized sample could be recovered.</div>
+        }
+
+        <section id="image-container" class="blacklistable">
+          @switch (Model.MediaKind)
+          {
+            case "image":
+              <picture><img id="image" class="fit-window" src="@Model.MediaUrl" alt="Post #@post.Id" width="@post.Width" height="@post.Height"></picture>
+              break;
+            case "video":
+              <video id="image" class="fit-window" controls loop preload="metadata" src="@Model.MediaUrl" width="@post.Width" height="@post.Height"></video>
+              break;
+            default:
+              @if (Model.MediaUrl is not null)
+              {
+                <p>This file type cannot be shown. <a href="@Model.MediaUrl">Download it</a>.</p>
+              }
+              else
+              {
+                <p>The file is not on disk.</p>
+              }
+              break;
+          }
+        </section>
+      </div>
+
+      <div class="bottom-notices">
+        <div class="parent-children">
+          @if (post.ParentId is { } parentId)
+          {
+            <div class="notice notice-child">
+              This post has a <a href="@(Model.ParentIsLocal ? $"/posts/{parentId}" : $"https://e621.net/posts/{parentId}")">parent</a> (post #@parentId).
+            </div>
+          }
+          @if (Model.ChildIds.Count > 0)
+          {
+            <div class="notice notice-parent">
+              This post has children:
+              @foreach (var childId in Model.ChildIds) { <a href="/posts/@childId">#@childId</a> }
+            </div>
+          }
+        </div>
+      </div>
+
+      @if (!string.IsNullOrWhiteSpace(post.Description))
+      {
+        <div id="post-description-container" class="styled-dtext">
+          <h2>Description</h2>
+          <p style="white-space: pre-wrap;">@post.Description</p>
+        </div>
+      }
+    </div>
+  </div>
+</div></div>

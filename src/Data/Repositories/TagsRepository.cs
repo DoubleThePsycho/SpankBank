@@ -115,6 +115,25 @@ public sealed class TagsRepository
             .Replace("%", "\\%", StringComparison.Ordinal)
             .Replace("_", "\\_", StringComparison.Ordinal);
 
+    /// <summary>Category and export post count for each of the given tag names (names not in the catalog are left out).</summary>
+    public IReadOnlyList<TagInfo> GetTagInfo(IReadOnlyCollection<string> names)
+    {
+        if (names.Count == 0) return [];
+
+        using var connection = new SqliteConnection(_connectionString);
+        connection.Open();
+        using var cmd = connection.CreateCommand();
+        var placeholders = names.Select((_, i) => $"$n{i}").ToList();
+        cmd.CommandText = $"SELECT Name, Category, PostCount FROM Tags WHERE Name IN ({string.Join(", ", placeholders)});";
+        var index = 0;
+        foreach (var name in names) cmd.Parameters.AddWithValue(placeholders[index++], name);
+
+        using var reader = cmd.ExecuteReader();
+        var result = new List<TagInfo>();
+        while (reader.Read()) result.Add(new TagInfo(reader.GetString(0), reader.GetInt32(1), reader.GetInt64(2)));
+        return result;
+    }
+
     /// <summary>
     /// e621ng-style tag autocomplete: names (or active aliases) matching the term, most used first.
     /// Counts are the export's post counts, not local ones. "*" is a wildcard; without one the term is a prefix.
@@ -194,5 +213,7 @@ public sealed class TagsRepository
                 reader.IsDBNull(4) ? null : reader.GetString(4)));
     }
 }
+
+public sealed record TagInfo(string Name, int Category, long PostCount);
 
 public sealed record TagSuggestion(long Id, string Name, int Category, long PostCount, string? AntecedentName);
