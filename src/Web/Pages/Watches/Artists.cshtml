@@ -21,7 +21,7 @@
 else
 {
   <table class="striped watches-table">
-    <thead><tr><th>Artist</th><th>Aliases</th><th>Characters</th><th>Status</th></tr></thead>
+    <thead><tr><th>Artist</th><th>Aliases</th><th>Characters</th><th>Posts</th><th>Status</th></tr></thead>
     <tbody>
       @foreach (var artist in Model.Entries)
       {
@@ -29,6 +29,7 @@ else
           <td><a href="#" class="tag-type-1">@artist.SourceValue</a></td>
           <td data-field="aliases">@artist.ArtistTags.Count(t => t.Kind == ArtistTagKind.Alias)</td>
           <td data-field="characters">@artist.ArtistTags.Count(t => t.Kind == ArtistTagKind.Character && t.Enabled) / @artist.ArtistTags.Count(t => t.Kind == ArtistTagKind.Character)</td>
+          <td data-field="matches">@artist.MatchText</td>
           <td data-field="status">@(artist.Enabled ? "enabled" : "disabled")</td>
         </tr>
       }

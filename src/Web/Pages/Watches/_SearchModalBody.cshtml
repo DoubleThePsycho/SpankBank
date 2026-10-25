@@ -1,7 +1,9 @@
 @model SpankBank.Data.Repositories.WatchEntry
-<div data-summary data-status="@(Model.Enabled ? "enabled" : "disabled")">
+<div data-summary data-status="@(Model.Enabled ? "enabled" : "disabled")" data-matches="@Model.MatchText">
   <table class="striped">
     <tbody>
+      <tr><th>Posts</th><td>@Model.MatchText</td></tr>
+      @if (Model.Error is not null) { <tr><th>Problem</th><td>@Model.Error</td></tr> }
       <tr><th>Status</th><td>@(Model.Enabled ? "enabled" : "disabled")</td></tr>
     </tbody>
   </table>

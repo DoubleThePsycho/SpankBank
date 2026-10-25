@@ -1,10 +1,11 @@
 using SpankBank.Data;
 using SpankBank.Data.Import;
+using SpankBank.Data.Matching;
 using SpankBank.Data.Repositories;
 
 namespace SpankBank.Worker;
 
-/// <summary>Downloads the latest e621 CSV exports and imports tags, aliases, pools and posts.</summary>
+/// <summary>Downloads the latest e621 CSV exports and imports tags, aliases, pools and posts, then re-matches the watches.</summary>
 public sealed class ExportRefreshJob
 {
     private readonly DatabasePaths _paths;
@@ -14,6 +15,7 @@ public sealed class ExportRefreshJob
     private readonly ImportHistoryRepository _history;
     private readonly E621ExportDownloadService _downloader = new();
     private readonly E621ExportImportService _importer;
+    private readonly WatchMatcher _matcher;
 
     public ExportRefreshJob(DatabasePaths paths, string importsDir, ILogger<ExportRefreshJob> logger)
     {
@@ -23,6 +25,7 @@ public sealed class ExportRefreshJob
         _settings = new SettingsRepository(paths.AppDatabasePath);
         _history = new ImportHistoryRepository(paths.AppDatabasePath);
         _importer = new E621ExportImportService(paths.ServerDatabasePath, paths.AppDatabasePath);
+        _matcher = new WatchMatcher(paths, message => logger.LogInformation("{Message}", message));
     }
 
     /// <returns>A short result summary; throws only on cancellation.</returns>
@@ -90,7 +93,13 @@ public sealed class ExportRefreshJob
             summary.Add($"posts {result.RowsImported:N0}");
         }
 
-        return summary.Count == 0 ? "Nothing new to import." : "Imported " + string.Join(", ", summary) + ".";
+        var text = summary.Count == 0 ? "Nothing new to import." : "Imported " + string.Join(", ", summary) + ".";
+
+        var matched = await Task.Run(() => _matcher.Run(all: true, cancellationToken), cancellationToken);
+        if (matched.WatchesMatched > 0)
+            text += $" Matched {matched.PostsMatched:N0} posts for {matched.WatchesMatched} watches.";
+
+        return text;
     }
 
     private DateTimeOffset _lastProgressLog = DateTimeOffset.MinValue;

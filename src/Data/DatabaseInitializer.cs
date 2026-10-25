@@ -251,6 +251,17 @@ public static class DatabaseInitializer
             """);
 
         EnsureColumn(connection, "WatchedItems", "LocalName", "TEXT");
+        EnsureColumn(connection, "WatchedItems", "MatchCount", "INTEGER NOT NULL DEFAULT 0");
+
+        // Catalog posts each watch currently matches (written by the worker). Position is the order inside a pool.
+        Execute(connection, """
+            CREATE TABLE IF NOT EXISTS WatchMatches (
+                WatchedItemId INTEGER NOT NULL REFERENCES WatchedItems (Id) ON DELETE CASCADE,
+                PostId        INTEGER NOT NULL,
+                Position      INTEGER,
+                PRIMARY KEY (WatchedItemId, PostId)
+            ) WITHOUT ROWID;
+            """);
         Execute(connection, "CREATE INDEX IF NOT EXISTS IX_WatchedItems_ItemType ON WatchedItems (ItemType);");
         Execute(connection, "CREATE INDEX IF NOT EXISTS IX_WatchedItems_Enabled ON WatchedItems (Enabled);");
 

@@ -4,6 +4,8 @@ public static class WorkerSettingsKeys
 {
     /// <summary>Set to "true" (by the web UI) to request an immediate export refresh.</summary>
     public const string RunNowRequested = "Worker.RunNowRequested";
+    /// <summary>Set to "true" (by the web UI) after a watch changed; the worker re-matches the changed watches.</summary>
+    public const string MatchRequested = "Worker.MatchRequested";
     public const string DailyRunTimeUtc = "Worker.DailyRunTimeUtc";
     public const string LastRunStartedAt = "Worker.LastRunStartedAt";
     public const string LastRunCompletedAt = "Worker.LastRunCompletedAt";

@@ -16,7 +16,14 @@ public sealed record WatchEntry(
     bool Enabled,
     IReadOnlyList<WatchedArtistTag> ArtistTags,
     string? LocalName = null,
-    PoolInfo? Pool = null);
+    PoolInfo? Pool = null,
+    int MatchCount = 0,
+    bool Matched = false,
+    string? Error = null)
+{
+    /// <summary>"1,234" once the worker has matched this watch, "pending" until then.</summary>
+    public string MatchText => Matched ? MatchCount.ToString("N0") : "pending";
+}
 
 /// <summary>Watched artists, pools and searches (SpankBank.sqlite). Artist alias/character discovery reads the catalog.</summary>
 public sealed class WatchesRepository
@@ -35,14 +42,15 @@ public sealed class WatchesRepository
         using var connection = new SqliteConnection(_appConnectionString);
         connection.Open();
 
-        var entries = new List<(long Id, string Source, string Display, bool Enabled, string? LocalName)>();
+        var entries = new List<(long Id, string Source, string Display, bool Enabled, string? LocalName, int Count, bool Matched, string? Error)>();
         using (var cmd = connection.CreateCommand())
         {
-            cmd.CommandText = "SELECT Id, SourceValue, DisplayName, Enabled, LocalName FROM WatchedItems WHERE ItemType = $type ORDER BY SourceValue COLLATE NOCASE;";
+            cmd.CommandText = "SELECT Id, SourceValue, DisplayName, Enabled, LocalName, MatchCount, LastCheckedAt IS NOT NULL, ErrorMessage FROM WatchedItems WHERE ItemType = $type ORDER BY SourceValue COLLATE NOCASE;";
             cmd.Parameters.AddWithValue("$type", (int)type);
             using var reader = cmd.ExecuteReader();
             while (reader.Read())
-                entries.Add((reader.GetInt64(0), reader.GetString(1), reader.GetString(2), reader.GetInt32(3) != 0, reader.IsDBNull(4) ? null : reader.GetString(4)));
+                entries.Add((reader.GetInt64(0), reader.GetString(1), reader.GetString(2), reader.GetInt32(3) != 0, reader.IsDBNull(4) ? null : reader.GetString(4),
+                    reader.GetInt32(5), reader.GetInt32(6) != 0, reader.IsDBNull(7) ? null : reader.GetString(7)));
         }
 
         var tagsByItem = new Dictionary<long, List<WatchedArtistTag>>();
@@ -78,7 +86,7 @@ public sealed class WatchesRepository
                     : pool is not null ? pool.Name.Replace('_', ' ')
                     : e.Display;
                 return new WatchEntry(e.Id, type, e.Source, display, e.Enabled,
-                    tagsByItem.TryGetValue(e.Id, out var tags) ? tags : [], e.LocalName, pool);
+                    tagsByItem.TryGetValue(e.Id, out var tags) ? tags : [], e.LocalName, pool, e.Count, e.Matched, e.Error);
             })
             .ToList();
     }
@@ -140,10 +148,16 @@ public sealed class WatchesRepository
         if (cmd.ExecuteNonQuery() == 0) return null;
 
         cmd.CommandText = "SELECT last_insert_rowid();";
-        return (long)cmd.ExecuteScalar()!;
+        var id = (long)cmd.ExecuteScalar()!;
+        RequestMatch();
+        return id;
     }
 
-    public void SetEnabled(long id, bool enabled) => Execute("UPDATE WatchedItems SET Enabled = $v WHERE Id = $id;", id, enabled ? 1 : 0);
+    public void SetEnabled(long id, bool enabled)
+    {
+        Execute("UPDATE WatchedItems SET Enabled = $v WHERE Id = $id;", id, enabled ? 1 : 0);
+        MarkChanged(id);
+    }
 
     public void Delete(long id)
     {
@@ -158,9 +172,42 @@ public sealed class WatchesRepository
         cmd.ExecuteNonQuery();
     }
 
-    public void SetArtistTagEnabled(long tagRowId, bool enabled) => Execute("UPDATE WatchedArtistTags SET Enabled = $v WHERE Id = $id;", tagRowId, enabled ? 1 : 0);
+    public void SetArtistTagEnabled(long tagRowId, bool enabled)
+    {
+        Execute("UPDATE WatchedArtistTags SET Enabled = $v WHERE Id = $id;", tagRowId, enabled ? 1 : 0);
+        MarkArtistOfTagChanged(tagRowId);
+    }
 
-    public void DeleteArtistTag(long tagRowId) => Execute("DELETE FROM WatchedArtistTags WHERE Id = $id;", tagRowId, 0);
+    public void DeleteArtistTag(long tagRowId)
+    {
+        MarkArtistOfTagChanged(tagRowId);
+        Execute("DELETE FROM WatchedArtistTags WHERE Id = $id;", tagRowId, 0);
+    }
+
+    /// <summary>Flags a watch for re-matching and asks the worker to do it.</summary>
+    private void MarkChanged(long watchId)
+    {
+        Execute("UPDATE WatchedItems SET LastCheckedAt = NULL WHERE Id = $id;", watchId, 0);
+        RequestMatch();
+    }
+
+    private void MarkArtistOfTagChanged(long tagRowId)
+    {
+        Execute("UPDATE WatchedItems SET LastCheckedAt = NULL WHERE Id = (SELECT WatchedItemId FROM WatchedArtistTags WHERE Id = $id);", tagRowId, 0);
+        RequestMatch();
+    }
+
+    private void RequestMatch()
+    {
+        using var connection = new SqliteConnection(_appConnectionString);
+        connection.Open();
+        using var cmd = connection.CreateCommand();
+        cmd.CommandText = """
+            INSERT INTO Settings (Key, Value) VALUES ('Worker.MatchRequested', 'true')
+            ON CONFLICT(Key) DO UPDATE SET Value = 'true';
+            """;
+        cmd.ExecuteNonQuery();
+    }
 
     public void AddArtistTag(long watchedItemId, string tag, ArtistTagKind kind, bool isManual)
     {
@@ -175,7 +222,7 @@ public sealed class WatchesRepository
         cmd.Parameters.AddWithValue("$tag", tag);
         cmd.Parameters.AddWithValue("$kind", (int)kind);
         cmd.Parameters.AddWithValue("$manual", isManual ? 1 : 0);
-        cmd.ExecuteNonQuery();
+        if (cmd.ExecuteNonQuery() > 0) MarkChanged(watchedItemId);
     }
 
     /// <summary>Adds newly discovered aliases and characters; existing rows (and their toggles) are kept.</summary>

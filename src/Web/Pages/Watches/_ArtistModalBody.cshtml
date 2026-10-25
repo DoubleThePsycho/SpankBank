@@ -4,7 +4,8 @@
     var aliases = Model.ArtistTags.Where(t => t.Kind == ArtistTagKind.Alias).Select(t => t.Tag).ToList();
     var characters = Model.ArtistTags.Where(t => t.Kind == ArtistTagKind.Character).ToList();
 }
-<div data-summary data-status="@(Model.Enabled ? "enabled" : "disabled")" data-aliases="@aliases.Count" data-characters="@characters.Count(c => c.Enabled) / @characters.Count">
+<div data-summary data-status="@(Model.Enabled ? "enabled" : "disabled")" data-aliases="@aliases.Count" data-characters="@characters.Count(c => c.Enabled) / @characters.Count" data-matches="@Model.MatchText">
+  <p class="watch-aliases">Matches @Model.MatchText posts in the catalog.</p>
   @if (aliases.Count > 0)
   {
     <p class="watch-aliases">Also known as: @string.Join(", ", aliases)</p>

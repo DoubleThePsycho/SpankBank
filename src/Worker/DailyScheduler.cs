@@ -1,5 +1,6 @@
 using System.Globalization;
 using SpankBank.Data;
+using SpankBank.Data.Matching;
 using SpankBank.Data.Repositories;
 
 namespace SpankBank.Worker;
@@ -10,15 +11,18 @@ public sealed class DailyScheduler : BackgroundService
     private static readonly TimeSpan PollInterval = TimeSpan.FromSeconds(15);
 
     private readonly ExportRefreshJob _job;
+    private readonly WatchMatcher _matcher;
     private readonly SettingsRepository _settings;
     private readonly ILogger<DailyScheduler> _logger;
 
     public DailyScheduler(
         ExportRefreshJob job,
+        WatchMatcher matcher,
         SettingsRepository settings,
         ILogger<DailyScheduler> logger)
     {
         _job = job;
+        _matcher = matcher;
         _settings = settings;
         _logger = logger;
     }
@@ -41,8 +45,32 @@ public sealed class DailyScheduler : BackgroundService
                 nextRun = NextDailyRun(DateTimeOffset.UtcNow);
                 _logger.LogInformation("Next export refresh at {NextRun:u}.", nextRun);
             }
+            else if (_settings.Get(WorkerSettingsKeys.MatchRequested) == "true")
+            {
+                // A watch was added or changed in the web UI: re-match just those.
+                _settings.Set(WorkerSettingsKeys.MatchRequested, "false");
+                await RunMatchAsync(stoppingToken);
+            }
         }
         while (await WaitAsync(timer, stoppingToken));
+    }
+
+    private async Task RunMatchAsync(CancellationToken cancellationToken)
+    {
+        try
+        {
+            var result = await Task.Run(() => _matcher.Run(all: false, cancellationToken), cancellationToken);
+            if (result.WatchesMatched > 0)
+                _logger.LogInformation("Matched {Posts:N0} posts for {Watches} changed watches in {Elapsed:g}.",
+                    result.PostsMatched, result.WatchesMatched, result.Elapsed);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Matching changed watches failed.");
+        }
     }
 
     private async Task RunJobAsync(CancellationToken cancellationToken)

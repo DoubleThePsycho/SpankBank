@@ -6,12 +6,13 @@
 else
 {
   <table class="striped watches-table">
-    <thead><tr><th>Entry</th><th>Status</th></tr></thead>
+    <thead><tr><th>Entry</th><th>Posts</th><th>Status</th></tr></thead>
     <tbody>
       @foreach (var entry in Model)
       {
         <tr data-open-modal="modal-@entry.Id" tabindex="0">
           <td data-field="name">@entry.DisplayName</td>
+          <td data-field="matches">@entry.MatchText</td>
           <td data-field="status">@(entry.Enabled ? "enabled" : "disabled")</td>
         </tr>
       }
