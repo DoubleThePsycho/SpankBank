@@ -4,6 +4,7 @@ using SpankBank.Data;
 using SpankBank.Data.Downloads;
 using SpankBank.Data.Import;
 using SpankBank.Data.Repositories;
+using SpankBank.Web.Services;
 
 namespace SpankBank.Web.Pages;
 
@@ -14,15 +15,17 @@ public class StatusModel : PageModel
     private readonly PostsRepository _posts;
     private readonly DownloadedPostsRepository _downloaded;
     private readonly DownloadStore _downloads;
+    private readonly WorkerClient _worker;
 
     public StatusModel(SettingsRepository settings, ImportHistoryRepository history, PostsRepository posts,
-        DownloadedPostsRepository downloaded, DownloadStore downloads)
+        DownloadedPostsRepository downloaded, DownloadStore downloads, WorkerClient worker)
     {
         _settings = settings;
         _history = history;
         _posts = posts;
         _downloaded = downloaded;
         _downloads = downloads;
+        _worker = worker;
     }
 
     public string? LastRunStartedAt { get; private set; }
@@ -43,11 +46,13 @@ public class StatusModel : PageModel
 
     public void OnGet() => Load();
 
-    public IActionResult OnPost()
+    public async Task<IActionResult> OnPostAsync()
     {
-        // The worker polls this flag and starts a refresh.
+        // The flag survives a worker restart; the command wakes the worker right away.
         _settings.Set(WorkerSettingsKeys.RunNowRequested, "true");
-        Message = "Run requested. The worker picks it up within about 15 seconds.";
+        Message = await _worker.NotifyAsync("run-export")
+            ? "Started."
+            : "The worker is not reachable. The refresh will start as soon as it is.";
         return RedirectToPage();
     }
 

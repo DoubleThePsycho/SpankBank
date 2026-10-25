@@ -39,7 +39,7 @@ public sealed class PostFetcher : IDisposable
         _http.DefaultRequestHeaders.UserAgent.ParseAdd("SpankBank/0.1 (personal archiver)");
     }
 
-    public async Task<FetchOutcome> FetchAsync(CatalogPost post, string mediaRoot, CancellationToken cancellationToken)
+    public async Task<FetchOutcome> FetchAsync(CatalogPost post, string mediaRoot, CancellationToken cancellationToken, Action<long, long?>? onProgress = null)
     {
         if (post.Md5.Length != 32 || post.Ext.Length == 0)
             return new FetchOutcome(FetchResult.NotAvailable, "The catalog has no file for this post.");
@@ -51,7 +51,7 @@ public sealed class PostFetcher : IDisposable
         if (!post.IsDeleted)
         {
             var download = await DownloadAsync($"{StaticHost}/data/{post.Md5[..2]}/{post.Md5[2..4]}/{post.Md5}.{post.Ext}",
-                original, post.Md5, jpegOnly: false, StallTimeout, cancellationToken);
+                original, post.Md5, jpegOnly: false, StallTimeout, cancellationToken, onProgress: onProgress);
             switch (download.Kind)
             {
                 case DownloadKind.Ok:
@@ -63,12 +63,12 @@ public sealed class PostFetcher : IDisposable
             }
         }
 
-        return await RecoverAsync(post, mediaRoot, original, cancellationToken);
+        return await RecoverAsync(post, mediaRoot, original, cancellationToken, onProgress);
     }
 
     // ---------------------------------------------------------------- Wayback Machine
 
-    private async Task<FetchOutcome> RecoverAsync(CatalogPost post, string mediaRoot, string original, CancellationToken cancellationToken)
+    private async Task<FetchOutcome> RecoverAsync(CatalogPost post, string mediaRoot, string original, CancellationToken cancellationToken, Action<long, long?>? onProgress)
     {
         var path = $"data/{post.Md5[..2]}/{post.Md5[2..4]}/{post.Md5}.{post.Ext}";
         foreach (var host in new[] { "static1.e621.net", "e621.net" })
@@ -79,7 +79,7 @@ public sealed class PostFetcher : IDisposable
 
             foreach (var snapshot in snapshots)
             {
-                var result = await DownloadAsync(ReplayUrl(snapshot), original, post.Md5, jpegOnly: false, WaybackStallTimeout, cancellationToken, _wayback);
+                var result = await DownloadAsync(ReplayUrl(snapshot), original, post.Md5, jpegOnly: false, WaybackStallTimeout, cancellationToken, _wayback, onProgress);
                 if (result.Kind == DownloadKind.Ok)
                     return new FetchOutcome(FetchResult.Recovered, $"Original recovered from the Wayback Machine ({snapshot.Timestamp[..8]}).");
             }
@@ -139,7 +139,7 @@ public sealed class PostFetcher : IDisposable
 
     private async Task<DownloadResult> DownloadAsync(
         string url, string destination, string? expectedMd5, bool jpegOnly, TimeSpan stall,
-        CancellationToken cancellationToken, RateGate? gate = null)
+        CancellationToken cancellationToken, RateGate? gate = null, Action<long, long?>? onProgress = null)
     {
         var part = destination + ".part";
         try
@@ -169,6 +169,7 @@ public sealed class PostFetcher : IDisposable
                     await target.WriteAsync(buffer.AsMemory(0, read), cancellationToken);
                     hash.AppendData(buffer, 0, read);
                     size += read;
+                    onProgress?.Invoke(size, response.Content.Headers.ContentLength);
                 }
             }
 

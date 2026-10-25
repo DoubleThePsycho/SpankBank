@@ -10,7 +10,13 @@ var builder = WebApplication.CreateBuilder(args);
 var paths = WebPaths.Databases();
 DatabaseInitializer.Initialize(paths);
 
-builder.Services.AddRazorPages();
+builder.Services.AddRazorPages().AddMvcOptions(options => options.Filters.Add<WatchChangeNotifier>());
+builder.Services.AddHttpClient<WorkerClient>(client =>
+{
+    // The worker's command server; only reachable on the compose network.
+    client.BaseAddress = new Uri(Environment.GetEnvironmentVariable("WORKER_URL") ?? "http://worker:8081/");
+    client.Timeout = TimeSpan.FromSeconds(3);
+});
 builder.Services.AddSingleton(paths);
 builder.Services.AddSingleton(new PostsRepository(paths.ServerDatabasePath));
 builder.Services.AddSingleton(new DownloadedPostsRepository(paths.DeviceDatabasePath));
@@ -47,5 +53,11 @@ app.MapGet("/tags/autocomplete.json", (HttpContext http, TagsRepository tags) =>
 // Used to enable the "add character" button only for a tag that exists.
 app.MapGet("/tags/exists.json", (string name, int? category, WatchesRepository watches) =>
     Results.Json(new { exists = category == 4 && watches.IsCharacterTag(WatchesRepository.Normalize(name)) }));
+
+// Live progress for the Status page, relayed from the worker.
+app.MapGet("/status/progress", async (WorkerClient worker) =>
+    await worker.GetProgressJsonAsync() is { } json
+        ? Results.Content(json, "application/json")
+        : Results.Json(new { online = false }));
 
 app.Run();

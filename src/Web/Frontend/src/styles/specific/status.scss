@@ -1,0 +1,120 @@
+// SpankBank page: what the worker is doing right now, in the style of an operating-system update screen.
+#c-status {
+  .status-activity {
+    display: flex;
+    flex-flow: column;
+    gap: 1rem;
+    margin-bottom: 1rem;
+
+    > div { margin: 0; }
+    > div[hidden] { display: none; }
+
+    .status-run, .status-downloads, .status-offline {
+      background: themed("color-section");
+      border-radius: 0.25rem;
+      padding: 1rem 1.25rem;
+    }
+
+    h2 { margin: 0 0 0.5rem; font-size: 1.5rem; }
+  }
+
+  .status-actions { margin: 0 0 1rem; }
+
+  .status-hint, .status-idle { margin: 0 0 0.75rem; color: themed("color-text-muted"); }
+  .status-result { margin: 0.75rem 0 0; }
+
+  .status-phases {
+    list-style: none;
+    margin: 0 0 1rem;
+    padding: 0;
+
+    li { padding: 0.15rem 0; color: themed("color-text-muted"); }
+    li .mark { display: inline-block; width: 1.25rem; text-align: center; }
+    li.running { color: themed("color-text"); font-weight: bold; }
+    li.running .mark { color: themed("color-link-active"); }
+    li.done .mark { color: palette("text-green"); }
+    li.failed { color: palette("text-red"); }
+  }
+
+  .status-step-title {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 0.35rem;
+
+    .percent { font-weight: bold; }
+  }
+
+  .status-step-text { margin-top: 0.35rem; color: themed("color-text-muted"); font-size: 0.9rem; }
+
+  .status-big {
+    text-align: center;
+    margin: 0.25rem 0 0.75rem;
+
+    .percent { font-size: 3.5rem; line-height: 1; font-weight: 300; }
+  }
+
+  .status-bar {
+    height: 0.6rem;
+    background: themed("color-foreground");
+    border-radius: 0.3rem;
+    overflow: hidden;
+
+    &.small { height: 0.35rem; flex: 1; }
+
+    .fill {
+      height: 100%;
+      background: themed("color-link-active");
+      border-radius: 0.3rem;
+      transition: width 0.9s linear;
+    }
+
+    &.busy .fill {
+      width: 35% !important;
+      animation: status-busy 1.4s ease-in-out infinite alternate;
+      transition: none;
+    }
+  }
+
+  .status-files {
+    list-style: none;
+    margin: 1rem 0 0;
+    padding: 0;
+    display: flex;
+    flex-flow: column;
+    gap: 0.4rem;
+
+    li {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      font-size: 0.85rem;
+    }
+
+    .name { flex: 0 0 18rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: monospace; }
+    .size { flex: 0 0 11rem; text-align: right; color: themed("color-text-muted"); }
+  }
+
+  .status-recent {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    margin-top: 1rem;
+
+    img {
+      width: 4.5rem;
+      height: 4.5rem;
+      object-fit: cover;
+      border-radius: 0.25rem;
+      background: themed("color-foreground");
+    }
+  }
+}
+
+@keyframes status-busy {
+  from { margin-left: 0; }
+  to { margin-left: 65%; }
+}
+
+@media (max-width: 40rem) {
+  #c-status .status-files li { flex-wrap: wrap; .name { flex-basis: 100%; } .size { flex: 1; text-align: left; } }
+}

@@ -24,8 +24,18 @@ public sealed class WatchMatcher
         _log = log ?? (_ => { });
     }
 
+    /// <summary>Enabled watches that were added or changed since they were last matched.</summary>
+    public int CountChanged()
+    {
+        using var connection = new SqliteConnection(_appConnectionString);
+        connection.Open();
+        using var cmd = connection.CreateCommand();
+        cmd.CommandText = "SELECT COUNT(*) FROM WatchedItems WHERE Enabled = 1 AND LastCheckedAt IS NULL;";
+        return Convert.ToInt32(cmd.ExecuteScalar());
+    }
+
     /// <param name="all">Re-match every enabled watch; otherwise only watches marked changed (LastCheckedAt is NULL).</param>
-    public MatchRunResult Run(bool all, CancellationToken cancellationToken = default)
+    public MatchRunResult Run(bool all, CancellationToken cancellationToken = default, Action<long, long>? onScanProgress = null)
     {
         var started = DateTimeOffset.UtcNow;
         var watches = LoadWatches(all);
@@ -51,7 +61,7 @@ public sealed class WatchMatcher
         if (scanned.Count > 0)
         {
             _log($"Matching {scanned.Count} watch(es) against the catalog...");
-            rowsScanned = Scan(scanned, cancellationToken);
+            rowsScanned = Scan(scanned, cancellationToken, onScanProgress);
             foreach (var watch in scanned)
             {
                 Save(watch.Id, watch.Matches, null, watch.Error);
@@ -211,7 +221,7 @@ public sealed class WatchMatcher
 
     // ---------------------------------------------------------------- the scan
 
-    private long Scan(List<ScanWatch> watches, CancellationToken cancellationToken)
+    private long Scan(List<ScanWatch> watches, CancellationToken cancellationToken, Action<long, long>? onProgress)
     {
         var tagIndex = _tagIndex;
         var lookup = tagIndex.GetAlternateLookup<ReadOnlySpan<char>>();
@@ -220,6 +230,14 @@ public sealed class WatchMatcher
 
         using var connection = new SqliteConnection(_serverConnectionString);
         connection.Open();
+
+        long totalRows;
+        using (var count = connection.CreateCommand())
+        {
+            count.CommandText = "SELECT COUNT(*) FROM Posts;";
+            totalRows = Convert.ToInt64(count.ExecuteScalar());
+        }
+
         using var cmd = connection.CreateCommand();
         cmd.CommandText = """
             SELECT Id, TagString, Rating, Score, FavCount, FileExt, ImageWidth, ImageHeight,
@@ -231,10 +249,11 @@ public sealed class WatchMatcher
         long rows = 0;
         while (reader.Read())
         {
-            if ((++rows & 0xFFFFF) == 0)
+            if ((++rows & 0x3FFF) == 0)
             {
                 cancellationToken.ThrowIfCancellationRequested();
-                _log($"  scanned {rows:N0} posts...");
+                onProgress?.Invoke(rows, totalRows);
+                if ((rows & 0xFFFFF) == 0) _log($"  scanned {rows:N0} posts...");
             }
 
             var tagString = reader.IsDBNull(1) ? "" : reader.GetString(1);

@@ -3,13 +3,23 @@
 @{
     ViewData["Title"] = "Status";
 }
-<div id="c-status"><div id="a-index">
-  <h1>Worker status</h1>
+<div id="c-status" class="container"><div id="a-index">
+  <h1>Status</h1>
 
   @if (Model.Message is not null)
   {
     <div class="notice notice-info" style="margin-bottom: 1em;">@Model.Message</div>
   }
+
+  <section id="activity" class="status-activity" aria-live="polite">
+    <div class="status-offline" hidden>The worker is not reachable.</div>
+    <div class="status-run" hidden></div>
+    <div class="status-downloads" hidden></div>
+  </section>
+
+  <form method="post" class="status-actions">
+    <button type="submit" class="st-button">Update from e621 now</button>
+  </form>
 
   <table class="striped">
     <tbody>
@@ -17,17 +27,12 @@
       <tr><th>Last run completed</th><td>@(Model.LastRunCompletedAt ?? "never")</td></tr>
       <tr><th>Last result</th><td>@(Model.LastRunResult ?? "-")</td></tr>
       <tr><th>Daily run (UTC)</th><td>@Model.DailyRunTimeUtc</td></tr>
-      <tr><th>Run requested</th><td>@(Model.RunRequested ? "yes, waiting for the worker" : "no")</td></tr>
       <tr><th>Posts in catalog</th><td>@Model.PostCount.ToString("N0")</td></tr>
       <tr><th>Files on this device</th><td>@Model.DownloadedCount.ToString("N0")</td></tr>
       <tr><th>Waiting to download</th><td>@Model.Waiting.ToString("N0")@(Model.DownloadsPaused ? " (downloads are paused)" : "")</td></tr>
       <tr><th>Saved today</th><td>@Model.SavedToday.ToString("N0") of @Model.DailyLimit.ToString("N0")</td></tr>
     </tbody>
   </table>
-
-  <form method="post" style="margin-top: 1em;">
-    <button type="submit" class="st-button">Run export refresh now</button>
-  </form>
 
   <h2 style="margin-top: 1.5em;">Recent imports</h2>
   <table class="striped">
@@ -50,3 +55,4 @@
     </tbody>
   </table>
 </div></div>
+<script type="module" src="~/dist/status.js" asp-append-version="true"></script>

@@ -2,6 +2,7 @@ using SpankBank.Core.Models;
 using SpankBank.Data;
 using SpankBank.Data.Downloads;
 using SpankBank.Data.Repositories;
+using SpankBank.Worker.Progress;
 
 namespace SpankBank.Worker;
 
@@ -13,16 +14,21 @@ public sealed class DownloadService : BackgroundService
 {
     private const int Parallelism = 3;
     private const int DefaultMaxPerDay = 2000;
-    private static readonly TimeSpan IdleDelay = TimeSpan.FromSeconds(30);
+    // Retry delays expire with time and the daily limit resets at midnight; a signal wakes the loop for everything else.
+    private static readonly TimeSpan RetryCheckInterval = TimeSpan.FromMinutes(15);
 
     private readonly DownloadStore _store;
     private readonly SettingsRepository _settings;
+    private readonly ProgressTracker _progress;
+    private readonly WorkerSignals _signals;
     private readonly ILogger<DownloadService> _logger;
 
-    public DownloadService(DownloadStore store, SettingsRepository settings, ILogger<DownloadService> logger)
+    public DownloadService(DownloadStore store, SettingsRepository settings, ProgressTracker progress, WorkerSignals signals, ILogger<DownloadService> logger)
     {
         _store = store;
         _settings = settings;
+        _progress = progress;
+        _signals = signals;
         _logger = logger;
     }
 
@@ -30,8 +36,8 @@ public sealed class DownloadService : BackgroundService
     {
         Directory.CreateDirectory(WorkerPaths.MediaDir);
         using var fetcher = new PostFetcher();
+        var inSession = false;
         var savedThisSession = 0;
-        var wasBusy = false;
 
         while (!stoppingToken.IsCancellationRequested)
         {
@@ -39,7 +45,8 @@ public sealed class DownloadService : BackgroundService
             {
                 if (_settings.Get(WorkerSettingsKeys.DownloadEnabled) == "false")
                 {
-                    await Task.Delay(IdleDelay, stoppingToken);
+                    EndSession(ref inSession, "Downloads are paused.");
+                    await WaitAsync(RetryCheckInterval, stoppingToken);
                     continue;
                 }
 
@@ -49,17 +56,24 @@ public sealed class DownloadService : BackgroundService
 
                 if (batch.Count == 0)
                 {
-                    if (wasBusy)
-                    {
-                        _logger.LogInformation("Downloads idle: {Saved:N0} file(s) saved this session; {Pending:N0} post(s) still waiting{Limit}.",
-                            savedThisSession, _store.CountPending(DateTimeOffset.UtcNow), room <= 0 ? " (daily limit reached)" : "");
-                        wasBusy = false;
-                    }
-                    await Task.Delay(room <= 0 ? TimeSpan.FromMinutes(5) : IdleDelay, stoppingToken);
+                    var limitReached = room <= 0;
+                    if (inSession)
+                        _logger.LogInformation("Downloads idle: {Saved:N0} file(s) saved this session{Limit}.",
+                            savedThisSession, limitReached ? "; the daily limit is reached" : "");
+                    EndSession(ref inSession, limitReached ? $"Today's limit of {maxPerDay:N0} files is reached." : "Nothing is waiting to be downloaded.");
+                    savedThisSession = 0;
+
+                    var delay = limitReached ? NextUtcMidnight() - DateTimeOffset.UtcNow + TimeSpan.FromSeconds(5) : RetryCheckInterval;
+                    await WaitAsync(delay, stoppingToken);
                     continue;
                 }
 
-                wasBusy = true;
+                if (!inSession)
+                {
+                    inSession = true;
+                    _progress.DownloadSessionStarted(Math.Min(_store.CountPending(DateTimeOffset.UtcNow), room));
+                }
+
                 await Parallel.ForEachAsync(batch,
                     new ParallelOptions { MaxDegreeOfParallelism = Parallelism, CancellationToken = stoppingToken },
                     async (id, token) =>
@@ -74,45 +88,79 @@ public sealed class DownloadService : BackgroundService
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Download loop failed; retrying in a moment.");
-                await Task.Delay(IdleDelay, stoppingToken);
+                await WaitAsync(TimeSpan.FromSeconds(30), stoppingToken);
             }
         }
     }
 
-    /// <returns>True when a file was saved.</returns>
-    private async Task<bool> ProcessAsync(long postId, PostFetcher fetcher, CancellationToken cancellationToken)
+    private void EndSession(ref bool inSession, string reason)
+    {
+        inSession = false;
+        _progress.DownloadSessionIdle(reason);
+    }
+
+    private async Task WaitAsync(TimeSpan timeout, CancellationToken cancellationToken)
     {
         try
         {
-            var post = _store.GetCatalogPost(postId);
+            await _signals.Downloads.WaitAsync(timeout, cancellationToken);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+        }
+    }
+
+    private static DateTimeOffset NextUtcMidnight() => new DateTimeOffset(DateTimeOffset.UtcNow.Date, TimeSpan.Zero).AddDays(1);
+
+    /// <returns>True when a file was saved.</returns>
+    private async Task<bool> ProcessAsync(long postId, PostFetcher fetcher, CancellationToken cancellationToken)
+    {
+        var post = (CatalogPost?)null;
+        var saved = false;
+        var status = "";
+        try
+        {
+            post = _store.GetCatalogPost(postId);
             if (post is null)
             {
                 _store.RecordFailure(postId, "The post is not in the catalog.", TimeSpan.FromDays(1));
+                _progress.FileFinished(postId, false, "", "", "missing");
                 return false;
             }
 
-            var outcome = await fetcher.FetchAsync(post, WorkerPaths.MediaDir, cancellationToken);
+            _progress.FileStarted(postId, $"{post.Md5}.{post.Ext}");
+            var outcome = await fetcher.FetchAsync(post, WorkerPaths.MediaDir, cancellationToken,
+                (done, total) => _progress.FileProgress(postId, done, total));
+
             switch (outcome.Result)
             {
                 case FetchResult.Downloaded:
                     _store.MarkSaved(post, LocalPostStatus.Downloaded);
-                    return true;
+                    saved = true;
+                    status = "downloaded";
+                    break;
                 case FetchResult.Recovered:
                     _store.MarkSaved(post, LocalPostStatus.Recovered);
                     _logger.LogInformation("Post {Id}: {Detail}", postId, outcome.Detail);
-                    return true;
+                    saved = true;
+                    status = "recovered";
+                    break;
                 case FetchResult.SampleOnly:
                     _store.MarkSaved(post, LocalPostStatus.SampleOnly);
                     _logger.LogInformation("Post {Id}: {Detail}", postId, outcome.Detail);
-                    return true;
+                    saved = true;
+                    status = "sample";
+                    break;
                 case FetchResult.NotAvailable:
                     // Posts do come back (takedowns get withdrawn) and archives grow, so look again in a month.
                     _store.RecordFailure(postId, outcome.Detail, TimeSpan.FromDays(30));
-                    return false;
+                    status = "unavailable";
+                    break;
                 default:
                     _store.RecordFailure(postId, outcome.Detail, RetryDelay(_store.AttemptsSoFar(postId)));
                     _logger.LogWarning("Post {Id}: {Detail}", postId, outcome.Detail);
-                    return false;
+                    status = "failed";
+                    break;
             }
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
@@ -123,8 +171,11 @@ public sealed class DownloadService : BackgroundService
         {
             _store.RecordFailure(postId, ex.Message, RetryDelay(_store.AttemptsSoFar(postId)));
             _logger.LogError(ex, "Post {Id} failed.", postId);
-            return false;
+            status = "failed";
         }
+
+        _progress.FileFinished(postId, saved, post?.Md5 ?? "", post?.Ext ?? "", status);
+        return saved;
     }
 
     private static TimeSpan RetryDelay(int attemptsSoFar) => attemptsSoFar switch
