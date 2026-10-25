@@ -1,0 +1,5 @@
+<Solution>
+  <Project Path="src/Core/SpankBank.Core.csproj" />
+  <Project Path="src/Data/SpankBank.Data.csproj" />
+  <Project Path="src/Worker/SpankBank.Worker.csproj" />
+</Solution>
