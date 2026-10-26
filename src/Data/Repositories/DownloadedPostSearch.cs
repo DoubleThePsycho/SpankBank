@@ -232,6 +232,29 @@ public sealed class DownloadedPostSearch
             }
             case "ischild" or "hasparent":
                 return value switch { "true" => "d.ParentId IS NOT NULL", "false" => "d.ParentId IS NULL", _ => null };
+            case "isparent":
+                // Has a child among the local posts.
+                return value switch
+                {
+                    "true" => "EXISTS (SELECT 1 FROM Posts c WHERE c.ParentId = d.Id AND c.SavedAt IS NOT NULL)",
+                    "false" => "NOT EXISTS (SELECT 1 FROM Posts c WHERE c.ParentId = d.Id AND c.SavedAt IS NOT NULL)",
+                    _ => null,
+                };
+            case "inpool":
+                return value switch
+                {
+                    "true" => "EXISTS (SELECT 1 FROM srv.PoolPosts pp WHERE pp.PostId = d.Id)",
+                    "false" => "NOT EXISTS (SELECT 1 FROM srv.PoolPosts pp WHERE pp.PostId = d.Id)",
+                    _ => null,
+                };
+            case "pool":
+            {
+                if (value == "any") return "EXISTS (SELECT 1 FROM srv.PoolPosts pp WHERE pp.PostId = d.Id)";
+                if (value == "none") return "NOT EXISTS (SELECT 1 FROM srv.PoolPosts pp WHERE pp.PostId = d.Id)";
+                return long.TryParse(value, out var poolId)
+                    ? $"EXISTS (SELECT 1 FROM srv.PoolPosts pp WHERE pp.PostId = d.Id AND pp.PoolId = {p(poolId)})"
+                    : null;
+            }
             case "date":
             {
                 var filter = DateSyntaxParser.Parse(value);

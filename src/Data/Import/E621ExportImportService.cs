@@ -172,6 +172,7 @@ public sealed class E621ExportImportService
                 rowsImported++;
             }
 
+            PoolPostsIndex.Rebuild(connection, transaction);
             transaction.Commit();
             result = new ImportSmokeTestResult("pools", sourcePath, startedAt, DateTimeOffset.UtcNow,
                 Succeeded: true, rowsImported, ErrorMessage: null);

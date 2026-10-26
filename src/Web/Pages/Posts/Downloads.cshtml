@@ -19,7 +19,7 @@
     <tbody>
       <tr><th>Local files</th><td>@Model.LocalFiles.ToString("N0")</td></tr>
       <tr><th>Waiting to download</th><td>@Model.Waiting.ToString("N0")@(Model.Paused ? " (downloads are paused)" : "")</td></tr>
-      <tr><th>Saved today</th><td>@Model.SavedToday.ToString("N0") of @Model.DailyLimit.ToString("N0") <span class="hint">(the limit and the pause switch are in <a href="/settings">Settings</a>)</span></td></tr>
+      <tr><th>Saved today</th><td>@Model.SavedToday.ToString("N0")@(Model.DailyLimit > 0 ? $" of {Model.DailyLimit:N0}" : " (no daily limit)") <span class="hint">(the limit and the pause switch are in <a href="/settings">Settings</a>)</span></td></tr>
     </tbody>
   </table>
 

@@ -137,6 +137,16 @@ public static class DatabaseInitializer
             """);
 
         EnsureColumn(connection, "Pools", "PostCount", "INTEGER NOT NULL DEFAULT 0");
+        // Which pools each post is in, in pool order. Rebuilt from Pools.PostIds whenever pools are imported.
+        Execute(connection, """
+            CREATE TABLE IF NOT EXISTS PoolPosts (
+                PoolId   INTEGER NOT NULL,
+                PostId   INTEGER NOT NULL,
+                Position INTEGER NOT NULL,
+                PRIMARY KEY (PoolId, PostId)
+            ) WITHOUT ROWID;
+            """);
+        Execute(connection, "CREATE INDEX IF NOT EXISTS IX_PoolPosts_PostId ON PoolPosts (PostId);");
         Execute(connection, "CREATE INDEX IF NOT EXISTS IX_Pools_Name ON Pools (Name);");
         Execute(connection, "CREATE INDEX IF NOT EXISTS IX_Pools_Category ON Pools (Category);");
         Execute(connection, "CREATE INDEX IF NOT EXISTS IX_Pools_IsActive ON Pools (IsActive);");
@@ -168,6 +178,7 @@ public static class DatabaseInitializer
         Execute(connection, "CREATE INDEX IF NOT EXISTS IX_DevicePosts_SavedAt ON Posts (SavedAt);");
         Execute(connection, "CREATE INDEX IF NOT EXISTS IX_DevicePosts_Status ON Posts (Status);");
         Execute(connection, "CREATE INDEX IF NOT EXISTS IX_DevicePosts_Md5 ON Posts (Md5);");
+        Execute(connection, "CREATE INDEX IF NOT EXISTS IX_DevicePosts_ParentId ON Posts (ParentId);");
 
         Execute(connection, """
             CREATE TABLE IF NOT EXISTS Tags (

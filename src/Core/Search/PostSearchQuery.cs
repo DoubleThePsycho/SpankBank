@@ -50,6 +50,8 @@ public sealed class PostSearchQuery
     /// <summary>Value of limit:, if given.</summary>
     public int? Limit { get; private init; }
     public string? Error { get; private init; }
+    /// <summary>True when the search uses terms only the posts page can evaluate (pools, children), not a watch.</summary>
+    public bool NeedsDatabase { get; private init; }
 
     /// <summary>Column-only part of the search (everything except tag terms).</summary>
     public bool MatchesRow(in PostMatchRow row)
@@ -78,6 +80,7 @@ public sealed class PostSearchQuery
         string? order = null;
         int? limit = null;
         string? error = null;
+        var needsDatabase = false;
 
         foreach (var raw in (text ?? "").Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries))
         {
@@ -109,6 +112,18 @@ public sealed class PostSearchQuery
                 continue;
             }
 
+            if (name is "inpool" or "pool" or "isparent" or "haschild" or "hasparent")
+            {
+                // hasparent is another name for ischild; the rest are answered from the database.
+                if (name == "hasparent") name = "ischild";
+                else
+                {
+                    needsDatabase = true;
+                    terms.Add(new MetaTerm(name == "haschild" ? "isparent" : name, value, negated));
+                    continue;
+                }
+            }
+
             var filter = BuildFilter(name, value);
             if (filter is null)
             {
@@ -131,6 +146,7 @@ public sealed class PostSearchQuery
             Terms = terms,
             Order = order,
             Limit = limit,
+            NeedsDatabase = needsDatabase,
             Error = error,
         };
     }

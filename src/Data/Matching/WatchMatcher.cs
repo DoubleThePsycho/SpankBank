@@ -191,12 +191,13 @@ public sealed class WatchMatcher
                 case WatchedItemType.Search:
                 {
                     var query = PostSearchQuery.Parse(source);
-                    var watch = new ScanWatch(id) { Query = query, Error = query.Error };
+                    var problem = query.Error ?? (query.NeedsDatabase ? "A watch cannot use pool or parent/child terms yet." : null);
+                    var watch = new ScanWatch(id) { Query = query, Error = problem };
                     watch.Required = query.Required.Select(Expand).ToArray();
                     watch.Excluded = query.Excluded.Select(Expand).ToArray();
                     watch.AnyOf = query.AnyOf.Count > 0 ? query.AnyOf.SelectMany(Expand).Distinct().ToArray() : null;
                     // A query that failed to parse matches nothing rather than everything.
-                    if (query.Error is null) watches.Add(watch); else MarkFailed(id, query.Error);
+                    if (problem is null) watches.Add(watch); else MarkFailed(id, problem);
                     break;
                 }
 

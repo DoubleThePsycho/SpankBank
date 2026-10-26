@@ -51,7 +51,8 @@ public sealed class DownloadService : BackgroundService
                 }
 
                 var maxPerDay = int.TryParse(_settings.Get(WorkerSettingsKeys.DownloadMaxPerDay), out var configured) ? configured : DefaultMaxPerDay;
-                var room = maxPerDay - _store.SavedToday();
+                // 0 means no daily limit.
+                var room = maxPerDay <= 0 ? int.MaxValue : maxPerDay - _store.SavedToday();
                 var batch = room > 0 ? _store.NextPending(Math.Min(24, room), DateTimeOffset.UtcNow) : [];
 
                 if (batch.Count == 0)

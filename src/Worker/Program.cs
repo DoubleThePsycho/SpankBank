@@ -9,6 +9,7 @@ var builder = Host.CreateApplicationBuilder(args);
 
 var paths = DatabaseInitializer.GetDatabasePaths(WorkerPaths.DbDir);
 DatabaseInitializer.Initialize(paths);
+SpankBank.Data.Import.PoolPostsIndex.EnsureFilled(paths.ServerDatabasePath);
 
 builder.Services.AddSingleton(paths);
 builder.Services.AddSingleton(new SettingsRepository(paths.AppDatabasePath));
