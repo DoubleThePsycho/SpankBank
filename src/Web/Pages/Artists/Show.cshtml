@@ -103,7 +103,7 @@
     @if (Model.RecentPosts.Count > 0)
     {
       <div class="recent-posts">
-        <h1>Local posts</h1>
+        <h1>Local posts (<a href="/posts?tags=@Uri.EscapeDataString(artist.Name)">view all</a>)</h1>
         <section class="posts-container">
           @foreach (var post in Model.RecentPosts)
           {

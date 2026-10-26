@@ -14,8 +14,9 @@ public class IndexModel : PageModel
     private readonly DownloadedPostSearch _search;
     private readonly TagsRepository _tags;
 
-    public IndexModel(DownloadedPostSearch search, TagsRepository tags, FavoriteFolders folders)
+    public IndexModel(DownloadedPostSearch search, TagsRepository tags, FavoriteFolders folders, CatalogBrowser catalog)
     {
+        _catalog = catalog;
         _folders = folders;
         _search = search;
         _tags = tags;
@@ -32,6 +33,13 @@ public class IndexModel : PageModel
     public string BasePath => IsFavorites ? "/favorites" : "/posts";
 
     private readonly FavoriteFolders _folders;
+    private readonly CatalogBrowser _catalog;
+
+    /// <summary>The artist when the search is just their tag.</summary>
+    public ArtistRow? Artist { get; private set; }
+
+    /// <summary>What post links carry as ?q=, so a post page can build on this search. Nothing for the plain listing.</summary>
+    public string? PostQuery => string.IsNullOrWhiteSpace(Tags) ? null : (IsFavorites ? "fav:true " : "") + Tags.Trim();
 
     /// <summary>The folder being browsed on /favorites; null at the top level. Folders only show while not searching.</summary>
     public FavoriteFolder? CurrentFolder { get; private set; }
@@ -71,6 +79,10 @@ public class IndexModel : PageModel
         Items = result.Items;
 
         BuildSidebar();
+
+        var single = Tags?.Trim();
+        if (!string.IsNullOrEmpty(single) && single.IndexOfAny([' ', '-', '~', ':', '*']) < 0)
+            Artist = _catalog.GetArtist(single.ToLowerInvariant());
     }
 
     // What is searched: on /favorites the typed tags plus "fav:true", and "order:favorited" unless the user chose an order.

@@ -31,6 +31,8 @@ public class ShowModel : PageModel
     public bool ParentIsLocal { get; private set; }
     public IReadOnlyList<PoolNavItem> PoolNav { get; private set; } = [];
     public bool IsFavorite { get; private set; }
+    /// <summary>The search this post was reached from (?q=), shown in the search box to build on.</summary>
+    public string? Query { get; private set; }
     /// <summary>The parent and children that are on this device, shown as thumbnails under the relationship notices.</summary>
     public IReadOnlyList<PostListItem> ParentPreview { get; private set; } = [];
     public IReadOnlyList<PostListItem> ChildPreview { get; private set; } = [];
@@ -53,6 +55,7 @@ public class ShowModel : PageModel
         ChildIds = _downloaded.GetChildIds(id);
         ParentIsLocal = post.ParentId is { } parent && _downloaded.Exists(parent);
         PoolNav = _search.GetPoolNavigation(id, long.TryParse(Request.Query.ContainsKey("pool_id") ? Request.Query["pool_id"] : Request.Query["pool"], out var poolId) ? poolId : null);
+        Query = Request.Query["q"].ToString() is { Length: > 0 } q ? q : null;
         IsFavorite = _favorites.IsFavorite(id);
         ParentPreview = ParentIsLocal ? _search.GetPosts([post.ParentId!.Value]) : [];
         ChildPreview = _search.GetPosts(ChildIds).OrderBy(p => p.Id).ToList();

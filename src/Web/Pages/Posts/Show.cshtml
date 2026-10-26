@@ -25,7 +25,7 @@
         <label for="tags" class="post-search-title">Posts</label>
         <span class="post-search-help"></span>
         <form method="get" action="/posts" rel="search" class="post-search-form">
-          <textarea name="tags" id="tags" data-autocomplete="tag-query" placeholder="Search posts by tag" rows="1"></textarea>
+          <textarea name="tags" id="tags" data-autocomplete="tag-query" placeholder="Search posts by tag" rows="1">@Model.Query</textarea>
           <button type="submit" title="Search"><svg-icon name="search" /></button>
         </form>
       </section>

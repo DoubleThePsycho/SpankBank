@@ -1,6 +1,14 @@
 @model SpankBank.Data.Repositories.PostListItem
 @{
     var post = Model;
+    // pool_id picks the pool bar shown first; q is the search the post was reached from, so the post page can build on it.
+    string PostLinkQuery()
+    {
+        var parts = new List<string>();
+        if (ViewData["PoolId"] is long poolId) parts.Add($"pool_id={poolId}");
+        if (ViewData["Query"] is string { Length: > 0 } query) parts.Add("q=" + Uri.EscapeDataString(query));
+        return parts.Count == 0 ? "" : "?" + string.Join("&", parts);
+    }
     var rating = post.Rating.ToString().ToLowerInvariant();
     var ratingLetter = post.Rating switch { SpankBank.Core.Models.PostRating.Safe => "s", SpankBank.Core.Models.PostRating.Questionable => "q", _ => "e" };
     var ratingClass = post.Rating switch { SpankBank.Core.Models.PostRating.Safe => "rating-safe", SpankBank.Core.Models.PostRating.Questionable => "rating-questionable", _ => "rating-explicit" };
@@ -8,7 +16,7 @@
     var scoreIcon = post.Score == 0 ? "square_slash" : post.Score > 0 ? "arrow_up_dash" : "arrow_down_dash";
 }
 <article class="thumbnail @ratingClass blacklistable" data-id="@post.Id" data-rating="@ratingLetter" data-score="@post.Score" data-file-ext="@post.FileExt">
-  <a href="/posts/@post.Id@(ViewData["PoolId"] is long poolId ? $"?pool_id={poolId}" : "")" class="thm-link" data-hover-text="Rating: @ratingLetter&#10;ID: @post.Id&#10;Date: @post.CreatedAt.ToString("yyyy-MM-dd HH:mm")&#10;Score: @post.Score" data-file-ext="@post.FileExt">
+  <a href="/posts/@post.Id@PostLinkQuery()" class="thm-link" data-hover-text="Rating: @ratingLetter&#10;ID: @post.Id&#10;Date: @post.CreatedAt.ToString("yyyy-MM-dd HH:mm")&#10;Score: @post.Score" data-file-ext="@post.FileExt">
     <picture>
       <img src="@SpankBank.Web.Pages.Posts.IndexModel.PreviewUrl(post)" alt="post #@post.Id" loading="lazy">
     </picture>

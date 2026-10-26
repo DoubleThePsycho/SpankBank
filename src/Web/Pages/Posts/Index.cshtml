@@ -74,6 +74,22 @@
     </div>
 
     <div id="posts" class="post-index-gallery">
+      @if (Model.Artist is { } artist)
+      {
+        @* Like e621's wiki excerpt above the posts, with what the catalog knows about the artist. *@
+        <section class="wiki-excerpt loading hidden">
+          <h3 role="button" class="wiki-excerpt-toggle">
+            <svg-icon name="chevron_right" />
+            <span class="category-1">Artist: @artist.Name.Replace('_', ' ')</span>
+            <button type="button" class="st-button icon wiki-excerpt-dismiss"><svg-icon name="times" /></button>
+          </h3>
+          <div class="styled-dtext">
+            @if (artist.OtherNames.Count > 0) { <p>Other names: @string.Join(", ", artist.OtherNames.Select(n => n.Replace('_', ' ')))</p> }
+            <p>@artist.PostCount.ToString("N0") posts online, @Model.Total.ToString("N0") @(Model.IsFavorites ? "favorited" : "local").</p>
+          </div>
+          <a href="/artist/@Uri.EscapeDataString(artist.Name)" class="wiki-excerpt-readmore"><span>Artist page</span></a>
+        </section>
+      }
       <section class="posts-container@(Model.FolderView ? " favorites-view" : "")">
         @if (Model.FolderView)
         {
@@ -104,7 +120,7 @@
         }
         @foreach (var post in Model.Items)
         {
-          <partial name="_PostThumbnail" model="post" />
+          <partial name="_PostThumbnail" model="post" view-data='new ViewDataDictionary(ViewData) { { "Query", Model.PostQuery } }' />
         }
       </section>
 
