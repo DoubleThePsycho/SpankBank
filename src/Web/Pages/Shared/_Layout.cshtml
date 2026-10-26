@@ -49,10 +49,15 @@
     </menu>
 
     <menu class="nav-primary desktop">
-      @foreach (var (text, icon, url) in new[] { ("Artists", "brush", "/artists"), ("Posts", "images", "/posts"), ("Pools", "library", "/pools"), ("Tags", "tags", "/tags"), ("Watches", "heart", "/watches"), ("Status", "settings", "/status") })
+      @foreach (var (text, icon, url, alsoUnder) in new[]
+      {
+          ("Artists", "brush", "/artists", "/artist/"), ("Posts", "images", "/posts", ""), ("Pools", "library", "/pools", "/pool/"),
+          ("Searches", "search", "/searches", ""), ("Tags", "tags", "/tags", ""), ("Status", "settings", "/status", ""),
+      })
       {
         var id = "nav-" + text.ToLowerInvariant();
-        <li id="@id" class="@(path.StartsWith(url, StringComparison.OrdinalIgnoreCase) ? "current" : null)">
+        var current = path.StartsWith(url, StringComparison.OrdinalIgnoreCase) || (alsoUnder.Length > 0 && path.StartsWith(alsoUnder, StringComparison.OrdinalIgnoreCase));
+        <li id="@id" class="@(current ? "current" : null)">
           <a href="@url" id="@id-link"><svg-icon name="@icon" /> <span>@text</span></a>
         </li>
       }

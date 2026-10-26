@@ -1,0 +1,73 @@
+@page "/pools/{scope}/gallery"
+@model SpankBank.Web.Pages.Pools.GalleryModel
+@* Follows e621ng app/views/pools/gallery.html.erb (BSD-2, see THIRD-PARTY-NOTICES.md). *@
+@{
+    ViewData["Title"] = (Model.IsLocal ? "Local" : "Online") + " pool gallery";
+}
+@section SecondaryNav {
+  <partial name="_AreaNav" model='"pools"' />
+}
+<div id="c-pools" class="container-fluid">
+  <div id="a-gallery">
+    @if (!Model.IsLocal)
+    {
+      <div class="section" id="searchform">
+        <form method="get" action="/pools/online/gallery" class="simple_form inline-form">
+          <div class="input string"><label for="name">Name</label><input type="text" id="name" name="name" value="@Model.Name"></div>
+          <div class="input string"><label for="description">Description</label><input type="text" id="description" name="description" value="@Model.Description"></div>
+          <div class="input select">
+            <label for="status">Status</label>
+            <select id="status" name="status">
+              <option value="">Any</option>
+              <option value="active" selected="@(Model.Status == "active")">Active</option>
+              <option value="inactive" selected="@(Model.Status == "inactive")">Inactive</option>
+            </select>
+          </div>
+          <div class="input select">
+            <label for="category">Category</label>
+            <select id="category" name="category">
+              <option value="">Any</option>
+              <option value="series" selected="@(Model.Category == "series")">Series</option>
+              <option value="collection" selected="@(Model.Category == "collection")">Collection</option>
+            </select>
+          </div>
+          <div class="input select">
+            <label for="order">Order</label>
+            <select id="order" name="order">
+              <option value="updated" selected="@(Model.Order == "updated")">Last updated</option>
+              <option value="name" selected="@(Model.Order == "name")">Name</option>
+              <option value="created" selected="@(Model.Order == "created")">Recently created</option>
+              <option value="count" selected="@(Model.Order == "count")">Post count</option>
+            </select>
+          </div>
+          <input type="submit" value="Search" class="st-button">
+        </form>
+      </div>
+    }
+
+    <h2>@(Model.IsLocal ? "Local pools" : "Online pools")</h2>
+
+    <section class="posts-container pool-gallery">
+      @foreach (var card in Model.Cards)
+      {
+        <article class="thumbnail pool-card pool-category-@card.Category">
+          <a href="/pool/@card.Id" class="thm-link" title="@card.Name">
+            <picture>
+              <img src="@(card.CoverUrl ?? "/dist/assets/blank.png")" alt="@card.Name" loading="lazy" referrerpolicy="no-referrer">
+            </picture>
+          </a>
+          <div class="pool-card-title">
+            <a href="/pool/@card.Id">@card.Name</a>
+            <span>@card.Caption</span>
+          </div>
+        </article>
+      }
+      @if (Model.Cards.Count == 0)
+      {
+        <p>@(Model.IsLocal ? "No local pools yet. Add one from the online list or an artist's suggestions." : "No pools match.")</p>
+      }
+    </section>
+
+    <partial name="_Paginator" model="new SpankBank.Web.Services.PagerModel(Model.PageNumber, Model.LastPage, Model.PageUrl)" />
+  </div>
+</div>

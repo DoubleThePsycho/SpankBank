@@ -42,7 +42,7 @@
             <td class="category-@tag.Category">
               @if (tag.Category == 1)
               {
-                <a href="/artists/@Uri.EscapeDataString(tag.Name)">?</a>
+                <a href="/artist/@Uri.EscapeDataString(tag.Name)">?</a>
               }
               else
               {
@@ -50,7 +50,7 @@
               }
               <a href="/posts?tags=@Uri.EscapeDataString(tag.Name)">@tag.Name</a>
             </td>
-            <td><a href="https://e621.net/posts?tags=@Uri.EscapeDataString(tag.Name)" rel="nofollow noopener">on e621</a></td>
+            <td><a href="https://e621.net/posts?tags=@Uri.EscapeDataString(tag.Name)" rel="nofollow noopener">online</a></td>
           </tr>
         }
         @if (Model.Result.Rows.Count == 0)

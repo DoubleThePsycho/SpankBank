@@ -49,6 +49,6 @@ public class IndexModel : PageModel
     }
 
     public string PageUrl(int page)
-        => $"/pools?page={page}&name={Uri.EscapeDataString(Name ?? "")}&description={Uri.EscapeDataString(Description ?? "")}"
+        => $"/pools/online?page={page}&name={Uri.EscapeDataString(Name ?? "")}&description={Uri.EscapeDataString(Description ?? "")}"
          + $"&category={Category}&status={Status}&order={Order}";
 }

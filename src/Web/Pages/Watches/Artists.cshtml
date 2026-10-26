@@ -1,13 +1,14 @@
-@page "/watches/artists"
+@page "/artists/local"
 @model SpankBank.Web.Pages.Watches.ArtistsModel
 @using SpankBank.Core.Models
 @{
-    ViewData["Title"] = "Watched artists";
+    ViewData["Title"] = "Local artists";
+    ViewData["Area"] = "artists";
     Layout = "_WatchesLayout";
 }
 
 <div class="watches-header">
-  <h1>Artists</h1>
+  <h1>Local artists</h1>
   <button type="button" class="st-button" data-open-modal="modal-add">Add artist</button>
 </div>
 

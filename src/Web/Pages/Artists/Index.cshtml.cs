@@ -44,5 +44,5 @@ public class IndexModel : PageModel
     }
 
     public string PageUrl(int page)
-        => $"/artists?page={page}&name={Uri.EscapeDataString(Name ?? "")}&order={Order}" + (ShowEmpty ? "&empty=1" : "");
+        => $"/artists/online?page={page}&name={Uri.EscapeDataString(Name ?? "")}&order={Order}" + (ShowEmpty ? "&empty=1" : "");
 }

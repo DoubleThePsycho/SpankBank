@@ -5,7 +5,7 @@
     var characters = Model.ArtistTags.Where(t => t.Kind == ArtistTagKind.Character).ToList();
 }
 <div data-summary data-status="@(Model.Enabled ? "enabled" : "disabled")" data-aliases="@aliases.Count" data-characters="@characters.Count(c => c.Enabled) / @characters.Count" data-matches="@Model.MatchText">
-  <p class="watch-aliases">Matches @Model.MatchText posts in the catalog.@if (Model.SuggestedPools > 0) { <text> <a href="/watches/pools#suggested">@Model.SuggestedPools suggested pool@(Model.SuggestedPools == 1 ? "" : "s") →</a></text> }</p>
+  <p class="watch-aliases">Matches @Model.MatchText posts in the catalog.@if (Model.SuggestedPools > 0) { <text> <a href="/pools/local#suggested">@Model.SuggestedPools suggested pool@(Model.SuggestedPools == 1 ? "" : "s") →</a></text> }</p>
   @if (aliases.Count > 0)
   {
     <p class="watch-aliases">Also known as: @string.Join(", ", aliases)</p>

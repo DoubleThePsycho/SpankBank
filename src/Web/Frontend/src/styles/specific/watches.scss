@@ -79,3 +79,28 @@
     .watch-row-actions a[data-submit] { text-decoration: underline; }
   }
 }
+
+// Pool gallery: one cover per pool with its name underneath.
+#c-pools .pool-gallery {
+  .pool-card {
+    display: flex;
+    flex-flow: column;
+    align-items: stretch;
+    min-width: 0;
+
+    .pool-card-title {
+      box-sizing: border-box;
+      width: 100%;
+      min-width: 0;
+      display: flex;
+      flex-flow: column;
+      padding: 0.25rem 0.35rem;
+      background: themed("color-section");
+      border-radius: 0 0 0.25rem 0.25rem;
+      font-size: 0.85rem;
+
+      a { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      span { color: themed("color-text-muted"); font-size: 0.8rem; }
+    }
+  }
+}

@@ -1,15 +1,8 @@
-@inject SpankBank.Data.Repositories.WatchesRepository Watches
 @{
     Layout = "_Layout";
-    var suggestedPools = Watches.CountPoolSuggestions();
-    var path = Context.Request.Path.Value ?? "";
 }
 @section SecondaryNav {
-  @foreach (var (text, url) in new[] { ("Artists", "/watches/artists"), ("Pools", "/watches/pools"), ("Searches", "/watches/searches") })
-  {
-    var id = "subnav-" + text.ToLowerInvariant();
-    <li id="@id" class="@(path.StartsWith(url, StringComparison.OrdinalIgnoreCase) ? "current" : null)"><a href="@url" id="@id-link">@text@if (text == "Pools" && suggestedPools > 0) { <span class="watch-badge">@suggestedPools</span> }</a></li>
-  }
+  <partial name="_AreaNav" model='(ViewData["Area"] as string) ?? ""' />
 }
 <div id="c-watches" class="container">
   @RenderBody()

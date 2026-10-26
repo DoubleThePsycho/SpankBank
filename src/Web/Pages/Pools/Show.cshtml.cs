@@ -37,7 +37,7 @@ public class ShowModel : PageModel
         Pool = pool;
         Watch = _watches.GetAll(WatchedItemType.Pool).FirstOrDefault(w => w.SourceValue == id.ToString());
 
-        // The pool's order, restricted to what is on this device.
+        // The pool's order, restricted to the local posts.
         var onDevice = _downloaded.GetPosts(pool.PostIds).ToDictionary(p => p.Id);
         var ordered = pool.PostIds.Where(onDevice.ContainsKey).Select(postId => onDevice[postId]).ToList();
         OnDevice = ordered.Count;
@@ -58,5 +58,5 @@ public class ShowModel : PageModel
         return RedirectToPage(null, new { id });
     }
 
-    public string PageUrl(int page) => $"/pools/{Pool.Id}?page={page}";
+    public string PageUrl(int page) => $"/pool/{Pool.Id}?page={page}";
 }

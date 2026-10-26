@@ -1,13 +1,16 @@
-@page "/pools"
+@page "/pools/online"
 @model SpankBank.Web.Pages.Pools.IndexModel
 @* Markup follows e621ng app/views/pools/index.html.erb and _search.html.erb (BSD-2, see THIRD-PARTY-NOTICES.md). *@
 @{
-    ViewData["Title"] = "Pools";
+    ViewData["Title"] = "Online pools";
+}
+@section SecondaryNav {
+  <partial name="_AreaNav" model='"pools"' />
 }
 <div id="c-pools" class="container-fluid">
   <div id="a-index">
     <div class="section" id="searchform">
-      <form method="get" action="/pools" class="simple_form inline-form">
+      <form method="get" action="/pools/online" class="simple_form inline-form">
         <div class="input string"><label for="name">Name</label><input type="text" id="name" name="name" value="@Model.Name"></div>
         <div class="input string"><label for="description">Description</label><input type="text" id="description" name="description" value="@Model.Description"></div>
         <div class="input select">
@@ -39,17 +42,17 @@
       </form>
     </div>
 
-    <h2>Pools</h2>
+    <h2>Online pools</h2>
     <table class="striped">
       <thead><tr><th width="60%">Name</th><th width="10%">Count</th><th width="15%">Type</th><th width="15%"></th></tr></thead>
       <tbody>
         @foreach (var pool in Model.Result.Rows)
         {
           <tr id="pool-@pool.Id" class="pool-category-@pool.Category">
-            <td><a href="/pools/@pool.Id">@pool.Name.Replace('_', ' ')</a></td>
+            <td><a href="/pool/@pool.Id">@pool.Name.Replace('_', ' ')</a></td>
             <td>@pool.PostCount.ToString("N0")</td>
             <td>@pool.Category</td>
-            <td>@(Model.Watched.Contains(pool.Id.ToString()) ? "watched" : "")</td>
+            <td>@(Model.Watched.Contains(pool.Id.ToString()) ? "local" : "")</td>
           </tr>
         }
         @if (Model.Result.Rows.Count == 0)

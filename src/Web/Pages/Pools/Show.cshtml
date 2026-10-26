@@ -1,9 +1,12 @@
-@page "/pools/{id:long}"
+@page "/pool/{id:long}"
 @model SpankBank.Web.Pages.Pools.ShowModel
 @* Markup follows e621ng app/views/pools/show.html.erb (BSD-2, see THIRD-PARTY-NOTICES.md). *@
 @{
     var pool = Model.Pool;
     ViewData["Title"] = "Pool - " + pool.Name.Replace('_', ' ');
+}
+@section SecondaryNav {
+  <partial name="_AreaNav" model='"pools"' />
 }
 <div id="c-pools" class="container-fluid">
   <div id="a-show">
@@ -20,11 +23,11 @@
     }
 
     <p>
-      @pool.PostIds.Count.ToString("N0") posts on e621, @Model.OnDevice.ToString("N0") on this device.
+      @pool.PostIds.Count.ToString("N0") posts online, @Model.OnDevice.ToString("N0") local.
       @if (!pool.IsActive) { <text>This pool is inactive.</text> }
       @if (Model.Watch is { } watch)
       {
-        <text>Watching: @(watch.Enabled ? "enabled" : "disabled"). <a href="/watches/pools">Manage</a></text>
+        <text>Watching: @(watch.Enabled ? "enabled" : "disabled"). <a href="/pools/local">Manage</a></text>
       }
       else
       {
@@ -42,7 +45,7 @@
         }
         @if (Model.Posts.Count == 0)
         {
-          <p>@(Model.Watch is null ? "Nothing from this pool is downloaded yet." : "Nothing downloaded yet. The files arrive as the downloader works through your watches.")</p>
+          <p>@(Model.Watch is null ? "No local posts from this pool yet." : "No local posts yet. The files arrive as the downloader works through your watches.")</p>
         }
       </section>
     </div>

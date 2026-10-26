@@ -28,7 +28,7 @@
       <tr><th>Last result</th><td>@(Model.LastRunResult ?? "-")</td></tr>
       <tr><th>Daily run (UTC)</th><td>@Model.DailyRunTimeUtc</td></tr>
       <tr><th>Posts in catalog</th><td>@Model.PostCount.ToString("N0")</td></tr>
-      <tr><th>Files on this device</th><td>@Model.DownloadedCount.ToString("N0")</td></tr>
+      <tr><th>Local files</th><td>@Model.DownloadedCount.ToString("N0")</td></tr>
       <tr><th>Waiting to download</th><td>@Model.Waiting.ToString("N0")@(Model.DownloadsPaused ? " (downloads are paused)" : "")</td></tr>
       <tr><th>Saved today</th><td>@Model.SavedToday.ToString("N0") of @Model.DailyLimit.ToString("N0")</td></tr>
     </tbody>

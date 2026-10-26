@@ -37,6 +37,12 @@ if (Directory.Exists(WebPaths.MediaDir))
     app.UseStaticFiles(new StaticFileOptions { FileProvider = new PhysicalFileProvider(WebPaths.MediaDir), RequestPath = "/media" });
 app.MapRazorPages();
 
+// The watch pages used to live under /watches.
+app.MapGet("/watches", () => Results.Redirect("/artists/local", permanent: true));
+app.MapGet("/watches/artists", () => Results.Redirect("/artists/local", permanent: true));
+app.MapGet("/watches/pools", () => Results.Redirect("/pools/local", permanent: true));
+app.MapGet("/watches/searches", () => Results.Redirect("/searches", permanent: true));
+
 // e621ng-compatible tag autocomplete (js/components/autocomplete/providers/TagProvider.ts).
 app.MapGet("/tags/autocomplete.json", (HttpContext http, TagsRepository tags) =>
 {

@@ -170,6 +170,45 @@ public sealed class CatalogBrowser
                 .Select(i => long.TryParse(i, out var postId) ? postId : 0).Where(i => i > 0).ToList());
     }
 
+    /// <summary>
+    /// The md5 of each pool's cover: its first post that e621 has not deleted, looking at the first dozen. Pools without one are left out.
+    /// </summary>
+    public Dictionary<long, string> CoverMd5s(IReadOnlyCollection<long> poolIds)
+    {
+        var covers = new Dictionary<long, string>();
+        if (poolIds.Count == 0) return covers;
+
+        using var connection = Open();
+        var firstIds = new Dictionary<long, List<long>>();
+        foreach (var poolId in poolIds)
+        {
+            using var cmd = connection.CreateCommand();
+            cmd.CommandText = "SELECT PostIds FROM Pools WHERE Id = $id;";
+            cmd.Parameters.AddWithValue("$id", poolId);
+            if (cmd.ExecuteScalar() is string ids)
+                firstIds[poolId] = ids.Split(',', StringSplitOptions.RemoveEmptyEntries).Take(12)
+                    .Select(i => long.TryParse(i, out var id) ? id : 0).Where(i => i > 0).ToList();
+        }
+
+        var all = firstIds.Values.SelectMany(i => i).Distinct().ToList();
+        if (all.Count == 0) return covers;
+
+        var md5ById = new Dictionary<long, string>();
+        using (var cmd = connection.CreateCommand())
+        {
+            var placeholders = all.Select((_, i) => $"$p{i}").ToList();
+            cmd.CommandText = $"SELECT Id, Md5 FROM Posts WHERE IsDeleted = 0 AND Md5 IS NOT NULL AND Id IN ({string.Join(", ", placeholders)});";
+            for (var i = 0; i < all.Count; i++) cmd.Parameters.AddWithValue(placeholders[i], all[i]);
+            using var reader = cmd.ExecuteReader();
+            while (reader.Read()) md5ById[reader.GetInt64(0)] = reader.GetString(1);
+        }
+
+        foreach (var (poolId, ids) in firstIds)
+            foreach (var id in ids)
+                if (md5ById.TryGetValue(id, out var md5)) { covers[poolId] = md5; break; }
+        return covers;
+    }
+
     // ---------------------------------------------------------------- shared
 
     private static (string Where, List<(string, object)> Parameters) TagWhere(string? nameMatches, int? category, bool hideEmpty, string? extra)

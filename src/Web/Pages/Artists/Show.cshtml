@@ -1,8 +1,11 @@
-@page "/artists/{name}"
+@page "/artist/{name}"
 @model SpankBank.Web.Pages.Artists.ShowModel
 @{
     var artist = Model.Artist;
     ViewData["Title"] = artist.Name;
+}
+@section SecondaryNav {
+  <partial name="_AreaNav" model='"artists"' />
 }
 <div id="c-artists" class="container-fluid">
   <div id="a-show">
@@ -13,14 +16,14 @@
     <table class="striped" style="max-width: 50rem;">
       <tbody>
         <tr><th>Other names</th><td>@(artist.OtherNames.Count == 0 ? "-" : string.Join(", ", artist.OtherNames))</td></tr>
-        <tr><th>Posts on e621</th><td>@artist.PostCount.ToString("N0") (<a href="https://e621.net/posts?tags=@Uri.EscapeDataString(artist.Name)" rel="nofollow noopener">view</a>, <a href="https://e621.net/artists/show_or_new?name=@Uri.EscapeDataString(artist.Name)" rel="nofollow noopener">artist page</a>)</td></tr>
-        <tr><th>On this device</th><td>@Model.DownloadedCount.ToString("N0") @if (Model.DownloadedCount > 0) { <text>(<a href="/posts?tags=@Uri.EscapeDataString(artist.Name)">view</a>)</text> }</td></tr>
+        <tr><th>Posts online</th><td>@artist.PostCount.ToString("N0") (<a href="https://e621.net/posts?tags=@Uri.EscapeDataString(artist.Name)" rel="nofollow noopener">view</a>, <a href="https://e621.net/artists/show_or_new?name=@Uri.EscapeDataString(artist.Name)" rel="nofollow noopener">artist page</a>)</td></tr>
+        <tr><th>Posts local</th><td>@Model.DownloadedCount.ToString("N0") @if (Model.DownloadedCount > 0) { <text>(<a href="/posts?tags=@Uri.EscapeDataString(artist.Name)">view</a>)</text> }</td></tr>
         <tr>
           <th>Watching</th>
           <td>
             @if (Model.Watch is { } watch)
             {
-              <text>Yes, @(watch.Enabled ? "enabled" : "disabled"): @(watch.Matched ? $"{watch.MatchText} posts matched" : "waiting to be matched"). <a href="/watches/artists">Manage</a></text>
+              <text>Yes, @(watch.Enabled ? "enabled" : "disabled"): @(watch.Matched ? $"{watch.MatchText} posts matched" : "waiting to be matched"). <a href="/artists/local">Manage</a></text>
             }
             else
             {
@@ -49,7 +52,7 @@
     @if (Model.RecentPosts.Count > 0)
     {
       <div class="recent-posts">
-        <h1>Downloaded posts</h1>
+        <h1>Local posts</h1>
         <section class="posts-container">
           @foreach (var post in Model.RecentPosts)
           {

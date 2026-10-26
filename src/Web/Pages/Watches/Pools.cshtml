@@ -1,12 +1,13 @@
-@page "/watches/pools"
+@page "/pools/local"
 @model SpankBank.Web.Pages.Watches.PoolsModel
 @{
-    ViewData["Title"] = "Watched pools";
+    ViewData["Title"] = "Local pools";
+    ViewData["Area"] = "pools";
     Layout = "_WatchesLayout";
 }
 
 <div class="watches-header">
-  <h1>Pools</h1>
+  <h1>Local pools</h1>
   <button type="button" class="st-button" data-open-modal="modal-add">Add pool</button>
 </div>
 
@@ -69,7 +70,7 @@ else
       </tbody>
     </table>
   }
-  <p><a href="@(Model.ShowAll ? "/watches/pools#suggested" : "/watches/pools?all=1#suggested")">@(Model.ShowAll ? "Show only likely pools" : "Show every pool with at least two of their posts")</a></p>
+  <p><a href="@(Model.ShowAll ? "/pools/local#suggested" : "/pools/local?all=1#suggested")">@(Model.ShowAll ? "Show only likely pools" : "Show every pool with at least two of their posts")</a></p>
 </section>
 
 <div class="st-overlay hidden" id="modal-add" role="dialog" aria-modal="true" aria-labelledby="modal-add-title" tabindex="-1">
