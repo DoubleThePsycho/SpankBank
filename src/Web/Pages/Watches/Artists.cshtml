@@ -10,10 +10,37 @@
 <div class="watches-header">
   <h1>Local artists</h1>
   <button type="button" class="st-button" data-open-modal="modal-add">Add artist</button>
+  <button type="button" class="st-button" data-open-modal="modal-bulk">Add many</button>
 </div>
 
 @if (Model.Message is not null) { <div class="notice notice-info">@Model.Message</div> }
 @if (Model.Error is not null) { <div class="notice notice-error">@Model.Error</div> }
+
+@if (Model.Bulk is { } bulk)
+{
+  <div class="notice notice-info">
+    Added @bulk.Added.Count, already watched @bulk.AlreadyWatched.Count, not recognized @bulk.Unrecognized.Count.
+    @if (bulk.Added.Count > 0) { <div>Added: @string.Join(", ", bulk.Added)</div> }
+    @if (bulk.AlreadyWatched.Count > 0) { <div>Already watched: @string.Join(", ", bulk.AlreadyWatched)</div> }
+  </div>
+  @if (bulk.Unrecognized.Count > 0)
+  {
+    <div class="notice notice-error">
+      <p>Not recognized as artist tags (copy to fix and try again):</p>
+      <textarea readonly rows="@Math.Min(12, bulk.Unrecognized.Count + 1)" style="width:100%" id="bulk-unrecognized">@string.Join("\n", bulk.Unrecognized.Select(u => u.Input))</textarea>
+      @if (bulk.Unrecognized.Any(u => u.Suggestions.Count > 0))
+      {
+        <p>Did you mean:</p>
+        <ul>
+          @foreach (var u in bulk.Unrecognized.Where(u => u.Suggestions.Count > 0))
+          {
+            <li>@u.Input &rarr; @string.Join(", ", u.Suggestions)</li>
+          }
+        </ul>
+      }
+    </div>
+  }
+}
 
 @if (Model.Entries.Count == 0)
 {
@@ -50,6 +77,21 @@ else
       </div>
       <p class="hint">Discovers characters automatically.</p>
       <button type="submit" class="st-button submit">Add</button>
+    </form>
+  </div>
+</div>
+
+<div class="st-overlay hidden" id="modal-bulk" role="dialog" aria-modal="true" aria-labelledby="modal-bulk-title" tabindex="-1">
+  <div class="st-overlay-wrapper">
+    <button type="button" class="st-button close-button" aria-label="Close">&times;</button>
+    <form method="post" asp-page-handler="Bulk" class="simple_form">
+      <h1 id="modal-bulk-title">Add many artists</h1>
+      <div class="input">
+        <label for="bulk-names">Artist names</label>
+        <textarea name="names" id="bulk-names" rows="12" autocomplete="off" required></textarea>
+      </div>
+      <p class="hint">One per line, or separated by commas. Aliases are resolved; names that are not artist tags are listed afterwards.</p>
+      <button type="submit" class="st-button submit">Add all</button>
     </form>
   </div>
 </div>

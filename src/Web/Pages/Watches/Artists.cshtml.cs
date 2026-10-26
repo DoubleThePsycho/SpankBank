@@ -13,7 +13,20 @@ public class ArtistsModel : WatchPageModel
 
     public IReadOnlyList<WatchEntry> Entries { get; private set; } = [];
 
+    /// <summary>Set after a bulk add; the page shows it above the list.</summary>
+    public BulkAddResult? Bulk { get; private set; }
+
     public void OnGet() => Entries = Watches.GetAll(WatchedItemType.Artist);
+
+    public IActionResult OnPostBulk(string? names)
+    {
+        if (ArtistBulkAdd.ParseNames(names).Count == 0)
+            return Fail("Paste at least one artist name.");
+
+        Bulk = ArtistBulkAdd.Run(Watches, names);
+        Entries = Watches.GetAll(WatchedItemType.Artist);
+        return Page();
+    }
 
     public IActionResult OnPostAdd(string? artist)
     {

@@ -401,6 +401,25 @@ public sealed class WatchesRepository
         return cmd.ExecuteScalar() is not null;
     }
 
+    /// <summary>Artist tags that start with <paramref name="name"/> (a likely typo or a partial name), most-used first.</summary>
+    public IReadOnlyList<string> SuggestArtistTags(string name, int limit = 3)
+    {
+        if (name.Length < 3) return [];
+        using var connection = new SqliteConnection(_serverConnectionString);
+        connection.Open();
+        using var cmd = connection.CreateCommand();
+        // A range scan on the Name index; LIKE '%x%' would walk 890k tags per name.
+        cmd.CommandText = """
+            SELECT Name FROM Tags
+            WHERE Category = 1 AND Name >= $from AND Name < $to AND PostCount > 0
+            ORDER BY PostCount DESC LIMIT $limit;
+            """;
+        cmd.Parameters.AddWithValue("$from", name);
+        cmd.Parameters.AddWithValue("$to", name + "\uffff");
+        cmd.Parameters.AddWithValue("$limit", limit);
+        return ReadStrings(cmd);
+    }
+
     public static string Normalize(string tag) => tag.Trim().ToLowerInvariant().Replace(' ', '_');
 
     private static string EscapeLike(string value) => value.Replace("\\", "\\\\").Replace("%", "\\%").Replace("_", "\\_");
