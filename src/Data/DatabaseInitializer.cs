@@ -253,6 +253,22 @@ public static class DatabaseInitializer
         EnsureColumn(connection, "WatchedItems", "LocalName", "TEXT");
         EnsureColumn(connection, "WatchedItems", "MatchCount", "INTEGER NOT NULL DEFAULT 0");
 
+        EnsureColumn(connection, "WatchedItems", "Origin", "TEXT");
+
+        // Pools that contain a watched artist's posts: suggested, added (automatically or by hand) or ignored.
+        // State: 0 = suggested, 1 = added to the watches, 2 = ignored.
+        Execute(connection, """
+            CREATE TABLE IF NOT EXISTS PoolSuggestions (
+                ArtistWatchId INTEGER NOT NULL REFERENCES WatchedItems (Id) ON DELETE CASCADE,
+                PoolId        INTEGER NOT NULL,
+                ArtistPosts   INTEGER NOT NULL,
+                PoolPosts     INTEGER NOT NULL,
+                IsRoot        INTEGER NOT NULL DEFAULT 1,
+                State         INTEGER NOT NULL DEFAULT 0,
+                PRIMARY KEY (ArtistWatchId, PoolId)
+            ) WITHOUT ROWID;
+            """);
+
         // Posts the downloader could not fetch (yet): when to try again, and why it failed last time.
         Execute(connection, """
             CREATE TABLE IF NOT EXISTS DownloadAttempts (

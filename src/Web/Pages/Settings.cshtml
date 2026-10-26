@@ -1,0 +1,50 @@
+@page "/settings"
+@model SpankBank.Web.Pages.SettingsModel
+@{
+    ViewData["Title"] = "Settings";
+}
+<div id="c-settings" class="container"><div id="a-index">
+  <h1>Settings</h1>
+
+  @if (Model.Message is not null) { <div class="notice notice-info">@Model.Message</div> }
+  @if (Model.Error is not null) { <div class="notice notice-error">@Model.Error</div> }
+
+  <form method="post" class="settings-form">
+    <section class="box-section">
+      <h2>Updates</h2>
+      <div class="input">
+        <label for="dailyRunTime">Update from e621 every day at (UTC)</label>
+        <input type="time" id="dailyRunTime" name="dailyRunTime" value="@Model.DailyRunTimeUtc" required>
+        <p class="hint">Downloads the new export files, imports them and re-matches your watches.</p>
+      </div>
+    </section>
+
+    <section class="box-section">
+      <h2>Downloads</h2>
+      <div class="input">
+        <label><input type="checkbox" name="downloadsEnabled" value="true" @(Model.DownloadsEnabled ? "checked" : null)> Download the posts your watches match</label>
+        <input type="hidden" name="downloadsEnabled" value="false">
+      </div>
+      <div class="input">
+        <label for="dailyLimit">Most files per day</label>
+        <input type="number" id="dailyLimit" name="dailyLimit" min="0" max="100000" value="@Model.DailyLimit" required>
+        <p class="hint">A new watch with thousands of posts is spread over several days. The day ends at 00:00 UTC.</p>
+      </div>
+    </section>
+
+    <section class="box-section">
+      <h2>Pools</h2>
+      <div class="input">
+        <label><input type="checkbox" name="poolsAutoAdd" value="true" @(Model.PoolsAutoAdd ? "checked" : null)> Add an artist's pools automatically</label>
+        <input type="hidden" name="poolsAutoAdd" value="false">
+      </div>
+      <div class="input">
+        <label for="poolsPercent">Add a pool when at least this share of its posts belong to the artist (%)</label>
+        <input type="number" id="poolsPercent" name="poolsPercent" min="1" max="100" value="@Model.PoolsPercent" required>
+        <p class="hint">Pools below the limit are listed under Watches &rarr; Pools to review. Sub-pools of a larger pool are never added automatically.</p>
+      </div>
+    </section>
+
+    <button type="submit" class="st-button">Save</button>
+  </form>
+</div></div>

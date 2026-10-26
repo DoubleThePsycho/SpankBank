@@ -5,7 +5,7 @@ using SpankBank.Core.Search;
 
 namespace SpankBank.Data.Matching;
 
-public sealed record MatchRunResult(int WatchesMatched, long PostsMatched, long RowsScanned, TimeSpan Elapsed);
+public sealed record MatchRunResult(int WatchesMatched, long PostsMatched, long RowsScanned, TimeSpan Elapsed, int PoolsAdded = 0);
 
 /// <summary>
 /// Works out which catalog posts each enabled watch matches and stores them in WatchMatches (SpankBank.sqlite).
@@ -13,12 +13,14 @@ public sealed record MatchRunResult(int WatchesMatched, long PostsMatched, long 
 /// </summary>
 public sealed class WatchMatcher
 {
+    private readonly DatabasePaths _paths;
     private readonly string _serverConnectionString;
     private readonly string _appConnectionString;
     private readonly Action<string> _log;
 
     public WatchMatcher(DatabasePaths paths, Action<string>? log = null)
     {
+        _paths = paths;
         _serverConnectionString = $"Data Source={paths.ServerDatabasePath};Mode=ReadOnly";
         _appConnectionString = $"Data Source={paths.AppDatabasePath}";
         _log = log ?? (_ => { });
@@ -69,7 +71,23 @@ public sealed class WatchMatcher
             }
         }
 
-        return new MatchRunResult(watches.Count, postsMatched, rowsScanned, DateTimeOffset.UtcNow - started);
+        var poolsAdded = 0;
+        var artists = scanned.Where(w => w.ArtistName is not null && w.Error is null)
+            .Select(w => new ArtistMatches(w.Id, w.ArtistName!, w.Matches)).ToList();
+        if (artists.Count > 0)
+        {
+            try
+            {
+                poolsAdded = new PoolSuggester(_paths).Update(artists);
+                if (poolsAdded > 0) _log($"Added {poolsAdded} pool(s) that are mostly a watched artist's work.");
+            }
+            catch (Exception ex) when (ex is SqliteException or IOException)
+            {
+                _log($"Pool suggestions failed: {ex.Message}");
+            }
+        }
+
+        return new MatchRunResult(watches.Count, postsMatched, rowsScanned, DateTimeOffset.UtcNow - started, poolsAdded);
     }
 
     // ---------------------------------------------------------------- loading watches
@@ -87,6 +105,7 @@ public sealed class WatchMatcher
     /// <summary>A watch matched by scanning posts: some tag terms plus a column-only query.</summary>
     private sealed class ScanWatch(long id) : Watch(id)
     {
+        public string? ArtistName;        // set for artist watches: their pools are suggested afterwards
         public int[][] Required = [];     // each term: any of these tag indexes
         public int[][] Excluded = [];     // each term: none of these tag indexes
         public int[]? AnyOf;              // when set: at least one of these tag indexes
@@ -160,6 +179,7 @@ public sealed class WatchMatcher
                     if (artistTags.TryGetValue(id, out var characters)) tags.AddRange(characters);
                     watches.Add(new ScanWatch(id)
                     {
+                        ArtistName = source,
                         // An artist's deleted posts are included: the downloader tries to recover them.
                         Query = PostSearchQuery.Parse("status:any"),
                         AnyOf = tags.SelectMany(Expand).Distinct().ToArray(),

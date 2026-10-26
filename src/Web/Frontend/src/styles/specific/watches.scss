@@ -55,3 +55,27 @@
     tr.disabled td { opacity: 0.5; }
   }
 }
+
+// Outside #c-watches too: the badge sits in the navigation bar.
+.watch-badge {
+  margin-left: 0.35rem;
+  padding: 0 0.4rem;
+  border-radius: 0.6rem;
+  background: themed("color-link-active");
+  color: themed("color-background");
+  font-size: 0.75rem;
+  font-weight: bold;
+}
+
+#c-watches {
+  .watch-origin { font-size: 0.8rem; color: themed("color-text-muted"); }
+
+  .watch-suggestions {
+    margin-top: 2rem;
+
+    .hint { margin: 0 0 0.75rem; color: themed("color-text-muted"); }
+    .watch-row-actions { white-space: nowrap; text-align: right; }
+    .watch-row-actions form { display: inline-block; margin: 0 0 0 0.75rem; }
+    .watch-row-actions a[data-submit] { text-decoration: underline; }
+  }
+}

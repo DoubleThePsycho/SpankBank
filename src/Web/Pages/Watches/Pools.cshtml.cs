@@ -13,8 +13,36 @@ public partial class PoolsModel : WatchPageModel
     protected override string ModalBodyPartial => "_PoolModalBody";
 
     public IReadOnlyList<WatchEntry> Entries { get; private set; } = [];
+    public IReadOnlyList<PoolSuggestion> Suggestions { get; private set; } = [];
+    public bool ShowAll { get; private set; }
 
-    public void OnGet() => Entries = Watches.GetAll(WatchedItemType.Pool);
+    public void OnGet()
+    {
+        ShowAll = Request.Query["all"] == "1";
+        Entries = Watches.GetAll(WatchedItemType.Pool);
+        Suggestions = Watches.GetPoolSuggestions(ShowAll);
+    }
+
+    /// <summary>"added automatically from kevinsano" for pools that came from an artist.</summary>
+    public static string? OriginText(string? origin) => origin switch
+    {
+        null or "" => null,
+        _ when origin.StartsWith("auto:") => $"added automatically: mostly {origin[5..]}'s work",
+        _ when origin.StartsWith("suggested:") => $"added from a suggestion for {origin[10..]}",
+        _ => null,
+    };
+
+    public IActionResult OnPostAcceptSuggestion(long poolId, string? artist)
+    {
+        Watches.AcceptPoolSuggestion(poolId, artist ?? "");
+        return Done($"Added pool #{poolId}.");
+    }
+
+    public IActionResult OnPostIgnoreSuggestion(long artistId, long poolId)
+    {
+        Watches.IgnorePoolSuggestion(artistId, poolId);
+        return RedirectToPage(null, null, null, "suggested");
+    }
 
     public IActionResult OnPostAdd(string? pool)
     {

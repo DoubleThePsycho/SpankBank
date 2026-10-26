@@ -118,3 +118,13 @@
 @media (max-width: 40rem) {
   #c-status .status-files li { flex-wrap: wrap; .name { flex-basis: 100%; } .size { flex: 1; text-align: left; } }
 }
+
+// The settings page reuses the status page's panel look.
+#c-settings {
+  .settings-form { display: flex; flex-flow: column; gap: 1rem; }
+  .box-section { margin: 0; h2 { margin: 0 0 0.75rem; } }
+  .input { margin-bottom: 0.75rem; label { display: block; margin-bottom: 0.25rem; font-weight: bold; } }
+  .input input[type="number"], .input input[type="time"] { width: 10rem; }
+  .hint { margin: 0.25rem 0 0; color: themed("color-text-muted"); }
+  .st-button { align-self: flex-start; }
+}

@@ -8,6 +8,17 @@ public sealed record WatchedArtistTag(long Id, string Tag, ArtistTagKind Kind, b
 /// <summary>Pool details from the imported catalog; null on a WatchEntry when the pool is not in the export yet.</summary>
 public sealed record PoolInfo(string Name, string Category, int PostCount);
 
+/// <summary>A pool that contains a watched artist's posts, waiting for a decision.</summary>
+public sealed record PoolSuggestion(
+    long ArtistWatchId, string Artist, long PoolId, string PoolName, string Category, int ArtistPosts, int PoolPosts, bool IsRoot)
+{
+    public double SharePercent => PoolPosts == 0 ? 0 : 100.0 * ArtistPosts / PoolPosts;
+
+    /// <summary>Worth a look by default: a series the artist has a real part in, or a collection that is mostly theirs.</summary>
+    public bool IsLikely => IsRoot && ArtistPosts >= 2
+        && (Category == "series" ? SharePercent >= 30 : SharePercent >= 60);
+}
+
 public sealed record WatchEntry(
     long Id,
     WatchedItemType Type,
@@ -19,7 +30,9 @@ public sealed record WatchEntry(
     PoolInfo? Pool = null,
     int MatchCount = 0,
     bool Matched = false,
-    string? Error = null)
+    string? Error = null,
+    string? Origin = null,
+    int SuggestedPools = 0)
 {
     /// <summary>"1,234" once the worker has matched this watch, "pending" until then.</summary>
     public string MatchText => Matched ? MatchCount.ToString("N0") : "pending";
@@ -42,15 +55,16 @@ public sealed class WatchesRepository
         using var connection = new SqliteConnection(_appConnectionString);
         connection.Open();
 
-        var entries = new List<(long Id, string Source, string Display, bool Enabled, string? LocalName, int Count, bool Matched, string? Error)>();
+        var entries = new List<(long Id, string Source, string Display, bool Enabled, string? LocalName, int Count, bool Matched, string? Error, string? Origin)>();
         using (var cmd = connection.CreateCommand())
         {
-            cmd.CommandText = "SELECT Id, SourceValue, DisplayName, Enabled, LocalName, MatchCount, LastCheckedAt IS NOT NULL, ErrorMessage FROM WatchedItems WHERE ItemType = $type ORDER BY SourceValue COLLATE NOCASE;";
+            cmd.CommandText = "SELECT Id, SourceValue, DisplayName, Enabled, LocalName, MatchCount, LastCheckedAt IS NOT NULL, ErrorMessage, Origin FROM WatchedItems WHERE ItemType = $type ORDER BY SourceValue COLLATE NOCASE;";
             cmd.Parameters.AddWithValue("$type", (int)type);
             using var reader = cmd.ExecuteReader();
             while (reader.Read())
                 entries.Add((reader.GetInt64(0), reader.GetString(1), reader.GetString(2), reader.GetInt32(3) != 0, reader.IsDBNull(4) ? null : reader.GetString(4),
-                    reader.GetInt32(5), reader.GetInt32(6) != 0, reader.IsDBNull(7) ? null : reader.GetString(7)));
+                    reader.GetInt32(5), reader.GetInt32(6) != 0, reader.IsDBNull(7) ? null : reader.GetString(7),
+                    reader.IsDBNull(8) ? null : reader.GetString(8)));
         }
 
         var tagsByItem = new Dictionary<long, List<WatchedArtistTag>>();
@@ -77,6 +91,7 @@ public sealed class WatchesRepository
         }
 
         var pools = type == WatchedItemType.Pool ? LoadPools(entries.Select(e => e.Source)) : [];
+        var suggested = type == WatchedItemType.Artist ? SuggestedCountsByArtist() : [];
 
         return entries
             .Select(e =>
@@ -86,9 +101,88 @@ public sealed class WatchesRepository
                     : pool is not null ? pool.Name.Replace('_', ' ')
                     : e.Display;
                 return new WatchEntry(e.Id, type, e.Source, display, e.Enabled,
-                    tagsByItem.TryGetValue(e.Id, out var tags) ? tags : [], e.LocalName, pool, e.Count, e.Matched, e.Error);
+                    tagsByItem.TryGetValue(e.Id, out var tags) ? tags : [], e.LocalName, pool, e.Count, e.Matched, e.Error,
+                    e.Origin, suggested.GetValueOrDefault(e.Id));
             })
             .ToList();
+    }
+
+    // ---------------------------------------------------------------- pool suggestions
+
+    /// <summary>Suggested pools waiting for a decision; by default only the likely ones.</summary>
+    public IReadOnlyList<PoolSuggestion> GetPoolSuggestions(bool showAll)
+    {
+        var rows = new List<(long Artist, string Name, long Pool, int ArtistPosts, int PoolPosts, bool Root)>();
+        using (var connection = new SqliteConnection(_appConnectionString))
+        {
+            connection.Open();
+            using var cmd = connection.CreateCommand();
+            cmd.CommandText = """
+                SELECT s.ArtistWatchId, w.SourceValue, s.PoolId, s.ArtistPosts, s.PoolPosts, s.IsRoot
+                FROM PoolSuggestions s
+                JOIN WatchedItems w ON w.Id = s.ArtistWatchId
+                WHERE s.State = 0;
+                """;
+            using var reader = cmd.ExecuteReader();
+            while (reader.Read())
+                rows.Add((reader.GetInt64(0), reader.GetString(1), reader.GetInt64(2), reader.GetInt32(3), reader.GetInt32(4), reader.GetInt32(5) != 0));
+        }
+
+        var pools = LoadPools(rows.Select(r => r.Pool.ToString()).Distinct());
+        return rows
+            .Where(r => pools.ContainsKey(r.Pool))
+            .Select(r => new PoolSuggestion(r.Artist, r.Name, r.Pool, pools[r.Pool].Name.Replace('_', ' '), pools[r.Pool].Category, r.ArtistPosts, r.PoolPosts, r.Root))
+            .Where(s => showAll || s.IsLikely)
+            .OrderByDescending(s => s.SharePercent).ThenByDescending(s => s.ArtistPosts)
+            .ToList();
+    }
+
+    /// <summary>Number of distinct likely pools to review (for the navigation badge).</summary>
+    public int CountPoolSuggestions() => GetPoolSuggestions(showAll: false).Select(s => s.PoolId).Distinct().Count();
+
+    private Dictionary<long, int> SuggestedCountsByArtist()
+        => GetPoolSuggestions(showAll: false).GroupBy(s => s.ArtistWatchId).ToDictionary(g => g.Key, g => g.Count());
+
+    /// <summary>Adds a suggested pool to the watches; every suggestion of that pool counts as handled.</summary>
+    public void AcceptPoolSuggestion(long poolId, string artist)
+    {
+        Add(WatchedItemType.Pool, poolId.ToString(), $"Pool #{poolId}", origin: $"suggested:{artist}");
+        SetSuggestionState("PoolId = $pool", poolId, 1);
+    }
+
+    /// <summary>Hides a suggestion for this artist for good.</summary>
+    public void IgnorePoolSuggestion(long artistWatchId, long poolId)
+    {
+        using var connection = new SqliteConnection(_appConnectionString);
+        connection.Open();
+        using var cmd = connection.CreateCommand();
+        cmd.CommandText = "UPDATE PoolSuggestions SET State = 2 WHERE ArtistWatchId = $artist AND PoolId = $pool AND State = 0;";
+        cmd.Parameters.AddWithValue("$artist", artistWatchId);
+        cmd.Parameters.AddWithValue("$pool", poolId);
+        cmd.ExecuteNonQuery();
+    }
+
+    private void SetSuggestionState(string condition, long poolId, int state)
+    {
+        using var connection = new SqliteConnection(_appConnectionString);
+        connection.Open();
+        using var cmd = connection.CreateCommand();
+        cmd.CommandText = $"UPDATE PoolSuggestions SET State = $state WHERE {condition} AND State = 0;";
+        cmd.Parameters.AddWithValue("$state", state);
+        cmd.Parameters.AddWithValue("$pool", poolId);
+        cmd.ExecuteNonQuery();
+    }
+
+    /// <summary>Marks every enabled artist for re-matching, which also recomputes their pool suggestions.</summary>
+    public void RecomputeArtistPools()
+    {
+        using var connection = new SqliteConnection(_appConnectionString);
+        connection.Open();
+        using var cmd = connection.CreateCommand();
+        cmd.CommandText = "UPDATE WatchedItems SET LastCheckedAt = NULL WHERE ItemType = $artist;";
+        cmd.Parameters.AddWithValue("$artist", (int)WatchedItemType.Artist);
+        cmd.ExecuteNonQuery();
+        RequestMatch();
     }
 
     private Dictionary<long, PoolInfo> LoadPools(IEnumerable<string> ids)
@@ -132,19 +226,20 @@ public sealed class WatchesRepository
     }
 
     /// <summary>Adds a watch. Returns null when the same source is already watched.</summary>
-    public long? Add(WatchedItemType type, string sourceValue, string displayName)
+    public long? Add(WatchedItemType type, string sourceValue, string displayName, string? origin = null)
     {
         using var connection = new SqliteConnection(_appConnectionString);
         connection.Open();
         using var cmd = connection.CreateCommand();
         cmd.CommandText = """
-            INSERT INTO WatchedItems (ItemType, SourceValue, DisplayName, Enabled, AutoDownload)
-            SELECT $type, $source, $display, 1, 1
+            INSERT INTO WatchedItems (ItemType, SourceValue, DisplayName, Enabled, AutoDownload, Origin)
+            SELECT $type, $source, $display, 1, 1, $origin
             WHERE NOT EXISTS (SELECT 1 FROM WatchedItems WHERE ItemType = $type AND SourceValue = $source COLLATE NOCASE);
             """;
         cmd.Parameters.AddWithValue("$type", (int)type);
         cmd.Parameters.AddWithValue("$source", sourceValue);
         cmd.Parameters.AddWithValue("$display", displayName);
+        cmd.Parameters.AddWithValue("$origin", (object?)origin ?? DBNull.Value);
         if (cmd.ExecuteNonQuery() == 0) return null;
 
         cmd.CommandText = "SELECT last_insert_rowid();";

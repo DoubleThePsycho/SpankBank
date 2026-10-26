@@ -15,6 +15,7 @@
       <tr><th>Type</th><td>@(Model.Pool?.Category ?? "not in the export yet")</td></tr>
       <tr><th>Pages</th><td>@(Model.Pool?.PostCount.ToString("N0") ?? "-")</td></tr>
       @if (Model.Error is not null) { <tr><th>Problem</th><td>@Model.Error</td></tr> }
+      @if (SpankBank.Web.Pages.Watches.PoolsModel.OriginText(Model.Origin) is { } origin) { <tr><th>Origin</th><td>@origin</td></tr> }
       <tr><th>Status</th><td>@(Model.Enabled ? "enabled" : "disabled")</td></tr>
     </tbody>
   </table>

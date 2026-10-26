@@ -15,4 +15,9 @@ public static class WorkerSettingsKeys
     public const string DownloadEnabled = "Download.Enabled";
     /// <summary>Most files fetched per UTC day (default 2000), so a new watch cannot hammer e621 in one go.</summary>
     public const string DownloadMaxPerDay = "Download.MaxPerDay";
+
+    /// <summary>"false" turns off adding an artist's pools automatically (default: on).</summary>
+    public const string PoolsAutoAddEnabled = "Pools.AutoAddEnabled";
+    /// <summary>A pool is added automatically when at least this percent of its posts are the artist's (default 90).</summary>
+    public const string PoolsAutoAddPercent = "Pools.AutoAddPercent";
 }

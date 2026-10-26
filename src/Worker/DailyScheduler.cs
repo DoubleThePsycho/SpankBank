@@ -38,6 +38,7 @@ public sealed class DailyScheduler : BackgroundService
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         var nextRun = NextDailyRun(DateTimeOffset.UtcNow);
+        var scheduledFor = _settings.Get(WorkerSettingsKeys.DailyRunTimeUtc);
         _logger.LogInformation("Worker started. Next export refresh at {NextRun:u}.", nextRun);
 
         // Requests made while the worker was down are waiting in the Settings table; handle them first.
@@ -62,6 +63,15 @@ public sealed class DailyScheduler : BackgroundService
                 }
                 else
                 {
+                    // Nothing to run. A settings save also lands here: pick up a changed daily time.
+                    var configured = _settings.Get(WorkerSettingsKeys.DailyRunTimeUtc);
+                    if (configured != scheduledFor)
+                    {
+                        scheduledFor = configured;
+                        nextRun = NextDailyRun(DateTimeOffset.UtcNow);
+                        _logger.LogInformation("Daily update time changed. Next export refresh at {NextRun:u}.", nextRun);
+                    }
+
                     signalled = false;
                     continue;
                 }

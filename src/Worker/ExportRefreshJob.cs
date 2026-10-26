@@ -158,7 +158,8 @@ public sealed class ExportRefreshJob
             (scanned, total) => _progress.Step("Scanning posts", scanned, total, "posts")), cancellationToken);
         _progress.EndPhase(PhaseMatch, matched.WatchesMatched > 0 ? PhaseState.Done : PhaseState.Skipped);
         if (matched.WatchesMatched > 0)
-            text += $" Matched {matched.PostsMatched:N0} posts for {matched.WatchesMatched} watches.";
+            text += $" Matched {matched.PostsMatched:N0} posts for {matched.WatchesMatched} watches."
+                + (matched.PoolsAdded > 0 ? $" Added {matched.PoolsAdded} pools." : "");
 
         return text;
     }
