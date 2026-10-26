@@ -11,7 +11,8 @@ $(() => {
     if (event.ctrlKey || event.altKey || event.metaKey || target.matches("input, textarea, select, [contenteditable]")) return;
 
     const link = document.querySelector<HTMLAnchorElement>(
-      event.key === "ArrowLeft" ? "nav.pagination a[rel~=prev]" : event.key === "ArrowRight" ? "nav.pagination a[rel~=next]" : "");
+      event.key === "ArrowLeft" ? "nav.pagination a[rel~=prev], .pool-nav li.pool-selected-true a[rel~=prev]"
+        : event.key === "ArrowRight" ? "nav.pagination a[rel~=next], .pool-nav li.pool-selected-true a[rel~=next]" : "");
     if (link) window.location.href = link.href;
   });
 });

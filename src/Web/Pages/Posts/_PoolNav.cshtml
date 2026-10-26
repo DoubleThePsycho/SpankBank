@@ -1,0 +1,48 @@
+@model IReadOnlyList<SpankBank.Data.Repositories.PoolNavItem>
+@* Markup follows e621ng posts/partials/show/content/nav_links/_pool_list.html.erb and _pool_list_item.html.erb (BSD-2, see THIRD-PARTY-NOTICES.md). *@
+<div class="nav-block pool-nav">
+  <ul>
+    @foreach (var pool in Model)
+    {
+      <li class="pool-category-@pool.Category pool-selected-@(pool.Selected ? "true" : "false")">
+        @if (pool.FirstId is { } first)
+        {
+          <a class="nav-link first" href="/posts/@first?pool_id=@pool.PoolId" title="to page @pool.FirstPage"><svg-icon name="chevron_double_left" width="16" height="16" /><span>First</span></a>
+        }
+        else
+        {
+          <span class="nav-link first"><svg-icon name="chevron_double_left" width="16" height="16" /><span>First</span></span>
+        }
+
+        @if (pool.PreviousId is { } previous)
+        {
+          <a class="nav-link prev" href="/posts/@previous?pool_id=@pool.PoolId" rel="@(pool.Selected ? "prev" : null)" title="to page @pool.PreviousPage"><svg-icon name="chevron_left" width="16" height="16" /><span>Prev</span></a>
+        }
+        else
+        {
+          <span class="nav-link prev"><svg-icon name="chevron_left" width="16" height="16" /><span>Prev</span></span>
+        }
+
+        <span class="nav-name"><a href="/pool/@pool.PoolId" title="page @pool.Page/@pool.PostCount">Pool: @pool.Name</a></span>
+
+        @if (pool.NextId is { } next)
+        {
+          <a class="nav-link next" href="/posts/@next?pool_id=@pool.PoolId" rel="@(pool.Selected ? "next" : null)" title="to page @pool.NextPage"><span>Next</span><svg-icon name="chevron_right" width="16" height="16" /></a>
+        }
+        else
+        {
+          <span class="nav-link next"><span>Next</span><svg-icon name="chevron_right" width="16" height="16" /></span>
+        }
+
+        @if (pool.LastId is { } last)
+        {
+          <a class="nav-link last" href="/posts/@last?pool_id=@pool.PoolId" title="to page @pool.LastPage"><span>Last</span><svg-icon name="chevron_double_right" width="16" height="16" /></a>
+        }
+        else
+        {
+          <span class="nav-link last"><span>Last</span><svg-icon name="chevron_double_right" width="16" height="16" /></span>
+        }
+      </li>
+    }
+  </ul>
+</div>

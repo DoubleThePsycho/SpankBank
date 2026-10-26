@@ -168,6 +168,61 @@ public sealed class DownloadedPostSearch
         return items;
     }
 
+    /// <summary>
+    /// The pools a post is in, each with the neighbouring posts that are on this device (pool order; posts that are
+    /// only online are skipped, because they have no page here). The selected pool comes first, then by name; at most five.
+    /// </summary>
+    public IReadOnlyList<PoolNavItem> GetPoolNavigation(long postId, long? selectedPoolId)
+    {
+        using var connection = OpenWithCatalog();
+
+        var pools = new List<(long Id, string Name, string Category, int Count, int Position)>();
+        using (var cmd = connection.CreateCommand())
+        {
+            cmd.CommandText = """
+                SELECT pl.Id, pl.Name, pl.Category, pl.PostCount, pp.Position
+                FROM srv.PoolPosts pp JOIN srv.Pools pl ON pl.Id = pp.PoolId
+                WHERE pp.PostId = $post;
+                """;
+            cmd.Parameters.AddWithValue("$post", postId);
+            using var reader = cmd.ExecuteReader();
+            while (reader.Read())
+                pools.Add((reader.GetInt64(0), reader.GetString(1), reader.GetString(2), reader.GetInt32(3), reader.GetInt32(4)));
+        }
+
+        long? Neighbour(long poolId, int position, string comparison, string direction, out int foundPosition)
+        {
+            using var cmd = connection.CreateCommand();
+            cmd.CommandText = $"""
+                SELECT pp.PostId, pp.Position
+                FROM srv.PoolPosts pp JOIN Posts d ON d.Id = pp.PostId AND d.SavedAt IS NOT NULL
+                WHERE pp.PoolId = $pool AND pp.Position {comparison} $position
+                ORDER BY pp.Position {direction} LIMIT 1;
+                """;
+            cmd.Parameters.AddWithValue("$pool", poolId);
+            cmd.Parameters.AddWithValue("$position", position);
+            using var reader = cmd.ExecuteReader();
+            if (reader.Read()) { foundPosition = reader.GetInt32(1); return reader.GetInt64(0); }
+            foundPosition = 0;
+            return null;
+        }
+
+        return pools
+            .OrderBy(p => p.Id == selectedPoolId ? 0 : 1)
+            .ThenBy(p => p.Name, StringComparer.OrdinalIgnoreCase)
+            .Take(5)
+            .Select(p =>
+            {
+                var first = Neighbour(p.Id, p.Position, "<", "ASC", out var firstPage);
+                var previous = Neighbour(p.Id, p.Position, "<", "DESC", out var previousPage);
+                var next = Neighbour(p.Id, p.Position, ">", "ASC", out var nextPage);
+                var last = Neighbour(p.Id, p.Position, ">", "DESC", out var lastPage);
+                return new PoolNavItem(p.Id, p.Name.Replace('_', ' '), p.Category, p.Count, p.Position, p.Id == selectedPoolId,
+                    first, firstPage, previous, previousPage, next, nextPage, last, lastPage);
+            })
+            .ToList();
+    }
+
     /// <summary>How many of the given posts carry each tag, for the sidebar tag list.</summary>
     public IReadOnlyDictionary<string, int> TagFrequencies(IReadOnlyCollection<long> postIds)
     {
@@ -330,3 +385,8 @@ public sealed class DownloadedPostSearch
         return connection;
     }
 }
+
+/// <summary>One pool's navigation bar on a post page. The ids are the nearest posts on this device, or null at the ends.</summary>
+public sealed record PoolNavItem(
+    long PoolId, string Name, string Category, int PostCount, int Page, bool Selected,
+    long? FirstId, int FirstPage, long? PreviousId, int PreviousPage, long? NextId, int NextPage, long? LastId, int LastPage);

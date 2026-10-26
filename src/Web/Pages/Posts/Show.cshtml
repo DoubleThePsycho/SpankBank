@@ -138,6 +138,11 @@
 
     <div class="content">
       <div id="image-and-nav">
+        @if (Model.PoolNav.Count > 0)
+        {
+          <div id="nav-links-top" class="ui-corner-all nav-notice"><partial name="_PoolNav" model="Model.PoolNav" /></div>
+        }
+
         @if (post.Status == LocalPostStatus.Recovered)
         {
           <div class="notice notice-info">e621 has deleted this post. The original was recovered from the Wayback Machine.</div>
@@ -168,6 +173,11 @@
               break;
           }
         </section>
+
+        @if (Model.PoolNav.Count > 0)
+        {
+          <div id="nav-links-bottom" class="ui-corner-all nav-notice"><partial name="_PoolNav" model="Model.PoolNav" /></div>
+        }
       </div>
 
       <div class="bottom-notices">

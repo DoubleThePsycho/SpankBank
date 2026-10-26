@@ -41,7 +41,7 @@
       <section class="posts-container">
         @foreach (var post in Model.Posts)
         {
-          <partial name="_PostThumbnail" model="post" />
+          <partial name="_PostThumbnail" model="post" view-data='new ViewDataDictionary(ViewData) { { "PoolId", pool.Id } }' />
         }
         @if (Model.Posts.Count == 0)
         {

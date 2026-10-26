@@ -12,9 +12,11 @@ public class ShowModel : PageModel
     private readonly DownloadedPostsRepository _downloaded;
     private readonly PostsRepository _catalog;
     private readonly TagsRepository _tags;
+    private readonly DownloadedPostSearch _search;
 
-    public ShowModel(DownloadedPostsRepository downloaded, PostsRepository catalog, TagsRepository tags)
+    public ShowModel(DownloadedPostsRepository downloaded, PostsRepository catalog, TagsRepository tags, DownloadedPostSearch search)
     {
+        _search = search;
         _downloaded = downloaded;
         _catalog = catalog;
         _tags = tags;
@@ -25,6 +27,7 @@ public class ShowModel : PageModel
     public IReadOnlyList<(string CssName, string Header, IReadOnlyList<TagInfo> Tags)> TagGroups { get; private set; } = [];
     public IReadOnlyList<long> ChildIds { get; private set; } = [];
     public bool ParentIsLocal { get; private set; }
+    public IReadOnlyList<PoolNavItem> PoolNav { get; private set; } = [];
 
     /// <summary>"image", "video" or "other": how the file is shown.</summary>
     public string MediaKind { get; private set; } = "other";
@@ -41,6 +44,7 @@ public class ShowModel : PageModel
         Extras = _catalog.GetExtras(id);
         ChildIds = _downloaded.GetChildIds(id);
         ParentIsLocal = post.ParentId is { } parent && _downloaded.Exists(parent);
+        PoolNav = _search.GetPoolNavigation(id, long.TryParse(Request.Query.ContainsKey("pool_id") ? Request.Query["pool_id"] : Request.Query["pool"], out var poolId) ? poolId : null);
         BuildTagGroups();
         ChooseMedia();
         return Page();
