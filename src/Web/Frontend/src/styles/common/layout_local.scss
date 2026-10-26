@@ -18,3 +18,8 @@ nav.navigation, html.nav-toggled nav.navigation {
 // z_responsive.scss makes every `div#page > div > div` a flex box on small screens, which also
 // un-hid the closed modals (they are such divs). Keep hidden overlays hidden.
 body.resp div#page div.st-overlay.hidden { display: none; }
+
+// The file is scaled down by max-width; its width/height attributes (kept to avoid layout shift) must not stretch it.
+#image-container {
+  img#image, video#image { height: auto; }
+}

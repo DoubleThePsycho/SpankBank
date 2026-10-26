@@ -3,6 +3,7 @@
 @* Markup ported from e621ng app/views/posts/index.html.erb and its partials (BSD-2, see THIRD-PARTY-NOTICES.md). *@
 @{
     ViewData["Title"] = "Posts";
+    ViewData["BodyClass"] = "c-posts a-index"; // the upstream styles key the page layout off these body classes
     var current = Model.PageNumber;
     var last = Model.LastPage;
 }
@@ -32,15 +33,39 @@
     </section>
 
     <section id="tag-box">
-      <ul class="tag-list all-tag-list"></ul>
+      @foreach (var (cssName, header, tags) in Model.SidebarGroups)
+      {
+        <h5 class="tag-list-header @cssName-tag-list-header" data-category="@cssName">@header</h5>
+        <ul class="tag-list @cssName-tag-list">
+          @foreach (var tag in tags)
+          {
+            <li class="tag-list-item tag-@cssName" data-name="@tag.Name" data-category="@cssName" data-count="@tag.PostCount">
+              <a class="tag-list-wiki" rel="nofollow" href="https://e621.net/wiki_pages/show_or_new?title=@Uri.EscapeDataString(tag.Name)">?</a>
+              @if (!string.IsNullOrWhiteSpace(Model.Tags))
+              {
+                <a rel="nofollow" href="@Model.TagUrl(tag.Name)" class="tag-list-inc">+</a>
+                <a rel="nofollow" href="@Model.TagUrl("-" + tag.Name)" class="tag-list-exl">–</a>
+              }
+              <a rel="nofollow tag" class="tag-list-search" href="/posts?tags=@Uri.EscapeDataString(tag.Name)">
+                <span class="tag-list-name">@tag.Name.Replace('_', ' ')</span>
+                <span data-count="@tag.PostCount" class="tag-list-count">@ShowModel.CountLabel(tag.PostCount)</span>
+              </a>
+            </li>
+          }
+        </ul>
+      }
     </section>
   </div>
 
   <div class="content">
     <div class="posts-info-bar">
-      @if (Model.Items.Count == 0)
+      @if (Model.SearchError is not null)
       {
-        <span class="posts-info-empty">Nothing downloaded yet.</span>
+        <span class="posts-info-empty">@Model.SearchError</span>
+      }
+      else if (Model.Items.Count == 0)
+      {
+        <span class="posts-info-empty">@(string.IsNullOrWhiteSpace(Model.Tags) ? "Nothing downloaded yet." : "Nobody here but us chickens!")</span>
       }
       <span class="posts-info-count">@Model.Total.ToString("N0") downloaded posts</span>
     </div>
@@ -80,7 +105,7 @@
       <nav class="pagination numbered" aria-label="Pagination" data-total="@last" data-current="@current">
         @if (current > 1)
         {
-          <a class="prev" id="paginator-prev" aria-label="Previous Page" href="@Model.PageUrl(current - 1)"><svg-icon name="chevron_left" /><span>Prev</span></a>
+          <a class="prev" id="paginator-prev" rel="prev" aria-label="Previous Page" href="@Model.PageUrl(current - 1)"><svg-icon name="chevron_left" /><span>Prev</span></a>
         }
         else
         {
@@ -92,7 +117,7 @@
         {
           if (spacer)
           {
-            <span class="page spacer"><svg-icon name="ellipsis" /></span>
+            <a class="page spacer" href="@Model.PageUrl(0)" title="Go to a page"><svg-icon name="ellipsis" /></a>
           }
           else if (pg == current)
           {
@@ -106,7 +131,7 @@
 
         @if (current < last)
         {
-          <a class="next" id="paginator-next" aria-label="Next Page" href="@Model.PageUrl(current + 1)"><span>Next</span><svg-icon name="chevron_right" /></a>
+          <a class="next" id="paginator-next" rel="next" aria-label="Next Page" href="@Model.PageUrl(current + 1)"><span>Next</span><svg-icon name="chevron_right" /></a>
         }
         else
         {

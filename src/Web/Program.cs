@@ -19,6 +19,7 @@ builder.Services.AddHttpClient<WorkerClient>(client =>
 });
 builder.Services.AddSingleton(paths);
 builder.Services.AddSingleton(new PostsRepository(paths.ServerDatabasePath));
+builder.Services.AddSingleton(new DownloadedPostSearch(paths));
 builder.Services.AddSingleton(new DownloadedPostsRepository(paths.DeviceDatabasePath));
 builder.Services.AddSingleton(new TagsRepository(paths.ServerDatabasePath));
 builder.Services.AddSingleton(new WatchesRepository(paths.AppDatabasePath, paths.ServerDatabasePath));

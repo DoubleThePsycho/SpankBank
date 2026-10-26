@@ -9,33 +9,79 @@ namespace SpankBank.Web.Pages.Posts;
 public class IndexModel : PageModel
 {
     public const int PageSize = 75;
+    private const int SidebarTagLimit = 25;
 
-    private readonly DownloadedPostsRepository _posts;
+    private readonly DownloadedPostSearch _search;
+    private readonly TagsRepository _tags;
 
-    public IndexModel(DownloadedPostsRepository posts) => _posts = posts;
+    public IndexModel(DownloadedPostSearch search, TagsRepository tags)
+    {
+        _search = search;
+        _tags = tags;
+    }
 
     [BindProperty(SupportsGet = true, Name = "tags")]
     public string? Tags { get; set; }
 
-    [BindProperty(SupportsGet = true, Name = "page")]
-    public int PageNumber { get; set; } = 1;
+    // Read from the query string by hand: Razor Pages reserves the route value "page", so model binding cannot use it.
+    public int PageNumber { get; private set; } = 1;
 
     public IReadOnlyList<PostListItem> Items { get; private set; } = [];
     public long Total { get; private set; }
     public int LastPage { get; private set; } = 1;
+    public int PageSizeUsed { get; private set; } = PageSize;
+    public string? SearchError { get; private set; }
+
+    /// <summary>The most common tags among the posts on this page, for the sidebar.</summary>
+    public IReadOnlyList<(string CssName, string Header, IReadOnlyList<TagInfo> Tags)> SidebarGroups { get; private set; } = [];
 
     public void OnGet()
     {
-        if (PageNumber < 1) PageNumber = 1;
+        PageNumber = int.TryParse(Request.Query["page"], out var requested) && requested > 0 ? requested : 1;
 
-        // Lists downloaded posts only. Tag search is not implemented yet: the query text is kept in the box but not applied.
-        Total = _posts.CountPosts();
-        LastPage = (int)Math.Max(1, (Total + PageSize - 1) / PageSize);
-        if (PageNumber > LastPage) PageNumber = LastPage;
-        Items = _posts.GetRecentlyDownloaded(PageSize, offset: (PageNumber - 1) * PageSize);
+        var result = _search.Search(Tags, PageNumber, PageSize);
+        PageSizeUsed = result.PageSize;
+        SearchError = result.Error;
+        Total = result.Total;
+        LastPage = (int)Math.Max(1, (Total + PageSizeUsed - 1) / PageSizeUsed);
+
+        if (PageNumber > LastPage)
+        {
+            PageNumber = LastPage;
+            result = _search.Search(Tags, PageNumber, PageSize);
+        }
+        Items = result.Items;
+
+        BuildSidebar();
     }
 
+    private void BuildSidebar()
+    {
+        if (Items.Count == 0) return;
+
+        var frequencies = _search.TagFrequencies(Items.Select(i => i.Id).ToList());
+        var info = _tags.GetTagInfo(frequencies.Keys.ToList()).ToDictionary(t => t.Name);
+
+        var top = frequencies
+            .Select(f => (Name: f.Key, Count: f.Value, Info: info.TryGetValue(f.Key, out var t) ? t : new TagInfo(f.Key, 0, 0)))
+            .OrderByDescending(t => t.Count)
+            .ThenByDescending(t => t.Info.PostCount)
+            .ThenBy(t => t.Name, StringComparer.Ordinal)
+            .Take(SidebarTagLimit)
+            .ToList();
+
+        // Grouped under headers like the post page; inside a group the most common tag comes first.
+        SidebarGroups = TagCategories.SidebarOrder
+            .Select(g => (g.CssName, g.Header, (IReadOnlyList<TagInfo>)top.Where(t => t.Info.Category == g.Category).Select(t => t.Info).ToList()))
+            .Where(g => g.Item3.Count > 0)
+            .ToList();
+    }
+
+    /// <summary>Url of a page of this search; page 0 is the fast-travel placeholder the paginator script fills in.</summary>
     public string PageUrl(int page) => $"/posts?page={page}" + (string.IsNullOrWhiteSpace(Tags) ? "" : $"&tags={Uri.EscapeDataString(Tags)}");
+
+    /// <summary>Url of this search with a tag added, or excluded with a leading "-".</summary>
+    public string TagUrl(string tag) => "/posts?tags=" + Uri.EscapeDataString(((Tags ?? "").Trim() + " " + tag).Trim());
 
     /// <summary>The best local picture for a post: its preview, else the recovered sample, else the image itself.</summary>
     public static string PreviewUrl(PostListItem post)

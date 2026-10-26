@@ -9,13 +9,6 @@ namespace SpankBank.Web.Pages.Posts;
 
 public class ShowModel : PageModel
 {
-    // e621's order of the sidebar tag groups (TagCategory::SPLIT_HEADER_LIST) and their headers.
-    private static readonly (int Category, string CssName, string Header)[] Groups =
-    [
-        (6, "invalid", "Invalid"), (1, "artist", "Artists"), (2, "contributor", "Contributors"), (3, "copyright", "Copyrights"),
-        (4, "character", "Characters"), (5, "species", "Species"), (0, "general", "General"), (7, "meta", "Meta"), (8, "lore", "Lore"),
-    ];
-
     private readonly DownloadedPostsRepository _downloaded;
     private readonly PostsRepository _catalog;
     private readonly TagsRepository _tags;
@@ -59,7 +52,7 @@ public class ShowModel : PageModel
         var known = _tags.GetTagInfo(names).ToDictionary(t => t.Name);
 
         var groups = new List<(string, string, IReadOnlyList<TagInfo>)>();
-        foreach (var (category, cssName, header) in Groups)
+        foreach (var (category, cssName, header) in TagCategories.SidebarOrder)
         {
             var inGroup = names
                 .Select(name => known.TryGetValue(name, out var info) ? info : new TagInfo(name, 0, 0)) // not in the catalog: general

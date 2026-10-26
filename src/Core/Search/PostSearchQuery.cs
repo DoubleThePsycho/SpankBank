@@ -19,6 +19,9 @@ public readonly record struct PostMatchRow(
     string? Md5,
     int TagCount);
 
+/// <summary>A metatag as written: name:value, possibly negated (-name:value).</summary>
+public sealed record MetaTerm(string Name, string Value, bool Negated);
+
 public enum PostStatusMode
 {
     Active,
@@ -29,8 +32,8 @@ public enum PostStatusMode
 /// <summary>
 /// An e621-style search, split into tag terms (resolved against the tag set by the caller) and column filters.
 /// Supported: tags, -tag, ~tag, * wildcards, rating:, score:, favcount:, id:, width:, height:, filesize:, tagcount:,
-/// comment_count:, date:, filetype:/type:, parent:, ischild:, status:, md5:; order: and limit: are
-/// accepted and ignored (a watch wants every match). Anything else sets <see cref="Error"/>.
+/// comment_count:, date:, filetype:/type:, parent:, ischild:, status:, md5:. order: and limit: are recorded
+/// (a watch ignores them; the posts page uses them). Anything else sets <see cref="Error"/>.
 /// </summary>
 public sealed class PostSearchQuery
 {
@@ -39,6 +42,13 @@ public sealed class PostSearchQuery
     public IReadOnlyList<string> AnyOf { get; private init; } = [];
     public IReadOnlyList<Func<PostMatchRow, bool>> Filters { get; private init; } = [];
     public PostStatusMode Status { get; private init; } = PostStatusMode.Active;
+    public bool StatusSpecified { get; private init; }
+    /// <summary>The filtering metatags in order, for callers that build their own query (SQL).</summary>
+    public IReadOnlyList<MetaTerm> Terms { get; private init; } = [];
+    /// <summary>Value of order:, if given.</summary>
+    public string? Order { get; private init; }
+    /// <summary>Value of limit:, if given.</summary>
+    public int? Limit { get; private init; }
     public string? Error { get; private init; }
 
     /// <summary>Column-only part of the search (everything except tag terms).</summary>
@@ -63,6 +73,10 @@ public sealed class PostSearchQuery
         var anyOf = new List<string>();
         var filters = new List<Func<PostMatchRow, bool>>();
         var status = PostStatusMode.Active;
+        var statusSpecified = false;
+        var terms = new List<MetaTerm>();
+        string? order = null;
+        int? limit = null;
         string? error = null;
 
         foreach (var raw in (text ?? "").Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries))
@@ -83,11 +97,13 @@ public sealed class PostSearchQuery
             var name = token[..colon];
             var value = token[(colon + 1)..];
 
-            if (name is "order" or "limit" or "randseed")
-                continue;
+            if (name == "order") { order = value; continue; }
+            if (name == "limit") { if (int.TryParse(value, out var parsedLimit) && parsedLimit > 0) limit = parsedLimit; continue; }
+            if (name == "randseed") continue;
 
             if (name == "status")
             {
+                statusSpecified = true;
                 status = value switch { "deleted" => PostStatusMode.Deleted, "any" => PostStatusMode.Any, "active" => PostStatusMode.Active, _ => status };
                 if (value is not ("deleted" or "any" or "active")) error ??= $"Unsupported status:{value}";
                 continue;
@@ -101,6 +117,7 @@ public sealed class PostSearchQuery
             }
 
             filters.Add(negated ? row => !filter(row) : filter);
+            terms.Add(new MetaTerm(name, value, negated));
         }
 
         return new PostSearchQuery
@@ -110,6 +127,10 @@ public sealed class PostSearchQuery
             AnyOf = anyOf,
             Filters = filters,
             Status = status,
+            StatusSpecified = statusSpecified,
+            Terms = terms,
+            Order = order,
+            Limit = limit,
             Error = error,
         };
     }
