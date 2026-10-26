@@ -25,6 +25,10 @@ public class ShowModel : PageModel
     public IReadOnlyList<string> Characters { get; private set; } = [];
     public IReadOnlyList<PostListItem> RecentPosts { get; private set; } = [];
     public long DownloadedCount { get; private set; }
+    /// <summary>Pools that were added for this artist (automatically or from a suggestion).</summary>
+    public IReadOnlyList<WatchEntry> WatchedPools { get; private set; } = [];
+    public IReadOnlyList<PoolSuggestion> Suggestions { get; private set; } = [];
+    public bool ShowAllSuggestions { get; private set; }
 
     public IActionResult OnGet(string name)
     {
@@ -37,10 +41,31 @@ public class ShowModel : PageModel
         Watch = _watches.GetAll(WatchedItemType.Artist).FirstOrDefault(w => string.Equals(w.SourceValue, artist.Name, StringComparison.OrdinalIgnoreCase));
         Characters = _watches.FindCharacters([artist.Name, .. artist.OtherNames]);
 
+        if (Watch is not null)
+        {
+            ShowAllSuggestions = Request.Query["all"] == "1";
+            Suggestions = _watches.GetPoolSuggestions(ShowAllSuggestions, Watch.Id);
+            WatchedPools = _watches.GetAll(WatchedItemType.Pool)
+                .Where(p => p.Origin is { } origin && (origin == $"auto:{artist.Name}" || origin == $"suggested:{artist.Name}"))
+                .ToList();
+        }
+
         var local = _downloaded.Search(artist.Name, 1, 24);
         RecentPosts = local.Items;
         DownloadedCount = local.Total;
         return Page();
+    }
+
+    public IActionResult OnPostAcceptSuggestion(long poolId, string name)
+    {
+        _watches.AcceptPoolSuggestion(poolId, name);
+        return RedirectToPage(null, null, new { name }, "pools");
+    }
+
+    public IActionResult OnPostIgnoreSuggestion(long artistId, long poolId, string name)
+    {
+        _watches.IgnorePoolSuggestion(artistId, poolId);
+        return RedirectToPage(null, null, new { name }, "pools");
     }
 
     public IActionResult OnPostWatch(string name)

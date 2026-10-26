@@ -1,0 +1,51 @@
+@page "/posts/downloads"
+@model SpankBank.Web.Pages.Posts.DownloadsModel
+@{
+    ViewData["Title"] = "Downloads";
+    ViewData["BodyClass"] = "c-status";
+}
+@section SecondaryNav {
+  <partial name="_AreaNav" model='"posts"' />
+}
+<div id="c-status" class="container"><div id="a-index">
+  <h1>Downloads</h1>
+
+  <section id="activity" class="status-activity" aria-live="polite">
+    <div class="status-offline" hidden>The worker is not reachable.</div>
+    <div class="status-downloads" hidden></div>
+  </section>
+
+  <table class="striped">
+    <tbody>
+      <tr><th>Local files</th><td>@Model.LocalFiles.ToString("N0")</td></tr>
+      <tr><th>Waiting to download</th><td>@Model.Waiting.ToString("N0")@(Model.Paused ? " (downloads are paused)" : "")</td></tr>
+      <tr><th>Saved today</th><td>@Model.SavedToday.ToString("N0") of @Model.DailyLimit.ToString("N0") <span class="hint">(the limit and the pause switch are in <a href="/settings">Settings</a>)</span></td></tr>
+    </tbody>
+  </table>
+
+  <h2 style="margin-top: 1.5rem;">Could not be saved</h2>
+  @if (Model.Problems.Count == 0)
+  {
+    <p>Nothing has failed.</p>
+  }
+  else
+  {
+    <p class="hint">@Model.ProblemCount.ToString("N0") post@(Model.ProblemCount == 1 ? "" : "s") will be tried again later@(Model.ProblemCount > Model.Problems.Count ? $"; the newest {Model.Problems.Count} are listed" : "").</p>
+    <table class="striped">
+      <thead><tr><th>Post</th><th>Reason</th><th>Tries</th><th>Last try</th><th>Next try</th></tr></thead>
+      <tbody>
+        @foreach (var problem in Model.Problems)
+        {
+          <tr>
+            <td><a href="https://e621.net/posts/@problem.PostId" rel="nofollow noopener">#@problem.PostId</a></td>
+            <td>@problem.Error</td>
+            <td>@problem.Attempts</td>
+            <td title="@problem.LastAttemptAt.ToString("u")">@problem.LastAttemptAt.ToString("yyyy-MM-dd HH:mm")</td>
+            <td title="@problem.NextAttemptAt.ToString("u")">@problem.NextAttemptAt.ToString("yyyy-MM-dd")</td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  }
+</div></div>
+<script type="module" src="~/dist/status.js" asp-append-version="true"></script>

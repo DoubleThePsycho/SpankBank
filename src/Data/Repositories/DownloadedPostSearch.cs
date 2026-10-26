@@ -41,6 +41,7 @@ public sealed class DownloadedPostSearch
         ["tagcount"] = TagCountExpr,
         ["comment_count"] = "COALESCE(s.CommentCount, 0)",
         ["change"] = "d.UpdatedAt",
+        ["downloaded"] = "d.SavedAt",
         ["saved"] = "d.SavedAt",
         ["landscape"] = "(d.ImageWidth * 1.0 / NULLIF(d.ImageHeight, 0))",
         ["portrait"] = "(d.ImageWidth * 1.0 / NULLIF(d.ImageHeight, 0))",
@@ -275,7 +276,9 @@ public sealed class DownloadedPostSearch
     private static string OrderClause(string? order, ref string? error)
     {
         const string tieBreak = ", d.Id DESC";
-        if (string.IsNullOrEmpty(order)) return "d.SavedAt DESC" + tieBreak;
+        // Newest id first, like e621. Id is the table's primary key, so this walks the key order; the order
+        // the rows were inserted in does not matter.
+        if (string.IsNullOrEmpty(order)) return "d.Id DESC";
         if (order == "random") return "RANDOM()";
 
         var ascending = false;

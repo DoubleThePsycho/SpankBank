@@ -22,16 +22,17 @@
 else
 {
   <table class="striped watches-table">
-    <thead><tr><th>Artist</th><th>Aliases</th><th>Characters</th><th>Posts</th><th>Status</th></tr></thead>
+    <thead><tr><th>Artist</th><th>Aliases</th><th>Characters</th><th>Posts</th><th>Status</th><th></th></tr></thead>
     <tbody>
       @foreach (var artist in Model.Entries)
       {
-        <tr data-open-modal="modal-@artist.Id" tabindex="0">
-          <td><a href="#" class="tag-type-1">@artist.SourceValue</a></td>
+        <tr data-href="/artist/@Uri.EscapeDataString(artist.SourceValue)" data-modal="modal-@artist.Id" tabindex="0">
+          <td><a href="/artist/@Uri.EscapeDataString(artist.SourceValue)" class="tag-type-1">@artist.SourceValue</a></td>
           <td data-field="aliases">@artist.ArtistTags.Count(t => t.Kind == ArtistTagKind.Alias)</td>
           <td data-field="characters">@artist.ArtistTags.Count(t => t.Kind == ArtistTagKind.Character && t.Enabled) / @artist.ArtistTags.Count(t => t.Kind == ArtistTagKind.Character)</td>
           <td data-field="matches">@artist.MatchText</td>
           <td data-field="status">@(artist.Enabled ? "enabled" : "disabled")</td>
+          <td class="watch-row-actions"><a href="#" data-open-modal="modal-@artist.Id">Edit</a></td>
         </tr>
       }
     </tbody>
@@ -59,7 +60,7 @@ else
     <div class="st-overlay-wrapper wide">
       <button type="button" class="st-button close-button" aria-label="Close">&times;</button>
       <div class="simple_form">
-        <h1 id="modal-@artist.Id-title"><a href="#" class="tag-type-1">@artist.SourceValue</a></h1>
+        <h1 id="modal-@artist.Id-title"><a href="/artist/@Uri.EscapeDataString(artist.SourceValue)" class="tag-type-1">@artist.SourceValue</a></h1>
 
         <form method="post" asp-page-handler="AddTag" data-ajax class="watch-add-tag">
           <input type="hidden" name="id" value="@artist.Id">

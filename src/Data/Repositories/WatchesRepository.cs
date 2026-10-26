@@ -124,7 +124,7 @@ public sealed class WatchesRepository
     // ---------------------------------------------------------------- pool suggestions
 
     /// <summary>Suggested pools waiting for a decision; by default only the likely ones.</summary>
-    public IReadOnlyList<PoolSuggestion> GetPoolSuggestions(bool showAll)
+    public IReadOnlyList<PoolSuggestion> GetPoolSuggestions(bool showAll, long? artistWatchId = null)
     {
         var rows = new List<(long Artist, string Name, long Pool, int ArtistPosts, int PoolPosts, bool Root)>();
         using (var connection = new SqliteConnection(_appConnectionString))
@@ -135,8 +135,9 @@ public sealed class WatchesRepository
                 SELECT s.ArtistWatchId, w.SourceValue, s.PoolId, s.ArtistPosts, s.PoolPosts, s.IsRoot
                 FROM PoolSuggestions s
                 JOIN WatchedItems w ON w.Id = s.ArtistWatchId
-                WHERE s.State = 0;
+                WHERE s.State = 0 AND ($artist IS NULL OR s.ArtistWatchId = $artist);
                 """;
+            cmd.Parameters.AddWithValue("$artist", (object?)artistWatchId ?? DBNull.Value);
             using var reader = cmd.ExecuteReader();
             while (reader.Read())
                 rows.Add((reader.GetInt64(0), reader.GetString(1), reader.GetInt64(2), reader.GetInt32(3), reader.GetInt32(4), reader.GetInt32(5) != 0));

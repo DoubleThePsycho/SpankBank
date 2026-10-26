@@ -155,6 +155,34 @@ public sealed class DownloadStore
         cmd.ExecuteNonQuery();
     }
 
+    /// <summary>Posts the downloader gave up on for now (or failed to fetch), newest attempt first.</summary>
+    public IReadOnlyList<DownloadProblem> GetProblems(int limit)
+    {
+        using var connection = new SqliteConnection($"Data Source={_paths.AppDatabasePath}");
+        connection.Open();
+        using var cmd = connection.CreateCommand();
+        cmd.CommandText = """
+            SELECT PostId, Attempts, LastAttemptAt, NextAttemptAt, LastError
+            FROM DownloadAttempts ORDER BY LastAttemptAt DESC LIMIT $limit;
+            """;
+        cmd.Parameters.AddWithValue("$limit", limit);
+        using var reader = cmd.ExecuteReader();
+        var problems = new List<DownloadProblem>();
+        while (reader.Read())
+            problems.Add(new DownloadProblem(reader.GetInt64(0), reader.GetInt32(1), DateTimeOffset.Parse(reader.GetString(2)),
+                DateTimeOffset.Parse(reader.GetString(3)), reader.IsDBNull(4) ? "" : reader.GetString(4)));
+        return problems;
+    }
+
+    public int CountProblems()
+    {
+        using var connection = new SqliteConnection($"Data Source={_paths.AppDatabasePath}");
+        connection.Open();
+        using var cmd = connection.CreateCommand();
+        cmd.CommandText = "SELECT COUNT(*) FROM DownloadAttempts;";
+        return Convert.ToInt32(cmd.ExecuteScalar());
+    }
+
     public int AttemptsSoFar(long postId)
     {
         using var connection = new SqliteConnection($"Data Source={_paths.AppDatabasePath}");
@@ -188,3 +216,5 @@ public sealed class DownloadStore
         return connection;
     }
 }
+
+public sealed record DownloadProblem(long PostId, int Attempts, DateTimeOffset LastAttemptAt, DateTimeOffset NextAttemptAt, string Error);

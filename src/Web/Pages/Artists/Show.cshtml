@@ -49,6 +49,57 @@
       </ul>
     }
 
+    @if (Model.Watch is not null)
+    {
+      <section id="pools" class="artist-pools">
+        <h2 style="margin-top: 1.5rem;">Pools</h2>
+
+        @if (Model.WatchedPools.Count > 0)
+        {
+          <p>Local pools added for this artist:</p>
+          <ul>
+            @foreach (var pool in Model.WatchedPools)
+            {
+              <li><a href="/pool/@pool.SourceValue">@pool.DisplayName</a> <span class="watch-origin">(@(pool.Pool is { } info ? $"{info.PostCount} posts" : "not in the export yet")@(pool.Enabled ? "" : ", disabled"))</span></li>
+            }
+          </ul>
+        }
+
+        <p class="hint">Pools that mostly hold this artist's work are added automatically (see Settings). These are the other pools that contain their posts:</p>
+        @if (Model.Suggestions.Count == 0)
+        {
+          <p>Nothing to review.</p>
+        }
+        else
+        {
+          <table class="striped" style="max-width: 60rem;">
+            <thead><tr><th>Pool</th><th>Type</th><th>Their share</th><th></th></tr></thead>
+            <tbody>
+              @foreach (var suggestion in Model.Suggestions)
+              {
+                <tr>
+                  <td><a href="/pool/@suggestion.PoolId">@suggestion.PoolName</a></td>
+                  <td>@suggestion.Category</td>
+                  <td>@suggestion.ArtistPosts of @suggestion.PoolPosts (@suggestion.SharePercent.ToString("0")%)@(suggestion.IsRoot ? "" : " · part of a larger pool")</td>
+                  <td class="watch-row-actions" style="white-space: nowrap; text-align: right;">
+                    <form method="post" asp-page-handler="AcceptSuggestion" style="display:inline-block">
+                      <input type="hidden" name="poolId" value="@suggestion.PoolId"><input type="hidden" name="name" value="@artist.Name">
+                      <a href="#" data-submit>Add</a>
+                    </form>
+                    <form method="post" asp-page-handler="IgnoreSuggestion" style="display:inline-block; margin-left: 0.75rem">
+                      <input type="hidden" name="artistId" value="@suggestion.ArtistWatchId"><input type="hidden" name="poolId" value="@suggestion.PoolId"><input type="hidden" name="name" value="@artist.Name">
+                      <a href="#" data-submit>Ignore</a>
+                    </form>
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        }
+        <p><a href="/artist/@Uri.EscapeDataString(artist.Name)@(Model.ShowAllSuggestions ? "" : "?all=1")#pools">@(Model.ShowAllSuggestions ? "Show only likely pools" : "Show every pool with at least two of their posts")</a></p>
+      </section>
+    }
+
     @if (Model.RecentPosts.Count > 0)
     {
       <div class="recent-posts">
@@ -63,3 +114,4 @@
     }
   </div>
 </div>
+<script type="module" src="~/dist/watches.js" asp-append-version="true"></script>

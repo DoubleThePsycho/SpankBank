@@ -7,6 +7,9 @@
     var current = Model.PageNumber;
     var last = Model.LastPage;
 }
+@section SecondaryNav {
+  <partial name="_AreaNav" model='"posts"' />
+}
 @section Scripts {
   <script type="module" src="~/dist/posts.js" asp-append-version="true"></script>
 }

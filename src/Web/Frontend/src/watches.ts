@@ -20,6 +20,13 @@ document.addEventListener("click", (event) => {
     return;
   }
 
+  // A row with data-href is a link to its own page (its Edit link is the only thing that opens the modal).
+  const row = target.closest<HTMLElement>("tr[data-href]");
+  if (row && !target.closest("a, button, input, form, .st-overlay")) {
+    window.location.href = row.dataset.href!;
+    return;
+  }
+
   const overlay = target.closest(".st-overlay");
   if (target.closest("button.close-button") && overlay) closeModal(overlay);
 });
@@ -37,6 +44,8 @@ document.addEventListener("keydown", (event) => {
   } else if ((event.key === "Enter" || event.key === " ") && target.matches("tr[data-open-modal]")) {
     event.preventDefault();
     openModal(target.dataset.openModal!);
+  } else if (event.key === "Enter" && target.matches("tr[data-href]")) {
+    window.location.href = target.dataset.href!;
   }
 });
 
@@ -68,9 +77,9 @@ document.addEventListener("submit", async (event) => {
     const response = await fetch(form.action, { method: "POST", body: new FormData(form), headers: { "X-Fetch": "1" } });
 
     if (response.status === 204) { // entry removed
-      document.querySelector(`tr[data-open-modal="${overlay?.id}"]`)?.remove();
+      rowFor(overlay?.id)?.remove();
       overlay?.remove();
-      if (!document.querySelector("tr[data-open-modal]")) location.reload();
+      if (!document.querySelector("tr[data-open-modal], tr[data-modal]")) location.reload();
       return;
     }
 
@@ -96,10 +105,15 @@ document.addEventListener("submit", async (event) => {
   }
 });
 
+// The list row that belongs to a modal: it opens it (data-open-modal) or links to its own page (data-modal).
+function rowFor (modalId: string | undefined): Element | null {
+  return modalId ? document.querySelector(`tr[data-open-modal="${modalId}"], tr[data-modal="${modalId}"]`) : null;
+}
+
 // Copies the values in the body's data-summary onto the matching cells of the list row.
 function updateRow (overlay: HTMLElement, slot: HTMLElement) {
   const summary = slot.querySelector<HTMLElement>("[data-summary]");
-  const row = document.querySelector(`tr[data-open-modal="${overlay.id}"]`);
+  const row = rowFor(overlay.id);
   if (!summary || !row) return;
   for (const [field, value] of Object.entries(summary.dataset))
     row.querySelector(`[data-field="${field}"]`)?.replaceChildren(value ?? "");
