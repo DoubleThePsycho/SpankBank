@@ -39,16 +39,16 @@ public sealed class ExportRefreshJob
         _matcher = new WatchMatcher(paths, message => logger.LogInformation("{Message}", message));
     }
 
-    /// <returns>A short result summary; throws only on cancellation.</returns>
-    public async Task<string> RunAsync(CancellationToken cancellationToken)
+    /// <returns>Whether the refresh succeeded and a short summary; throws only on cancellation.</returns>
+    public async Task<RefreshOutcome> RunAsync(CancellationToken cancellationToken)
     {
         _progress.BeginRun("Updating from e621", PhaseDownload, PhaseTags, PhaseAliases, PhasePools, PhasePosts, PhaseMatch);
         var result = await RunPhasesAsync(cancellationToken);
-        _progress.EndRun(result);
+        _progress.EndRun(result.Text);
         return result;
     }
 
-    private async Task<string> RunPhasesAsync(CancellationToken cancellationToken)
+    private async Task<RefreshOutcome> RunPhasesAsync(CancellationToken cancellationToken)
     {
         Directory.CreateDirectory(_importsDir);
         _settings.Set(ImportSettingsKeys.LastExportCheckAt, DateTimeOffset.UtcNow.ToString("o"));
@@ -64,7 +64,7 @@ public sealed class ExportRefreshJob
         if (!download.Succeeded)
         {
             _progress.EndPhase(PhaseDownload, PhaseState.Failed);
-            return $"Download failed: {download.ErrorMessage}";
+            return Failed($"Download failed: {download.ErrorMessage}");
         }
 
         var missing = download.Items
@@ -74,7 +74,7 @@ public sealed class ExportRefreshJob
         if (missing.Count > 0)
         {
             _progress.EndPhase(PhaseDownload, PhaseState.Failed);
-            return $"Export index is missing: {string.Join(", ", missing)}.";
+            return Failed($"Export index is missing: {string.Join(", ", missing)}.");
         }
 
         _progress.EndPhase(PhaseDownload);
@@ -93,7 +93,7 @@ public sealed class ExportRefreshJob
             if (!result.History.Succeeded)
             {
                 _progress.EndPhase(PhaseTags, PhaseState.Failed);
-                return $"Tags import failed: {result.History.ErrorMessage}";
+                return Failed($"Tags import failed: {result.History.ErrorMessage}");
             }
             Cleanup(tagsPath);
             summary.Add($"tags {result.RowsImportedOrUpdated:N0}");
@@ -110,7 +110,7 @@ public sealed class ExportRefreshJob
             if (!result.History.Succeeded)
             {
                 _progress.EndPhase(PhaseAliases, PhaseState.Failed);
-                return $"Aliases import failed: {result.History.ErrorMessage}";
+                return Failed($"Aliases import failed: {result.History.ErrorMessage}");
             }
             Cleanup(aliasesPath);
             summary.Add($"aliases {result.TagsUpdated:N0}");
@@ -126,7 +126,7 @@ public sealed class ExportRefreshJob
             if (!result.History.Succeeded)
             {
                 _progress.EndPhase(PhasePools, PhaseState.Failed);
-                return $"Pools import failed: {result.History.ErrorMessage}";
+                return Failed($"Pools import failed: {result.History.ErrorMessage}");
             }
             Cleanup(poolsPath);
             summary.Add($"pools {result.RowsImported:N0}");
@@ -143,7 +143,7 @@ public sealed class ExportRefreshJob
             if (!result.History.Succeeded)
             {
                 _progress.EndPhase(PhasePosts, PhaseState.Failed);
-                return $"Posts import failed: {result.History.ErrorMessage}";
+                return Failed($"Posts import failed: {result.History.ErrorMessage}");
             }
             Cleanup(postsPath);
             summary.Add($"posts {result.RowsImported:N0}");
@@ -161,8 +161,10 @@ public sealed class ExportRefreshJob
             text += $" Matched {matched.PostsMatched:N0} posts for {matched.WatchesMatched} watches."
                 + (matched.PoolsAdded > 0 ? $" Added {matched.PoolsAdded} pools." : "");
 
-        return text;
+        return new RefreshOutcome(true, text);
     }
+
+    private static RefreshOutcome Failed(string text) => new(false, text);
 
     private void ReportDownload(ExportDownloadProgress progress)
     {
@@ -204,6 +206,8 @@ public sealed class ExportRefreshJob
             _logger.LogWarning("{Warning}", cleanup.Warning);
     }
 }
+
+public sealed record RefreshOutcome(bool Succeeded, string Text);
 
 /// <summary>IProgress that runs the callback on the reporting thread (Progress&lt;T&gt; would queue it).</summary>
 internal sealed class InlineProgress<T>(Action<T> callback) : IProgress<T>

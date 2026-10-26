@@ -40,8 +40,10 @@ public sealed class DownloadStore
             SELECT COUNT(DISTINCT m.PostId)
             FROM WatchMatches m
             JOIN WatchedItems w ON w.Id = m.WatchedItemId AND w.Enabled = 1
-            WHERE NOT EXISTS (SELECT 1 FROM dev.Posts d WHERE d.Id = m.PostId AND d.SavedAt IS NOT NULL);
+            WHERE NOT EXISTS (SELECT 1 FROM dev.Posts d WHERE d.Id = m.PostId AND d.SavedAt IS NOT NULL)
+              AND NOT EXISTS (SELECT 1 FROM DownloadAttempts a WHERE a.PostId = m.PostId AND a.NextAttemptAt > $now);
             """;
+        cmd.Parameters.AddWithValue("$now", now.ToString("o"));
         return Convert.ToInt32(cmd.ExecuteScalar());
     }
 
@@ -77,7 +79,11 @@ public sealed class DownloadStore
             reader.IsDBNull(14) ? null : reader.GetInt64(14));
     }
 
-    /// <summary>Records that the file is on disk: the post enters device.sqlite and any retry bookkeeping is cleared.</summary>
+    /// <summary>
+    /// Records that the file is on disk: the post enters device.sqlite (the source of truth, also for the daily count)
+    /// and any retry bookkeeping is cleared. Saving again keeps the original SavedAt. A crash between the two steps is harmless: the post counts as saved, and
+    /// the leftover retry row is ignored because saved posts are never pending.
+    /// </summary>
     public void MarkSaved(CatalogPost post, LocalPostStatus status)
     {
         var now = DateTimeOffset.UtcNow.ToString("o");
@@ -92,7 +98,8 @@ public sealed class DownloadStore
                      TagString, Description, Duration, ParentId, SavedAt, Status)
                 VALUES
                     ($id, $created, $updated, $md5, $rating, $score, $width, $height, $size, $ext,
-                     $tags, $description, $duration, $parent, $saved, $status);
+                     $tags, $description, $duration, $parent,
+                     COALESCE((SELECT SavedAt FROM Posts WHERE Id = $id), $saved), $status);
                 """;
             cmd.Parameters.AddWithValue("$id", post.Id);
             cmd.Parameters.AddWithValue("$created", post.CreatedAt);
@@ -212,14 +219,14 @@ public sealed class DownloadStore
         return cmd.ExecuteScalar() is long attempts ? (int)attempts : 0;
     }
 
-    /// <summary>Files obtained since 00:00 UTC today.</summary>
+    /// <summary>Files obtained since 00:00 UTC today. Counted from device.sqlite, the record of what is actually saved, so a crash cannot skew it.</summary>
     public int SavedToday()
     {
         var midnight = new DateTimeOffset(DateTimeOffset.UtcNow.Date, TimeSpan.Zero).ToString("o");
-        using var connection = new SqliteConnection($"Data Source={_paths.AppDatabasePath}");
+        using var connection = new SqliteConnection($"Data Source={_paths.DeviceDatabasePath}");
         connection.Open();
         using var cmd = connection.CreateCommand();
-        cmd.CommandText = "SELECT COUNT(*) FROM DownloadLog WHERE At >= $midnight;";
+        cmd.CommandText = "SELECT COUNT(*) FROM Posts WHERE SavedAt >= $midnight;";
         cmd.Parameters.AddWithValue("$midnight", midnight);
         return Convert.ToInt32(cmd.ExecuteScalar());
     }

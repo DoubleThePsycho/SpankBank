@@ -38,7 +38,7 @@ public class StatusModel : PageModel
     public async Task<IActionResult> OnPostAsync()
     {
         // The flag survives a worker restart; the command wakes the worker right away.
-        _settings.Set(WorkerSettingsKeys.RunNowRequested, "true");
+        _settings.RequestExportRun();
         Message = await _worker.NotifyAsync("run-export")
             ? "Started."
             : "The worker is not reachable. The refresh will start as soon as it is.";
@@ -51,7 +51,7 @@ public class StatusModel : PageModel
         LastRunCompletedAt = _settings.Get(WorkerSettingsKeys.LastRunCompletedAt);
         LastRunResult = _settings.Get(WorkerSettingsKeys.LastRunResult);
         DailyRunTimeUtc = _settings.Get(WorkerSettingsKeys.DailyRunTimeUtc) ?? "04:00";
-        RunRequested = _settings.Get(WorkerSettingsKeys.RunNowRequested) == "true";
+        RunRequested = _settings.Get(WorkerSettingsKeys.RunNowRequested) is "true" or "running";
         PostCount = _posts.CountPosts();
         Imports = _history.GetRecent(10);
     }

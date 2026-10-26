@@ -93,7 +93,7 @@ public sealed class CommandServer : BackgroundService
             switch (path["/commands/".Length..])
             {
                 case "run-export":
-                    _settings.Set(WorkerSettingsKeys.RunNowRequested, "true");
+                    _settings.RequestExportRun();
                     _signals.Scheduler.Notify();
                     break;
                 case "match":

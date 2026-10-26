@@ -2,6 +2,7 @@ using System.Globalization;
 using System.IO.Compression;
 using Microsoft.Data.Sqlite;
 using SpankBank.Core.Models;
+using SpankBank.Data.Repositories;
 
 namespace SpankBank.Data.Import;
 
@@ -9,10 +10,12 @@ public sealed class E621ExportImportService
 {
     private readonly ImportHistoryRepository _historyRepository;
     private readonly string _connectionString;
+    private readonly SettingsRepository _settings;
 
     public E621ExportImportService(string serverDatabasePath, string appDatabasePath)
     {
         _connectionString = $"Data Source={serverDatabasePath}";
+        _settings = new SettingsRepository(appDatabasePath);
         _historyRepository = new ImportHistoryRepository(appDatabasePath);
     }
 
@@ -197,6 +200,10 @@ public sealed class E621ExportImportService
         long rowsImported = 0;
         ImportSmokeTestResult result;
 
+        // One-shot: the override is spent by this attempt, whether it succeeds or fails.
+        var forced = _settings.Get(ImportSettingsKeys.ForceNextPostsImport) == "true";
+        if (forced) _settings.Set(ImportSettingsKeys.ForceNextPostsImport, "false");
+
         try
         {
             ValidateSourcePath(sourcePath);
@@ -294,6 +301,17 @@ public sealed class E621ExportImportService
                 if (rowsRead % 1000 == 0)
                     progress?.Report(new PostsImportProgress(rowsRead, rowsImported, "Importing posts..."));
             }
+
+            long existingPosts;
+            using (var countCmd = connection.CreateCommand())
+            {
+                countCmd.Transaction = transaction;
+                countCmd.CommandText = "SELECT COUNT(*) FROM Posts;";
+                existingPosts = Convert.ToInt64(countCmd.ExecuteScalar());
+            }
+
+            if (ImportGuard.Check(existingPosts, rowsImported, forced) is { } refusal)
+                throw new InvalidOperationException(refusal);
 
             using (var replaceCmd = connection.CreateCommand())
             {

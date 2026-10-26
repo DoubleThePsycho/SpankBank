@@ -54,7 +54,7 @@ public sealed class PostFetcher : IDisposable
         if (File.Exists(original) && await Md5OfAsync(original, cancellationToken) == post.Md5)
             return new FetchOutcome(FetchResult.Downloaded, "Already on disk.");
 
-        if (!post.IsDeleted)
+        // Try the CDN even for posts the export marks deleted: they may have been restored since the export was made.
         {
             var download = await DownloadAsync($"{StaticHost}/data/{post.Md5[..2]}/{post.Md5[2..4]}/{post.Md5}.{post.Ext}",
                 original, post.Md5, jpegOnly: false, StallTimeout, cancellationToken, onProgress: onProgress);
@@ -128,7 +128,7 @@ public sealed class PostFetcher : IDisposable
     /// <summary>Successful snapshots of exactly this address, newest first; null when the index does not answer.</summary>
     private async Task<List<Snapshot>?> SnapshotsAsync(string address, int limit, CancellationToken cancellationToken)
     {
-        var url = "http://web.archive.org/cdx/search/cdx?output=json&fl=timestamp,original,statuscode&filter=statuscode:200"
+        var url = "https://web.archive.org/cdx/search/cdx?output=json&fl=timestamp,original,statuscode&filter=statuscode:200"
             + $"&limit=-{limit}&url={Uri.EscapeDataString(address)}";
         try
         {

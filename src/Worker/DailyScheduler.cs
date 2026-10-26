@@ -15,6 +15,7 @@ public sealed class DailyScheduler : BackgroundService
     private readonly ExportRefreshJob _job;
     private readonly WatchMatcher _matcher;
     private readonly SettingsRepository _settings;
+    private readonly RunRequests _requests;
     private readonly ProgressTracker _progress;
     private readonly WorkerSignals _signals;
     private readonly ILogger<DailyScheduler> _logger;
@@ -30,6 +31,7 @@ public sealed class DailyScheduler : BackgroundService
         _job = job;
         _matcher = matcher;
         _settings = settings;
+        _requests = new RunRequests(settings);
         _progress = progress;
         _signals = signals;
         _logger = logger;
@@ -43,23 +45,44 @@ public sealed class DailyScheduler : BackgroundService
 
         // Requests made while the worker was down are waiting in the Settings table; handle them first.
         var signalled = true;
+        DateTimeOffset? retryAt = null;
         while (!stoppingToken.IsCancellationRequested)
         {
             if (signalled || DateTimeOffset.UtcNow >= nextRun)
             {
-                var runNow = _settings.Get(WorkerSettingsKeys.RunNowRequested) == "true";
-                if (runNow || DateTimeOffset.UtcNow >= nextRun)
+                var runNow = _requests.IsPending && (retryAt is null || DateTimeOffset.UtcNow >= retryAt);
+                var daily = DateTimeOffset.UtcNow >= nextRun;
+                if ((runNow && _requests.TryBegin()) || daily)
                 {
-                    if (runNow) _settings.Set(WorkerSettingsKeys.RunNowRequested, "false");
+                    var requested = runNow;
+                    var ok = await RunJobAsync(stoppingToken);
+                    if (stoppingToken.IsCancellationRequested) return; // shut down mid-run: the request stays pending
+                    if (requested)
+                    {
+                        if (ok)
+                        {
+                            _requests.Succeeded();
+                            retryAt = null;
+                        }
+                        else if (_requests.Failed())
+                        {
+                            _logger.LogError("Export refresh failed {Max} times; giving up until it is requested again.", RunRequests.MaxAttempts);
+                            retryAt = null;
+                        }
+                        else
+                        {
+                            retryAt = DateTimeOffset.UtcNow + RetryDelay(_requests.Failures);
+                            _logger.LogWarning("Export refresh will be retried at {RetryAt:u}.", retryAt);
+                        }
+                    }
 
-                    await RunJobAsync(stoppingToken);
-                    nextRun = NextDailyRun(DateTimeOffset.UtcNow);
+                    if (daily) nextRun = NextDailyRun(DateTimeOffset.UtcNow);
                     _logger.LogInformation("Next export refresh at {NextRun:u}.", nextRun);
                 }
-                else if (_settings.Get(WorkerSettingsKeys.MatchRequested) == "true")
+                else if (TryBeginMatch())
                 {
-                    _settings.Set(WorkerSettingsKeys.MatchRequested, "false");
                     await RunMatchAsync(stoppingToken);
+                    _settings.Replace(WorkerSettingsKeys.MatchRequested, "running", "false");
                 }
                 else
                 {
@@ -85,7 +108,9 @@ public sealed class DailyScheduler : BackgroundService
 
             try
             {
-                signalled = await _signals.Scheduler.WaitAsync(nextRun - DateTimeOffset.UtcNow, stoppingToken);
+                var wakeAt = retryAt is { } r && r < nextRun ? r : nextRun;
+                var wait = wakeAt - DateTimeOffset.UtcNow;
+                signalled = await _signals.Scheduler.WaitAsync(wait > TimeSpan.Zero ? wait : TimeSpan.Zero, stoppingToken);
             }
             catch (OperationCanceledException)
             {
@@ -93,6 +118,13 @@ public sealed class DailyScheduler : BackgroundService
             }
         }
     }
+
+    private static TimeSpan RetryDelay(int failures) => failures <= 1 ? TimeSpan.FromMinutes(5) : TimeSpan.FromMinutes(30);
+
+    // "running" is a match a restart interrupted; a request made during the match turns the flag back to "true".
+    private bool TryBeginMatch()
+        => _settings.Replace(WorkerSettingsKeys.MatchRequested, "true", "running")
+           || _settings.Get(WorkerSettingsKeys.MatchRequested) == "running";
 
     private async Task RunMatchAsync(CancellationToken cancellationToken)
     {
@@ -124,28 +156,34 @@ public sealed class DailyScheduler : BackgroundService
         }
     }
 
-    private async Task RunJobAsync(CancellationToken cancellationToken)
+    /// <returns>True when the refresh succeeded. Cancellation (shutdown) counts as not finished: the request stays pending.</returns>
+    private async Task<bool> RunJobAsync(CancellationToken cancellationToken)
     {
         _settings.Set(WorkerSettingsKeys.LastRunStartedAt, DateTimeOffset.UtcNow.ToString("o"));
         string result;
+        bool ok;
         try
         {
-            result = await _job.RunAsync(cancellationToken);
+            var outcome = await _job.RunAsync(cancellationToken);
+            result = outcome.Text;
+            ok = outcome.Succeeded;
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
-            return;
+            return false;
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Export refresh crashed.");
             result = $"Crashed: {ex.Message}";
+            ok = false;
             _progress.EndRun(result);
         }
 
         _settings.Set(WorkerSettingsKeys.LastRunCompletedAt, DateTimeOffset.UtcNow.ToString("o"));
         _settings.Set(WorkerSettingsKeys.LastRunResult, result);
         _logger.LogInformation("Export refresh finished: {Result}", result);
+        return ok;
     }
 
     private DateTimeOffset NextDailyRun(DateTimeOffset now)

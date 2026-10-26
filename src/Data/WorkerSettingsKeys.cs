@@ -2,8 +2,13 @@ namespace SpankBank.Data;
 
 public static class WorkerSettingsKeys
 {
-    /// <summary>Set to "true" (by the web UI) to request an immediate export refresh.</summary>
+    /// <summary>
+    /// "true" (set by the web UI) requests an immediate export refresh. The worker flips it to "running" while it works,
+    /// so a request made during the run is not lost, and back to "false" only when the run succeeded or gave up.
+    /// </summary>
     public const string RunNowRequested = "Worker.RunNowRequested";
+    /// <summary>Failed attempts since the last request or success; the worker gives up after <c>DailyScheduler.MaxAttempts</c>.</summary>
+    public const string RunFailures = "Worker.RunFailures";
     /// <summary>Set to "true" (by the web UI) after a watch changed; the worker re-matches the changed watches.</summary>
     public const string MatchRequested = "Worker.MatchRequested";
     public const string DailyRunTimeUtc = "Worker.DailyRunTimeUtc";

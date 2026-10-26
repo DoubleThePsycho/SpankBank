@@ -13,5 +13,7 @@ public static class ImportSettingsKeys
     public const string LastExportDownloadAt = "Import.LastExportDownloadAt";
     public const string LastExportDownloadResult = "Import.LastExportDownloadResult";
     public const string LastExportDownloadStatusText = "Import.LastExportDownloadStatusText";
+    /// <summary>"true" lets the next posts import shrink the catalog by more than the sanity limit; cleared after that import succeeds.</summary>
+    public const string ForceNextPostsImport = "Import.ForceNextPostsImport";
     public const string PromptSuppressedUntilDate = "Import.PromptSuppressedUntilDate";
 }
