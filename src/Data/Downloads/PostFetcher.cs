@@ -16,9 +16,11 @@ public enum FetchResult
     NotAvailable,
     /// <summary>A network or file problem; worth trying again later.</summary>
     Failed,
+    /// <summary>The Wayback Machine is rate limiting us; try again at <see cref="FetchOutcome.RetryAt"/> without counting it as a failure.</summary>
+    Deferred,
 }
 
-public sealed record FetchOutcome(FetchResult Result, string Detail);
+public sealed record FetchOutcome(FetchResult Result, string Detail, DateTimeOffset? RetryAt = null);
 
 /// <summary>
 /// Gets a post's file onto disk. Active posts come from e621's CDN. Deleted posts (or ones the CDN no longer has)
@@ -32,6 +34,10 @@ public sealed class PostFetcher : IDisposable
 
     private readonly HttpClient _http;
     private readonly RateGate _wayback = new(TimeSpan.FromSeconds(1));
+
+    // The Internet Archive answers 429 when it is asked too much; stay away from it for a while (1 minute, doubling to 15).
+    private DateTimeOffset _waybackBlockedUntil = DateTimeOffset.MinValue;
+    private TimeSpan _waybackBackoff = TimeSpan.FromMinutes(1);
 
     public PostFetcher()
     {
@@ -70,12 +76,15 @@ public sealed class PostFetcher : IDisposable
 
     private async Task<FetchOutcome> RecoverAsync(CatalogPost post, string mediaRoot, string original, CancellationToken cancellationToken, Action<long, long?>? onProgress)
     {
+        if (DateTimeOffset.UtcNow < _waybackBlockedUntil)
+            return Deferred();
+
         var path = $"data/{post.Md5[..2]}/{post.Md5[2..4]}/{post.Md5}.{post.Ext}";
         foreach (var host in new[] { "static1.e621.net", "e621.net" })
         {
             var snapshots = await SnapshotsAsync($"{host}/{path}", 6, cancellationToken);
             if (snapshots is null)
-                return new FetchOutcome(FetchResult.Failed, "The Wayback Machine did not answer.");
+                return Deferred();
 
             foreach (var snapshot in snapshots)
             {
@@ -87,7 +96,7 @@ public sealed class PostFetcher : IDisposable
 
         var samples = await SnapshotsAsync($"static1.e621.net/data/sample/{post.Md5[..2]}/{post.Md5[2..4]}/{post.Md5}.jpg", 4, cancellationToken);
         if (samples is null)
-            return new FetchOutcome(FetchResult.Failed, "The Wayback Machine did not answer.");
+            return Deferred();
 
         var samplePath = MediaPaths.Sample(mediaRoot, post.Md5);
         foreach (var snapshot in samples)
@@ -98,6 +107,18 @@ public sealed class PostFetcher : IDisposable
         }
 
         return new FetchOutcome(FetchResult.NotAvailable, "Deleted on e621 and not found in the Wayback Machine.");
+    }
+
+    private FetchOutcome Deferred()
+        => new(FetchResult.Deferred, "The Wayback Machine is limiting requests; trying again later.", _waybackBlockedUntil > DateTimeOffset.UtcNow ? _waybackBlockedUntil : DateTimeOffset.UtcNow.AddMinutes(1));
+
+    private void WaybackSaysSlowDown(HttpResponseMessage response)
+    {
+        var retryAfter = response.Headers.RetryAfter?.Delta;
+        _waybackBackoff = retryAfter is { } delta && delta > TimeSpan.Zero
+            ? TimeSpan.FromSeconds(Math.Min(delta.TotalSeconds, 900))
+            : TimeSpan.FromSeconds(Math.Min(_waybackBackoff.TotalSeconds * 2, 900));
+        _waybackBlockedUntil = DateTimeOffset.UtcNow + _waybackBackoff;
     }
 
     private sealed record Snapshot(string Timestamp, string Original);
@@ -115,7 +136,10 @@ public sealed class PostFetcher : IDisposable
             using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
             cts.CancelAfter(TimeSpan.FromSeconds(60));
             using var response = await _http.GetAsync(url, cts.Token);
+            if (response.StatusCode == HttpStatusCode.TooManyRequests || (int)response.StatusCode >= 500)
+                WaybackSaysSlowDown(response);
             if (!response.IsSuccessStatusCode) return null;
+            _waybackBackoff = TimeSpan.FromMinutes(1);
 
             using var json = await JsonDocument.ParseAsync(await response.Content.ReadAsStreamAsync(cts.Token), cancellationToken: cts.Token);
             var snapshots = json.RootElement.EnumerateArray().Skip(1)

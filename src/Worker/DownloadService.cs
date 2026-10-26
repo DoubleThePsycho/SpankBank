@@ -152,6 +152,10 @@ public sealed class DownloadService : BackgroundService
                     saved = true;
                     status = "sample";
                     break;
+                case FetchResult.Deferred:
+                    _store.Defer(postId, outcome.RetryAt ?? DateTimeOffset.UtcNow.AddMinutes(1), outcome.Detail);
+                    status = "deferred";
+                    break;
                 case FetchResult.NotAvailable:
                     // Posts do come back (takedowns get withdrawn) and archives grow, so look again in a month.
                     _store.RecordFailure(postId, outcome.Detail, TimeSpan.FromDays(30));

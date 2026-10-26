@@ -177,7 +177,10 @@ public sealed class ProgressTracker
         lock (_lock)
         {
             _current.Remove(postId);
-            if (saved) _downloadDone++; else _downloadFailed++;
+            // A deferred post goes back in the queue: it is neither done nor failed, so the session shrinks by one.
+            if (saved) _downloadDone++;
+            else if (status == "deferred") _downloadTotal = Math.Max(_downloadDone + _downloadFailed, _downloadTotal - 1);
+            else _downloadFailed++;
 
             var now = DateTimeOffset.UtcNow;
             _completions.Enqueue(now);

@@ -135,6 +135,25 @@ public sealed class DownloadStore
         transaction.Commit();
     }
 
+    /// <summary>Puts a post off until <paramref name="until"/> without counting an attempt (the archive asked us to slow down).</summary>
+    public void Defer(long postId, DateTimeOffset until, string reason)
+    {
+        var now = DateTimeOffset.UtcNow;
+        using var connection = new SqliteConnection($"Data Source={_paths.AppDatabasePath}");
+        connection.Open();
+        using var cmd = connection.CreateCommand();
+        cmd.CommandText = """
+            INSERT INTO DownloadAttempts (PostId, Attempts, LastAttemptAt, NextAttemptAt, LastError)
+            VALUES ($id, 0, $now, $next, $error)
+            ON CONFLICT(PostId) DO UPDATE SET LastAttemptAt = $now, NextAttemptAt = $next, LastError = $error;
+            """;
+        cmd.Parameters.AddWithValue("$id", postId);
+        cmd.Parameters.AddWithValue("$now", now.ToString("o"));
+        cmd.Parameters.AddWithValue("$next", until.ToString("o"));
+        cmd.Parameters.AddWithValue("$error", reason);
+        cmd.ExecuteNonQuery();
+    }
+
     /// <summary>Notes a failed attempt and when the post may be tried again.</summary>
     public void RecordFailure(long postId, string error, TimeSpan retryAfter)
     {
