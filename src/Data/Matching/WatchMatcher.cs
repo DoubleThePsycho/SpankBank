@@ -191,7 +191,7 @@ public sealed class WatchMatcher
                 case WatchedItemType.Search:
                 {
                     var query = PostSearchQuery.Parse(source);
-                    var problem = query.Error ?? (query.NeedsDatabase ? "A watch cannot use pool or parent/child terms yet." : null);
+                    var problem = query.Error ?? (query.NeedsDatabase ? "A watch cannot use pool, parent/child or fav terms." : null);
                     var watch = new ScanWatch(id) { Query = query, Error = problem };
                     watch.Required = query.Required.Select(Expand).ToArray();
                     watch.Excluded = query.Excluded.Select(Expand).ToArray();

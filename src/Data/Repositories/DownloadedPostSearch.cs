@@ -41,6 +41,7 @@ public sealed class DownloadedPostSearch
         ["tagcount"] = TagCountExpr,
         ["comment_count"] = "COALESCE(s.CommentCount, 0)",
         ["change"] = "d.UpdatedAt",
+        ["favorited"] = "(SELECT f.CreatedAt FROM app.Favorites f WHERE f.PostId = d.Id)",
         ["downloaded"] = "d.SavedAt",
         ["saved"] = "d.SavedAt",
         ["landscape"] = "(d.ImageWidth * 1.0 / NULLIF(d.ImageHeight, 0))",
@@ -295,6 +296,14 @@ public sealed class DownloadedPostSearch
                     "false" => "NOT EXISTS (SELECT 1 FROM Posts c WHERE c.ParentId = d.Id AND c.SavedAt IS NOT NULL)",
                     _ => null,
                 };
+            case "fav":
+                // Favorites are the user's own (SpankBank.sqlite, attached as "app"); there is only one user, so any value but a negative one means "mine".
+                return value switch
+                {
+                    "true" or "me" or "any" => "EXISTS (SELECT 1 FROM app.Favorites f WHERE f.PostId = d.Id)",
+                    "false" or "none" => "NOT EXISTS (SELECT 1 FROM app.Favorites f WHERE f.PostId = d.Id)",
+                    _ => null,
+                };
             case "inpool":
                 return value switch
                 {
@@ -374,13 +383,13 @@ public sealed class DownloadedPostSearch
         return $"{column} {(ascending ? "ASC" : "DESC")}{tieBreak}";
     }
 
-    // The device database with the catalog attached as "srv". Not pooled: a pooled connection would keep the attachment.
+    // The device database with the catalog attached as "srv" and the app state as "app". Not pooled: a pooled connection would keep the attachment.
     private SqliteConnection OpenWithCatalog()
     {
         var connection = new SqliteConnection($"Data Source={_paths.DeviceDatabasePath};Pooling=False");
         connection.Open();
         using var cmd = connection.CreateCommand();
-        cmd.CommandText = $"ATTACH DATABASE '{_paths.ServerDatabasePath.Replace("'", "''")}' AS srv;";
+        cmd.CommandText = $"ATTACH DATABASE '{_paths.ServerDatabasePath.Replace("'", "''")}' AS srv; ATTACH DATABASE '{_paths.AppDatabasePath.Replace("'", "''")}' AS app;";
         cmd.ExecuteNonQuery();
         return connection;
     }

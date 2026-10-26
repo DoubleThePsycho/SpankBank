@@ -26,6 +26,10 @@ public class IndexModel : PageModel
     // Read from the query string by hand: Razor Pages reserves the route value "page", so model binding cannot use it.
     public int PageNumber { get; private set; } = 1;
 
+    /// <summary>True on /favorites: the same listing, narrowed to favorites and newest-favorited first.</summary>
+    public bool IsFavorites => Request.Path.StartsWithSegments("/favorites");
+    public string BasePath => IsFavorites ? "/favorites" : "/posts";
+
     public IReadOnlyList<PostListItem> Items { get; private set; } = [];
     public long Total { get; private set; }
     public int LastPage { get; private set; } = 1;
@@ -39,7 +43,8 @@ public class IndexModel : PageModel
     {
         PageNumber = int.TryParse(Request.Query["page"], out var requested) && requested > 0 ? requested : 1;
 
-        var result = _search.Search(Tags, PageNumber, PageSize);
+        var searchText = SearchText();
+        var result = _search.Search(searchText, PageNumber, PageSize);
         PageSizeUsed = result.PageSize;
         SearchError = result.Error;
         Total = result.Total;
@@ -48,11 +53,19 @@ public class IndexModel : PageModel
         if (PageNumber > LastPage)
         {
             PageNumber = LastPage;
-            result = _search.Search(Tags, PageNumber, PageSize);
+            result = _search.Search(searchText, PageNumber, PageSize);
         }
         Items = result.Items;
 
         BuildSidebar();
+    }
+
+    // What is searched: on /favorites the typed tags plus "fav:true", and "order:favorited" unless the user chose an order.
+    private string? SearchText()
+    {
+        if (!IsFavorites) return Tags;
+        var text = "fav:true " + Tags;
+        return text.Contains("order:", StringComparison.OrdinalIgnoreCase) ? text : text + " order:favorited";
     }
 
     private void BuildSidebar()
@@ -78,10 +91,10 @@ public class IndexModel : PageModel
     }
 
     /// <summary>Url of a page of this search; page 0 is the fast-travel placeholder the paginator script fills in.</summary>
-    public string PageUrl(int page) => $"/posts?page={page}" + (string.IsNullOrWhiteSpace(Tags) ? "" : $"&tags={Uri.EscapeDataString(Tags)}");
+    public string PageUrl(int page) => $"{BasePath}?page={page}" + (string.IsNullOrWhiteSpace(Tags) ? "" : $"&tags={Uri.EscapeDataString(Tags)}");
 
     /// <summary>Url of this search with a tag added, or excluded with a leading "-".</summary>
-    public string TagUrl(string tag) => "/posts?tags=" + Uri.EscapeDataString(((Tags ?? "").Trim() + " " + tag).Trim());
+    public string TagUrl(string tag) => BasePath + "?tags=" + Uri.EscapeDataString(((Tags ?? "").Trim() + " " + tag).Trim());
 
     /// <summary>The best local picture for a post: its preview, else the recovered sample, else the image itself.</summary>
     public static string PreviewUrl(PostListItem post)

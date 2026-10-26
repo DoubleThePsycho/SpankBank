@@ -13,9 +13,11 @@ public class ShowModel : PageModel
     private readonly PostsRepository _catalog;
     private readonly TagsRepository _tags;
     private readonly DownloadedPostSearch _search;
+    private readonly FavoritesRepository _favorites;
 
-    public ShowModel(DownloadedPostsRepository downloaded, PostsRepository catalog, TagsRepository tags, DownloadedPostSearch search)
+    public ShowModel(DownloadedPostsRepository downloaded, PostsRepository catalog, TagsRepository tags, DownloadedPostSearch search, FavoritesRepository favorites)
     {
+        _favorites = favorites;
         _search = search;
         _downloaded = downloaded;
         _catalog = catalog;
@@ -28,6 +30,12 @@ public class ShowModel : PageModel
     public IReadOnlyList<long> ChildIds { get; private set; } = [];
     public bool ParentIsLocal { get; private set; }
     public IReadOnlyList<PoolNavItem> PoolNav { get; private set; } = [];
+    public bool IsFavorite { get; private set; }
+    /// <summary>The parent and children that are on this device, shown as thumbnails under the relationship notices.</summary>
+    public IReadOnlyList<PostListItem> ParentPreview { get; private set; } = [];
+    public IReadOnlyList<PostListItem> ChildPreview { get; private set; } = [];
+    /// <summary>URL of the downsized sample when the original is shown and a sample is on disk too (for the size selector).</summary>
+    public string? SampleUrl { get; private set; }
 
     /// <summary>"image", "video" or "other": how the file is shown.</summary>
     public string MediaKind { get; private set; } = "other";
@@ -45,6 +53,9 @@ public class ShowModel : PageModel
         ChildIds = _downloaded.GetChildIds(id);
         ParentIsLocal = post.ParentId is { } parent && _downloaded.Exists(parent);
         PoolNav = _search.GetPoolNavigation(id, long.TryParse(Request.Query.ContainsKey("pool_id") ? Request.Query["pool_id"] : Request.Query["pool"], out var poolId) ? poolId : null);
+        IsFavorite = _favorites.IsFavorite(id);
+        ParentPreview = ParentIsLocal ? _search.GetPosts([post.ParentId!.Value]) : [];
+        ChildPreview = _search.GetPosts(ChildIds).OrderBy(p => p.Id).ToList();
         BuildTagGroups();
         ChooseMedia();
         return Page();
@@ -82,6 +93,7 @@ public class ShowModel : PageModel
         {
             MediaUrl = MediaPaths.OriginalUrl(md5, Post.FileExt);
             MediaKind = isVideo ? "video" : isImage ? "image" : "other";
+            if (isImage && System.IO.File.Exists(sample)) SampleUrl = MediaPaths.SampleUrl(md5);
         }
         else if (System.IO.File.Exists(sample))
         {

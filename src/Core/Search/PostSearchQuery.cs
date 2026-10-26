@@ -112,7 +112,7 @@ public sealed class PostSearchQuery
                 continue;
             }
 
-            if (name is "inpool" or "pool" or "isparent" or "haschild" or "hasparent")
+            if (name is "inpool" or "pool" or "isparent" or "haschild" or "hasparent" or "fav")
             {
                 // hasparent is another name for ischild; the rest are answered from the database.
                 if (name == "hasparent") name = "ischild";

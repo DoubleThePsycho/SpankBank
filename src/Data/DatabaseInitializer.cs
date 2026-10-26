@@ -315,6 +315,13 @@ public static class DatabaseInitializer
         Execute(connection, "CREATE INDEX IF NOT EXISTS IX_WatchedItems_ItemType ON WatchedItems (ItemType);");
         Execute(connection, "CREATE INDEX IF NOT EXISTS IX_WatchedItems_Enabled ON WatchedItems (Enabled);");
 
+        Execute(connection, """
+            CREATE TABLE IF NOT EXISTS Favorites (
+                PostId    INTEGER PRIMARY KEY,
+                CreatedAt TEXT NOT NULL
+            );
+            """);
+
         // Aliases and characters that belong to a watched artist. Each can be switched off; IsManual rows were added by hand.
         Execute(connection, """
             CREATE TABLE IF NOT EXISTS WatchedArtistTags (

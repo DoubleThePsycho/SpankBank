@@ -10,7 +10,8 @@ var builder = WebApplication.CreateBuilder(args);
 var paths = WebPaths.Databases();
 DatabaseInitializer.Initialize(paths);
 
-builder.Services.AddRazorPages().AddMvcOptions(options => options.Filters.Add<WatchChangeNotifier>());
+builder.Services.AddRazorPages(options => options.Conventions.AddPageRoute("/Posts/Index", "/favorites")) // the listing, narrowed to favorites
+    .AddMvcOptions(options => options.Filters.Add<WatchChangeNotifier>());
 builder.Services.AddHttpClient<WorkerClient>(client =>
 {
     // The worker's command server; only reachable on the compose network.
@@ -26,6 +27,7 @@ builder.Services.AddSingleton(new TagsRepository(paths.ServerDatabasePath));
 builder.Services.AddSingleton(new WatchesRepository(paths.AppDatabasePath, paths.ServerDatabasePath));
 builder.Services.AddSingleton(new DownloadStore(paths));
 builder.Services.AddSingleton(new SettingsRepository(paths.AppDatabasePath));
+builder.Services.AddSingleton(new FavoritesRepository(paths.AppDatabasePath));
 builder.Services.AddSingleton(new ImportHistoryRepository(paths.AppDatabasePath));
 
 var app = builder.Build();
@@ -36,6 +38,19 @@ app.UseStaticFiles();
 if (Directory.Exists(WebPaths.MediaDir))
     app.UseStaticFiles(new StaticFileOptions { FileProvider = new PhysicalFileProvider(WebPaths.MediaDir), RequestPath = "/media" });
 app.MapRazorPages();
+
+// Favorites. PUT/DELETE with no body: a cross-site page cannot send them without a CORS preflight.
+app.MapPut("/favorites/{id:long}", (long id, DownloadedPostsRepository posts, FavoritesRepository favorites) =>
+{
+    if (!posts.Exists(id)) return Results.NotFound();
+    favorites.Add(id);
+    return Results.Ok(new { favorited = true });
+});
+app.MapDelete("/favorites/{id:long}", (long id, FavoritesRepository favorites) =>
+{
+    favorites.Remove(id);
+    return Results.Ok(new { favorited = false });
+});
 
 // The watch pages used to live under /watches.
 app.MapGet("/watches", () => Results.Redirect("/artists/local", permanent: true));

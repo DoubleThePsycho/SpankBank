@@ -2,7 +2,7 @@
 @model SpankBank.Web.Pages.Posts.IndexModel
 @* Markup ported from e621ng app/views/posts/index.html.erb and its partials (BSD-2, see THIRD-PARTY-NOTICES.md). *@
 @{
-    ViewData["Title"] = "Posts";
+    ViewData["Title"] = Model.IsFavorites ? "Favorites" : "Posts";
     ViewData["BodyClass"] = "c-posts a-index"; // the upstream styles key the page layout off these body classes
     var current = Model.PageNumber;
     var last = Model.LastPage;
@@ -18,10 +18,10 @@
 
   <div class="search">
     <section class="post-search">
-      <label for="tags" class="post-search-title">Posts</label>
+      <label for="tags" class="post-search-title">@(Model.IsFavorites ? "Favorites" : "Posts")</label>
       <span class="post-search-help"></span>
 
-      <form method="get" action="/posts" rel="search" class="post-search-form">
+      <form method="get" action="@Model.BasePath" rel="search" class="post-search-form">
         <textarea name="tags" id="tags" data-autocomplete="tag-query" placeholder="Search posts by tag" rows="1">@Model.Tags</textarea>
         <button type="submit" title="Search"><svg-icon name="search" /></button>
       </form>
@@ -49,7 +49,7 @@
                 <a rel="nofollow" href="@Model.TagUrl(tag.Name)" class="tag-list-inc">+</a>
                 <a rel="nofollow" href="@Model.TagUrl("-" + tag.Name)" class="tag-list-exl">–</a>
               }
-              <a rel="nofollow tag" class="tag-list-search" href="/posts?tags=@Uri.EscapeDataString(tag.Name)">
+              <a rel="nofollow tag" class="tag-list-search" href="@Model.BasePath?tags=@Uri.EscapeDataString(tag.Name)">
                 <span class="tag-list-name">@tag.Name.Replace('_', ' ')</span>
                 <span data-count="@tag.PostCount" class="tag-list-count">@ShowModel.CountLabel(tag.PostCount)</span>
               </a>
@@ -68,9 +68,9 @@
       }
       else if (Model.Items.Count == 0)
       {
-        <span class="posts-info-empty">@(string.IsNullOrWhiteSpace(Model.Tags) ? "Nothing downloaded yet." : "Nobody here but us chickens!")</span>
+        <span class="posts-info-empty">@(string.IsNullOrWhiteSpace(Model.Tags) ? (Model.IsFavorites ? "No favorites yet. Use the star under a post." : "Nothing downloaded yet.") : "Nobody here but us chickens!")</span>
       }
-      <span class="posts-info-count">@Model.Total.ToString("N0") local posts</span>
+      <span class="posts-info-count">@Model.Total.ToString("N0") @(Model.IsFavorites ? "favorites" : "local posts")</span>
     </div>
 
     <div id="posts" class="post-index-gallery">

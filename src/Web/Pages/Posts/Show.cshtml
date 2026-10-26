@@ -152,11 +152,11 @@
           <div class="notice notice-info">e621 has deleted this post. Only its downsized sample could be recovered.</div>
         }
 
-        <section id="image-container" class="blacklistable">
+        <section id="image-container" class="blacklistable" data-post-id="@post.Id" data-is-favorited="@(Model.IsFavorite ? "true" : "false")">
           @switch (Model.MediaKind)
           {
             case "image":
-              <picture><img id="image" class="fit-window" src="@Model.MediaUrl" alt="Post #@post.Id" width="@post.Width" height="@post.Height"></picture>
+              <picture><img id="image" class="fit-window" src="@Model.MediaUrl" alt="Post #@post.Id" width="@post.Width" height="@post.Height" data-original="@Model.MediaUrl" data-sample="@Model.SampleUrl"></picture>
               break;
             case "video":
               <video id="image" class="fit-window" controls loop preload="metadata" src="@Model.MediaUrl" width="@post.Width" height="@post.Height"></video>
@@ -180,19 +180,60 @@
         }
       </div>
 
+      @* Toolbar ported from e621ng app/views/posts/partials/show/content/_toolbar.html.erb (BSD-2, see THIRD-PARTY-NOTICES.md); no votes, edit or notes here. *@
+      <section id="ptbr-wrapper">
+        <div class="ptbr-row">
+          <div class="ptbr-favorite">
+            <button type="button" class="st-button kinetic ptbr-favorite-button anim" favorited="@(Model.IsFavorite ? "true" : "false")" processing="false" title="Favorite" data-hotkey="favorite">
+              <svg-icon name="star" />
+            </button>
+          </div>
+
+          @if (Model.MediaKind is "image" or "video")
+          {
+            <div class="ptbr-resize">
+              <select id="image-resize-selector" class="st-button" aria-label="Select image size">
+                <option value="original">Original</option>
+                <option value="fit" selected>Fit (Horizontal)</option>
+                <option value="fitv">Fit (Vertical)</option>
+                @if (Model.SampleUrl is not null) { <option value="large">Sample</option> }
+              </select>
+            </div>
+          }
+        </div>
+
+        <div class="ptbr-row">
+          @if (Model.MediaUrl is not null)
+          {
+            <div class="ptbr-fullscreen">
+              <a href="@Model.MediaUrl" class="st-button kinetic ptbr-fullscreen-button" data-hotkey="fullscreen" title="View Full Size">Fullscreen</a>
+            </div>
+          }
+        </div>
+      </section>
+
       <div class="bottom-notices">
         <div class="parent-children">
           @if (post.ParentId is { } parentId)
           {
             <div class="notice notice-child">
-              This post has a <a href="@(Model.ParentIsLocal ? $"/posts/{parentId}" : $"https://e621.net/posts/{parentId}")">parent</a> (post #@parentId).
+              Parent: <a href="@(Model.ParentIsLocal ? $"/posts/{parentId}" : $"https://e621.net/posts/{parentId}")">post #@parentId</a>
+              (<a href="https://e621.net/wiki_pages/e621:post_relationships" rel="nofollow noopener">learn more</a>)
+              @if (Model.ParentPreview.Count > 0) { <a href="#" id="has-parent-relationship-preview-link" data-hotkey="postrel">show »</a> }
+              <div id="has-parent-relationship-preview" style="display: none;">
+                @foreach (var related in Model.ParentPreview) { <partial name="_PostThumbnail" model="related" /> }
+              </div>
             </div>
           }
           @if (Model.ChildIds.Count > 0)
           {
             <div class="notice notice-parent">
-              This post has children:
-              @foreach (var childId in Model.ChildIds) { <a href="/posts/@childId">#@childId</a> }
+              Children: <a href="/posts?tags=parent:@post.Id">@(Model.ChildIds.Count == 1 ? "1 child" : $"{Model.ChildIds.Count} children")</a>
+              (<a href="https://e621.net/wiki_pages/e621:post_relationships" rel="nofollow noopener">learn more</a>)
+              <a href="#" id="has-children-relationship-preview-link" data-hotkey="postrel">show »</a>
+              <div id="has-children-relationship-preview" style="display: none;">
+                @foreach (var related in Model.ChildPreview) { <partial name="_PostThumbnail" model="related" /> }
+              </div>
             </div>
           }
         </div>
@@ -201,8 +242,10 @@
       @if (!string.IsNullOrWhiteSpace(post.Description))
       {
         <div id="post-description-container" class="styled-dtext">
-          <h2>Description</h2>
-          <p style="white-space: pre-wrap;">@post.Description</p>
+          <details id="description" open>
+            <summary>Description</summary>
+            <div style="white-space: pre-wrap;">@post.Description</div>
+          </details>
         </div>
       }
     </div>

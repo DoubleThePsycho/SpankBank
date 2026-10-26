@@ -1,9 +1,11 @@
 import SearchControls from "@/pages/posts/SearchControls";
 import SearchFilters from "@/pages/posts/SearchFilters";
+import PostToolbar from "@/pages/posts/PostToolbar";
 
 $(() => {
   new SearchControls();
   SearchFilters.initialize();
+  new PostToolbar();
 
   // Left and right arrow keys turn the page (e621ng does the same), unless the user is typing.
   document.addEventListener("keydown", (event) => {
