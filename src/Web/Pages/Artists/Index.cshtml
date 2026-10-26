@@ -1,0 +1,45 @@
+@page "/artists"
+@model SpankBank.Web.Pages.Artists.IndexModel
+@* Markup follows e621ng app/views/artists/index.html.erb (BSD-2, see THIRD-PARTY-NOTICES.md). *@
+@{
+    ViewData["Title"] = "Artists";
+}
+<div id="c-artists" class="container-fluid">
+  <div id="a-index">
+    <div class="section" id="searchform">
+      <form method="get" action="/artists" class="simple_form inline-form">
+        <div class="input string"><label for="name">Name</label><input type="text" id="name" name="name" value="@Model.Name" data-autocomplete="artist-tag" autocomplete="off"><p class="hint">Use * for wildcard</p></div>
+        <div class="input select">
+          <label for="order">Order</label>
+          <select id="order" name="order">
+            <option value="count" selected="@(Model.Order == "count")">Post count</option>
+            <option value="name" selected="@(Model.Order == "name")">Name</option>
+          </select>
+        </div>
+        <div class="input boolean"><label for="empty">Show empty?</label><input type="checkbox" id="empty" name="empty" value="1" checked="@Model.ShowEmpty"></div>
+        <input type="submit" value="Search" class="st-button">
+      </form>
+    </div>
+
+    <table class="striped">
+      <thead><tr><th width="35%">Primary Name</th><th width="10%">Posts</th><th width="45%">Secondary Names</th><th width="10%"></th></tr></thead>
+      <tbody>
+        @foreach (var artist in Model.Result.Rows)
+        {
+          <tr>
+            <td class="category-1"><a href="/artists/@Uri.EscapeDataString(artist.Name)">@artist.Name</a></td>
+            <td>@artist.PostCount.ToString("N0")</td>
+            <td>@string.Join(", ", artist.OtherNames)</td>
+            <td>@(Model.Watched.Contains(artist.Name) ? "watched" : "")</td>
+          </tr>
+        }
+        @if (Model.Result.Rows.Count == 0)
+        {
+          <tr><td colspan="4">No artists match.</td></tr>
+        }
+      </tbody>
+    </table>
+
+    <partial name="_Paginator" model="new SpankBank.Web.Services.PagerModel(Model.PageNumber, Model.LastPage, Model.PageUrl)" />
+  </div>
+</div>

@@ -22,3 +22,5 @@ The autocomplete and modal files were copied from the local e621ng checkout in `
 
 `js/core/Navigation.ts` is a trimmed copy (main-menu toggle only). `images/logo/default.svg` is e621's logo shape with the lettering replaced by "SB". `common/container_local.scss` (Bootstrap container sizing) and `common/layout_local.scss` are SpankBank's own.
 `js/core/PaginatorFastTravel.ts` is a copy (only the jquery import was added).
+
+The Tags, Artists and Pools pages (`src/Web/Pages/{Tags,Artists,Pools}`) follow e621ng's `tags/index`, `artists/index` and `pools/index`/`show` views, adapted to the local catalog.

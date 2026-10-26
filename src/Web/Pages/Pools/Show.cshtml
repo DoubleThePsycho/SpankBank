@@ -1,0 +1,52 @@
+@page "/pools/{id:long}"
+@model SpankBank.Web.Pages.Pools.ShowModel
+@* Markup follows e621ng app/views/pools/show.html.erb (BSD-2, see THIRD-PARTY-NOTICES.md). *@
+@{
+    var pool = Model.Pool;
+    ViewData["Title"] = "Pool - " + pool.Name.Replace('_', ' ');
+}
+<div id="c-pools" class="container-fluid">
+  <div id="a-show">
+    @if (Model.Message is not null) { <div class="notice notice-info">@Model.Message</div> }
+
+    <h2>
+      @(pool.Category == "series" ? "Series" : "Collection"):
+      <a href="https://e621.net/pools/@pool.Id" class="pool-category-@pool.Category" rel="nofollow noopener">@pool.Name.Replace('_', ' ')</a>
+    </h2>
+
+    @if (!string.IsNullOrWhiteSpace(pool.Description))
+    {
+      <div id="description" class="dtext-container"><p style="white-space: pre-wrap;">@pool.Description</p></div>
+    }
+
+    <p>
+      @pool.PostIds.Count.ToString("N0") posts on e621, @Model.OnDevice.ToString("N0") on this device.
+      @if (!pool.IsActive) { <text>This pool is inactive.</text> }
+      @if (Model.Watch is { } watch)
+      {
+        <text>Watching: @(watch.Enabled ? "enabled" : "disabled"). <a href="/watches/pools">Manage</a></text>
+      }
+      else
+      {
+        <form method="post" asp-page-handler="Watch" style="display:inline">
+          <button type="submit" class="st-button">Watch this pool</button>
+        </form>
+      }
+    </p>
+
+    <div id="posts">
+      <section class="posts-container">
+        @foreach (var post in Model.Posts)
+        {
+          <partial name="_PostThumbnail" model="post" />
+        }
+        @if (Model.Posts.Count == 0)
+        {
+          <p>@(Model.Watch is null ? "Nothing from this pool is downloaded yet." : "Nothing downloaded yet. The files arrive as the downloader works through your watches.")</p>
+        }
+      </section>
+    </div>
+
+    <partial name="_Paginator" model="new SpankBank.Web.Services.PagerModel(Model.PageNumber, Model.LastPage, Model.PageUrl)" />
+  </div>
+</div>

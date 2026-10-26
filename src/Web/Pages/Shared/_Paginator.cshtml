@@ -1,0 +1,37 @@
+@model SpankBank.Web.Services.PagerModel
+<nav class="pagination numbered" aria-label="Pagination" data-total="@Model.Last" data-current="@Model.Current">
+  @if (Model.Current > 1)
+  {
+    <a class="prev" id="paginator-prev" rel="prev" aria-label="Previous Page" href="@Model.Url(Model.Current - 1)"><svg-icon name="chevron_left" /><span>Prev</span></a>
+  }
+  else
+  {
+    <span class="prev" id="paginator-prev"><svg-icon name="chevron_left" /><span>Prev</span></span>
+  }
+
+  <div class="break"></div>
+  @foreach (var (pg, spacer) in SpankBank.Web.Services.Pager.NumberedPages(Model.Current, Model.Last))
+  {
+    if (spacer)
+    {
+      <a class="page spacer" href="@Model.Url(0)" title="Go to a page"><svg-icon name="ellipsis" /></a>
+    }
+    else if (pg == Model.Current)
+    {
+      <span class="page current" aria-current="page">@pg</span>
+    }
+    else
+    {
+      <a class="page" href="@Model.Url(pg)">@pg</a>
+    }
+  }
+
+  @if (Model.Current < Model.Last)
+  {
+    <a class="next" id="paginator-next" rel="next" aria-label="Next Page" href="@Model.Url(Model.Current + 1)"><span>Next</span><svg-icon name="chevron_right" /></a>
+  }
+  else
+  {
+    <span class="next" id="paginator-next"><span>Next</span><svg-icon name="chevron_right" /></span>
+  }
+</nav>

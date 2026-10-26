@@ -1,0 +1,29 @@
+@model SpankBank.Data.Repositories.PostListItem
+@{
+    var post = Model;
+    var rating = post.Rating.ToString().ToLowerInvariant();
+    var ratingLetter = post.Rating switch { SpankBank.Core.Models.PostRating.Safe => "s", SpankBank.Core.Models.PostRating.Questionable => "q", _ => "e" };
+    var ratingClass = post.Rating switch { SpankBank.Core.Models.PostRating.Safe => "rating-safe", SpankBank.Core.Models.PostRating.Questionable => "rating-questionable", _ => "rating-explicit" };
+    var scoreClass = post.Score == 0 ? "neutral" : post.Score > 0 ? "positive" : "negative";
+    var scoreIcon = post.Score == 0 ? "square_slash" : post.Score > 0 ? "arrow_up_dash" : "arrow_down_dash";
+}
+<article class="thumbnail @ratingClass blacklistable" data-id="@post.Id" data-rating="@ratingLetter" data-score="@post.Score" data-file-ext="@post.FileExt">
+  <a href="/posts/@post.Id" class="thm-link" data-hover-text="Rating: @ratingLetter&#10;ID: @post.Id&#10;Date: @post.CreatedAt.ToString("yyyy-MM-dd HH:mm")&#10;Score: @post.Score" data-file-ext="@post.FileExt">
+    <picture>
+      <img src="@SpankBank.Web.Pages.Posts.IndexModel.PreviewUrl(post)" alt="post #@post.Id" loading="lazy">
+    </picture>
+  </a>
+  <div class="thm-desc thm-rating-@ratingLetter">
+    <span class="thm-desc-a">
+      <span class="thm-desc-m thm-score thm-score-@scoreClass">
+        <svg-icon name="@scoreIcon" width="16" height="16" />
+        @SpankBank.Web.Pages.Posts.IndexModel.Short(post.Score)
+      </span>
+      <span class="thm-desc-m thm-favorites">
+        <svg-icon name="star" width="16" height="16" />
+        @SpankBank.Web.Pages.Posts.IndexModel.Short(post.FavCount)
+      </span>
+    </span>
+    <span class="thm-desc-b thm-rating">@ratingLetter.ToUpperInvariant()</span>
+  </div>
+</article>

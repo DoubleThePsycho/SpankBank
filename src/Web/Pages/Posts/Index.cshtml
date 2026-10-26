@@ -74,70 +74,11 @@
       <section class="posts-container">
         @foreach (var post in Model.Items)
         {
-          var rating = post.Rating.ToString().ToLowerInvariant();
-          var ratingLetter = post.Rating switch { SpankBank.Core.Models.PostRating.Safe => "s", SpankBank.Core.Models.PostRating.Questionable => "q", _ => "e" };
-          var ratingClass = post.Rating switch { SpankBank.Core.Models.PostRating.Safe => "rating-safe", SpankBank.Core.Models.PostRating.Questionable => "rating-questionable", _ => "rating-explicit" };
-          var scoreClass = post.Score == 0 ? "neutral" : post.Score > 0 ? "positive" : "negative";
-          var scoreIcon = post.Score == 0 ? "square_slash" : post.Score > 0 ? "arrow_up_dash" : "arrow_down_dash";
-          <article class="thumbnail @ratingClass blacklistable" data-id="@post.Id" data-rating="@ratingLetter" data-score="@post.Score" data-file-ext="@post.FileExt">
-            <a href="/posts/@post.Id" class="thm-link" data-hover-text="Rating: @ratingLetter&#10;ID: @post.Id&#10;Date: @post.CreatedAt.ToString("yyyy-MM-dd HH:mm")&#10;Score: @post.Score" data-file-ext="@post.FileExt">
-              <picture>
-                <img src="@IndexModel.PreviewUrl(post)" alt="post #@post.Id" loading="lazy">
-              </picture>
-            </a>
-            <div class="thm-desc thm-rating-@ratingLetter">
-              <span class="thm-desc-a">
-                <span class="thm-desc-m thm-score thm-score-@scoreClass">
-                  <svg-icon name="@scoreIcon" width="16" height="16" />
-                  @IndexModel.Short(post.Score)
-                </span>
-                <span class="thm-desc-m thm-favorites">
-                  <svg-icon name="star" width="16" height="16" />
-                  @IndexModel.Short(post.FavCount)
-                </span>
-              </span>
-              <span class="thm-desc-b thm-rating">@ratingLetter.ToUpperInvariant()</span>
-            </div>
-          </article>
+          <partial name="_PostThumbnail" model="post" />
         }
       </section>
 
-      <nav class="pagination numbered" aria-label="Pagination" data-total="@last" data-current="@current">
-        @if (current > 1)
-        {
-          <a class="prev" id="paginator-prev" rel="prev" aria-label="Previous Page" href="@Model.PageUrl(current - 1)"><svg-icon name="chevron_left" /><span>Prev</span></a>
-        }
-        else
-        {
-          <span class="prev" id="paginator-prev"><svg-icon name="chevron_left" /><span>Prev</span></span>
-        }
-
-        <div class="break"></div>
-        @foreach (var (pg, spacer) in SpankBank.Web.Services.Pager.NumberedPages(current, last))
-        {
-          if (spacer)
-          {
-            <a class="page spacer" href="@Model.PageUrl(0)" title="Go to a page"><svg-icon name="ellipsis" /></a>
-          }
-          else if (pg == current)
-          {
-            <span class="page current" aria-current="page">@pg</span>
-          }
-          else
-          {
-            <a class="page" href="@Model.PageUrl(pg)">@pg</a>
-          }
-        }
-
-        @if (current < last)
-        {
-          <a class="next" id="paginator-next" rel="next" aria-label="Next Page" href="@Model.PageUrl(current + 1)"><span>Next</span><svg-icon name="chevron_right" /></a>
-        }
-        else
-        {
-          <span class="next" id="paginator-next"><span>Next</span><svg-icon name="chevron_right" /></span>
-        }
-      </nav>
+      <partial name="_Paginator" model="new SpankBank.Web.Services.PagerModel(current, last, Model.PageUrl)" />
     </div>
   </div>
 

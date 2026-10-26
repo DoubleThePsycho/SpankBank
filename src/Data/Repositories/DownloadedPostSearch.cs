@@ -134,6 +134,39 @@ public sealed class DownloadedPostSearch
         return new SearchPage(items, total, pageSize, null);
     }
 
+    /// <summary>The given posts that are on this device, in no particular order.</summary>
+    public IReadOnlyList<PostListItem> GetPosts(IReadOnlyCollection<long> ids)
+    {
+        var items = new List<PostListItem>();
+        if (ids.Count == 0) return items;
+
+        using var connection = OpenWithCatalog();
+        using var cmd = connection.CreateCommand();
+        var placeholders = ids.Select((_, i) => $"$i{i}").ToList();
+        cmd.CommandText = $"""
+            SELECT d.Id, d.Rating, d.CreatedAt, d.UpdatedAt, d.Score, d.FileExt, d.Md5, COALESCE(s.FavCount, 0)
+            FROM Posts d LEFT JOIN srv.Posts s ON s.Id = d.Id
+            WHERE d.SavedAt IS NOT NULL AND d.Id IN ({string.Join(", ", placeholders)});
+            """;
+        var index = 0;
+        foreach (var id in ids) cmd.Parameters.AddWithValue(placeholders[index++], id);
+
+        using var reader = cmd.ExecuteReader();
+        while (reader.Read())
+        {
+            items.Add(new PostListItem(
+                Id: reader.GetInt64(0),
+                Rating: (PostRating)reader.GetInt32(1),
+                CreatedAt: DateTimeOffset.Parse(reader.GetString(2)),
+                UpdatedAt: DateTimeOffset.Parse(reader.GetString(3)),
+                Score: reader.GetInt32(4),
+                FileExt: reader.IsDBNull(5) ? null : reader.GetString(5),
+                Md5: reader.IsDBNull(6) ? null : reader.GetString(6),
+                FavCount: reader.GetInt32(7)));
+        }
+        return items;
+    }
+
     /// <summary>How many of the given posts carry each tag, for the sidebar tag list.</summary>
     public IReadOnlyDictionary<string, int> TagFrequencies(IReadOnlyCollection<long> postIds)
     {

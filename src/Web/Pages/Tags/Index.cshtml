@@ -1,0 +1,65 @@
+@page "/tags"
+@model SpankBank.Web.Pages.Tags.IndexModel
+@* Markup follows e621ng app/views/tags/index.html.erb (BSD-2, see THIRD-PARTY-NOTICES.md). *@
+@{
+    ViewData["Title"] = "Tags";
+}
+<div id="c-tags" class="container-fluid">
+  <div id="a-index">
+    <div class="section" id="searchform">
+      <form method="get" action="/tags" class="simple_form inline-form">
+        <div class="input string"><label for="name">Name</label><input type="text" id="name" name="name" value="@Model.Name" data-autocomplete="tag" autocomplete="off"><p class="hint">Use * for wildcard</p></div>
+        <div class="input select">
+          <label for="category">Category</label>
+          <select id="category" name="category">
+            <option value="">Any</option>
+            @foreach (var (id, name) in SpankBank.Web.Pages.Tags.IndexModel.Categories)
+            {
+              <option value="@id" selected="@(Model.Category == id)">@name</option>
+            }
+          </select>
+        </div>
+        <div class="input select">
+          <label for="order">Order</label>
+          <select id="order" name="order">
+            <option value="count" selected="@(Model.Order == "count")">Count</option>
+            <option value="name" selected="@(Model.Order == "name")">Name</option>
+            <option value="date" selected="@(Model.Order == "date")">Newest</option>
+          </select>
+        </div>
+        <div class="input boolean"><label for="empty">Show empty?</label><input type="checkbox" id="empty" name="empty" value="1" checked="@Model.ShowEmpty"></div>
+        <input type="submit" value="Search" class="st-button">
+      </form>
+    </div>
+
+    <table class="striped">
+      <thead><tr><th>Count</th><th>Name</th><th></th></tr></thead>
+      <tbody>
+        @foreach (var tag in Model.Result.Rows)
+        {
+          <tr>
+            <td>@tag.PostCount.ToString("N0")</td>
+            <td class="category-@tag.Category">
+              @if (tag.Category == 1)
+              {
+                <a href="/artists/@Uri.EscapeDataString(tag.Name)">?</a>
+              }
+              else
+              {
+                <a href="https://e621.net/wiki_pages/show_or_new?title=@Uri.EscapeDataString(tag.Name)" rel="nofollow noopener">?</a>
+              }
+              <a href="/posts?tags=@Uri.EscapeDataString(tag.Name)">@tag.Name</a>
+            </td>
+            <td><a href="https://e621.net/posts?tags=@Uri.EscapeDataString(tag.Name)" rel="nofollow noopener">on e621</a></td>
+          </tr>
+        }
+        @if (Model.Result.Rows.Count == 0)
+        {
+          <tr><td colspan="3">No tags match.</td></tr>
+        }
+      </tbody>
+    </table>
+
+    <partial name="_Paginator" model="new SpankBank.Web.Services.PagerModel(Model.PageNumber, Model.LastPage, Model.PageUrl)" />
+  </div>
+</div>

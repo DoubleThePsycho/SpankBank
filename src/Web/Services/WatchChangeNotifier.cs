@@ -17,7 +17,7 @@ public sealed class WatchChangeNotifier : IAsyncPageFilter
 
         var request = context.HttpContext.Request;
         if (HttpMethods.IsPost(request.Method)
-            && request.Path.StartsWithSegments("/watches")
+            && (request.Path.StartsWithSegments("/watches") || request.Path.StartsWithSegments("/artists") || request.Path.StartsWithSegments("/pools"))
             && executed.Exception is null
             && context.HttpContext.Response.StatusCode < 400
             && executed.Result is not Microsoft.AspNetCore.Mvc.ContentResult { StatusCode: >= 400 })

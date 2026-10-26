@@ -1,0 +1,62 @@
+@page "/artists/{name}"
+@model SpankBank.Web.Pages.Artists.ShowModel
+@{
+    var artist = Model.Artist;
+    ViewData["Title"] = artist.Name;
+}
+<div id="c-artists" class="container-fluid">
+  <div id="a-show">
+    @if (Model.Message is not null) { <div class="notice notice-info">@Model.Message</div> }
+
+    <h1 class="category-1"><a href="/posts?tags=@Uri.EscapeDataString(artist.Name)">@artist.Name.Replace('_', ' ')</a></h1>
+
+    <table class="striped" style="max-width: 50rem;">
+      <tbody>
+        <tr><th>Other names</th><td>@(artist.OtherNames.Count == 0 ? "-" : string.Join(", ", artist.OtherNames))</td></tr>
+        <tr><th>Posts on e621</th><td>@artist.PostCount.ToString("N0") (<a href="https://e621.net/posts?tags=@Uri.EscapeDataString(artist.Name)" rel="nofollow noopener">view</a>, <a href="https://e621.net/artists/show_or_new?name=@Uri.EscapeDataString(artist.Name)" rel="nofollow noopener">artist page</a>)</td></tr>
+        <tr><th>On this device</th><td>@Model.DownloadedCount.ToString("N0") @if (Model.DownloadedCount > 0) { <text>(<a href="/posts?tags=@Uri.EscapeDataString(artist.Name)">view</a>)</text> }</td></tr>
+        <tr>
+          <th>Watching</th>
+          <td>
+            @if (Model.Watch is { } watch)
+            {
+              <text>Yes, @(watch.Enabled ? "enabled" : "disabled"): @(watch.Matched ? $"{watch.MatchText} posts matched" : "waiting to be matched"). <a href="/watches/artists">Manage</a></text>
+            }
+            else
+            {
+              <form method="post" asp-page-handler="Watch" style="display:inline">
+                <input type="hidden" name="name" value="@artist.Name">
+                <button type="submit" class="st-button">Watch this artist</button>
+              </form>
+            }
+          </td>
+        </tr>
+      </tbody>
+    </table>
+
+    @if (Model.Characters.Count > 0)
+    {
+      <h2 style="margin-top: 1.5rem;">Characters</h2>
+      <p>Character tags ending in <code>_(@artist.Name)</code> or one of the other names. Watching the artist includes them.</p>
+      <ul>
+        @foreach (var character in Model.Characters)
+        {
+          <li class="category-4"><a href="/posts?tags=@Uri.EscapeDataString(character)">@character</a></li>
+        }
+      </ul>
+    }
+
+    @if (Model.RecentPosts.Count > 0)
+    {
+      <div class="recent-posts">
+        <h1>Downloaded posts</h1>
+        <section class="posts-container">
+          @foreach (var post in Model.RecentPosts)
+          {
+            <partial name="_PostThumbnail" model="post" />
+          }
+        </section>
+      </div>
+    }
+  </div>
+</div>

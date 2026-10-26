@@ -107,6 +107,20 @@ public sealed class WatchesRepository
             .ToList();
     }
 
+    /// <summary>The source values (artist tag, pool id) of every watch of a type, to mark what is already watched.</summary>
+    public HashSet<string> WatchedSources(WatchedItemType type)
+    {
+        using var connection = new SqliteConnection(_appConnectionString);
+        connection.Open();
+        using var cmd = connection.CreateCommand();
+        cmd.CommandText = "SELECT SourceValue FROM WatchedItems WHERE ItemType = $type;";
+        cmd.Parameters.AddWithValue("$type", (int)type);
+        var set = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        using var reader = cmd.ExecuteReader();
+        while (reader.Read()) set.Add(reader.GetString(0));
+        return set;
+    }
+
     // ---------------------------------------------------------------- pool suggestions
 
     /// <summary>Suggested pools waiting for a decision; by default only the likely ones.</summary>
