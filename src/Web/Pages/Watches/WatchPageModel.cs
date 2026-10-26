@@ -31,6 +31,13 @@ public abstract class WatchPageModel : PageModel
         return Updated(id);
     }
 
+    public async Task<IActionResult> OnPostIgnoreBlacklistAsync(long id, bool ignore, [FromServices] Web.Services.WorkerClient worker)
+    {
+        Watches.SetIgnoreBlacklist(id, ignore);
+        await worker.NotifyAsync("downloads"); // the downloader re-applies the blacklist first
+        return Updated(id);
+    }
+
     public IActionResult OnPostDelete(long id)
     {
         Watches.Delete(id);

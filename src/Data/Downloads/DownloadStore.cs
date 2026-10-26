@@ -10,7 +10,7 @@ public sealed class DownloadStore
 
     public DownloadStore(DatabasePaths paths) => _paths = paths;
 
-    /// <summary>Matched posts of enabled watches that are neither on this device nor waiting out a retry delay.</summary>
+    /// <summary>Matched posts of enabled watches that are neither on this device, blacklisted nor waiting out a retry delay.</summary>
     public IReadOnlyList<long> NextPending(int limit, DateTimeOffset now)
     {
         using var connection = OpenAttached();
@@ -22,6 +22,7 @@ public sealed class DownloadStore
             JOIN WatchedItems w ON w.Id = m.WatchedItemId AND w.Enabled = 1
             WHERE NOT EXISTS (SELECT 1 FROM dev.Posts d WHERE d.Id = m.PostId AND d.SavedAt IS NOT NULL)
               AND NOT EXISTS (SELECT 1 FROM DownloadAttempts a WHERE a.PostId = m.PostId AND a.NextAttemptAt > $now)
+              AND NOT EXISTS (SELECT 1 FROM BlockedPosts b WHERE b.PostId = m.PostId)
             LIMIT $limit;
             """;
         cmd.Parameters.AddWithValue("$now", now.ToString("o"));
@@ -41,7 +42,8 @@ public sealed class DownloadStore
             FROM WatchMatches m
             JOIN WatchedItems w ON w.Id = m.WatchedItemId AND w.Enabled = 1
             WHERE NOT EXISTS (SELECT 1 FROM dev.Posts d WHERE d.Id = m.PostId AND d.SavedAt IS NOT NULL)
-              AND NOT EXISTS (SELECT 1 FROM DownloadAttempts a WHERE a.PostId = m.PostId AND a.NextAttemptAt > $now);
+              AND NOT EXISTS (SELECT 1 FROM DownloadAttempts a WHERE a.PostId = m.PostId AND a.NextAttemptAt > $now)
+              AND NOT EXISTS (SELECT 1 FROM BlockedPosts b WHERE b.PostId = m.PostId);
             """;
         cmd.Parameters.AddWithValue("$now", now.ToString("o"));
         return Convert.ToInt32(cmd.ExecuteScalar());

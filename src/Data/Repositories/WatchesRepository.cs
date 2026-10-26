@@ -32,7 +32,8 @@ public sealed record WatchEntry(
     bool Matched = false,
     string? Error = null,
     string? Origin = null,
-    int SuggestedPools = 0)
+    int SuggestedPools = 0,
+    bool IgnoreBlacklist = false)
 {
     /// <summary>"1,234" once the worker has matched this watch, "pending" until then.</summary>
     public string MatchText => Matched ? MatchCount.ToString("N0") : "pending";
@@ -55,16 +56,16 @@ public sealed class WatchesRepository
         using var connection = new SqliteConnection(_appConnectionString);
         connection.Open();
 
-        var entries = new List<(long Id, string Source, string Display, bool Enabled, string? LocalName, int Count, bool Matched, string? Error, string? Origin)>();
+        var entries = new List<(long Id, string Source, string Display, bool Enabled, string? LocalName, int Count, bool Matched, string? Error, string? Origin, bool IgnoreBlacklist)>();
         using (var cmd = connection.CreateCommand())
         {
-            cmd.CommandText = "SELECT Id, SourceValue, DisplayName, Enabled, LocalName, MatchCount, LastCheckedAt IS NOT NULL, ErrorMessage, Origin FROM WatchedItems WHERE ItemType = $type ORDER BY SourceValue COLLATE NOCASE;";
+            cmd.CommandText = "SELECT Id, SourceValue, DisplayName, Enabled, LocalName, MatchCount, LastCheckedAt IS NOT NULL, ErrorMessage, Origin, IgnoreBlacklist FROM WatchedItems WHERE ItemType = $type ORDER BY SourceValue COLLATE NOCASE;";
             cmd.Parameters.AddWithValue("$type", (int)type);
             using var reader = cmd.ExecuteReader();
             while (reader.Read())
                 entries.Add((reader.GetInt64(0), reader.GetString(1), reader.GetString(2), reader.GetInt32(3) != 0, reader.IsDBNull(4) ? null : reader.GetString(4),
                     reader.GetInt32(5), reader.GetInt32(6) != 0, reader.IsDBNull(7) ? null : reader.GetString(7),
-                    reader.IsDBNull(8) ? null : reader.GetString(8)));
+                    reader.IsDBNull(8) ? null : reader.GetString(8), reader.GetInt32(9) != 0));
         }
 
         var tagsByItem = new Dictionary<long, List<WatchedArtistTag>>();
@@ -102,7 +103,7 @@ public sealed class WatchesRepository
                     : e.Display;
                 return new WatchEntry(e.Id, type, e.Source, display, e.Enabled,
                     tagsByItem.TryGetValue(e.Id, out var tags) ? tags : [], e.LocalName, pool, e.Count, e.Matched, e.Error,
-                    e.Origin, suggested.GetValueOrDefault(e.Id));
+                    e.Origin, suggested.GetValueOrDefault(e.Id), e.IgnoreBlacklist);
             })
             .ToList();
     }
@@ -261,6 +262,17 @@ public sealed class WatchesRepository
         var id = (long)cmd.ExecuteScalar()!;
         RequestMatch();
         return id;
+    }
+
+    /// <summary>Lets a watch download posts the blacklist matches. The worker recomputes the blocked posts afterwards.</summary>
+    public void SetIgnoreBlacklist(long id, bool ignore)
+    {
+        Execute("UPDATE WatchedItems SET IgnoreBlacklist = $v WHERE Id = $id;", id, ignore ? 1 : 0);
+        using var connection = new SqliteConnection(_appConnectionString);
+        connection.Open();
+        using var cmd = connection.CreateCommand();
+        cmd.CommandText = "INSERT INTO Settings (Key, Value) VALUES ('Blacklist.Dirty', 'true') ON CONFLICT(Key) DO UPDATE SET Value = 'true';";
+        cmd.ExecuteNonQuery();
     }
 
     public void SetEnabled(long id, bool enabled)

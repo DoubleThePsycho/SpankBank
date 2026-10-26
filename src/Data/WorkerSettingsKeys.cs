@@ -11,6 +11,8 @@ public static class WorkerSettingsKeys
     public const string RunFailures = "Worker.RunFailures";
     /// <summary>Set to "true" (by the web UI) after a watch changed; the worker re-matches the changed watches.</summary>
     public const string MatchRequested = "Worker.MatchRequested";
+    /// <summary>"true" (or missing) when the blocked posts must be recomputed; the downloader does it before its next batch, "running" while it does.</summary>
+    public const string BlacklistDirty = "Blacklist.Dirty";
     public const string DailyRunTimeUtc = "Worker.DailyRunTimeUtc";
     public const string LastRunStartedAt = "Worker.LastRunStartedAt";
     public const string LastRunCompletedAt = "Worker.LastRunCompletedAt";

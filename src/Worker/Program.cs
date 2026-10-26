@@ -23,6 +23,7 @@ builder.Services.AddSingleton(sp =>
     return new WatchMatcher(paths, message => logger.LogInformation("{Message}", message));
 });
 builder.Services.AddSingleton(new DownloadStore(paths));
+builder.Services.AddSingleton(new SpankBank.Data.Blacklist.BlockedPostsRefresher(paths));
 builder.Services.AddHostedService<DailyScheduler>();
 builder.Services.AddHostedService<DownloadService>();
 builder.Services.AddHostedService<CommandServer>();

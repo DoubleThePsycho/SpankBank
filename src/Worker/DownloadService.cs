@@ -1,5 +1,6 @@
 using SpankBank.Core.Models;
 using SpankBank.Data;
+using SpankBank.Data.Blacklist;
 using SpankBank.Data.Downloads;
 using SpankBank.Data.Repositories;
 using SpankBank.Worker.Progress;
@@ -18,14 +19,16 @@ public sealed class DownloadService : BackgroundService
     private static readonly TimeSpan RetryCheckInterval = TimeSpan.FromMinutes(15);
 
     private readonly DownloadStore _store;
+    private readonly BlockedPostsRefresher _blocked;
     private readonly SettingsRepository _settings;
     private readonly ProgressTracker _progress;
     private readonly WorkerSignals _signals;
     private readonly ILogger<DownloadService> _logger;
 
-    public DownloadService(DownloadStore store, SettingsRepository settings, ProgressTracker progress, WorkerSignals signals, ILogger<DownloadService> logger)
+    public DownloadService(DownloadStore store, BlockedPostsRefresher blocked, SettingsRepository settings, ProgressTracker progress, WorkerSignals signals, ILogger<DownloadService> logger)
     {
         _store = store;
+        _blocked = blocked;
         _settings = settings;
         _progress = progress;
         _signals = signals;
@@ -43,6 +46,8 @@ public sealed class DownloadService : BackgroundService
         {
             try
             {
+                RefreshBlockedIfDirty();
+
                 if (_settings.Get(WorkerSettingsKeys.DownloadEnabled) == "false")
                 {
                     EndSession(ref inSession, "Downloads are paused.");
@@ -92,6 +97,19 @@ public sealed class DownloadService : BackgroundService
                 await WaitAsync(TimeSpan.FromSeconds(30), stoppingToken);
             }
         }
+    }
+
+    // Missing or "true": recompute. A request made while it runs turns the flag back to "true", so it is not lost;
+    // "running" after a restart means the last pass was cut short.
+    private void RefreshBlockedIfDirty()
+    {
+        var flag = _settings.Get(WorkerSettingsKeys.BlacklistDirty);
+        if (flag == "false") return;
+
+        _settings.Set(WorkerSettingsKeys.BlacklistDirty, "running");
+        var count = _blocked.Refresh();
+        _settings.Replace(WorkerSettingsKeys.BlacklistDirty, "running", "false");
+        _logger.LogInformation("Blacklist applied: {Count:N0} post(s) blocked.", count);
     }
 
     private void EndSession(ref bool inSession, string reason)

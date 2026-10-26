@@ -61,6 +61,9 @@ public sealed class DownloadedPostSearch
 
         var parameters = new List<(string Name, object Value)>();
         var where = new StringBuilder("d.SavedAt IS NOT NULL");
+        // Blacklisted posts stay hidden unless the search says blacklisted:true or blacklisted:any.
+        if (!query.Terms.Any(t => t.Name == "blacklisted"))
+            where.Append(" AND NOT EXISTS (SELECT 1 FROM app.BlockedPosts bl WHERE bl.PostId = d.Id)");
         string? error = null;
 
         string P(object value)
@@ -302,6 +305,14 @@ public sealed class DownloadedPostSearch
                 {
                     "true" or "me" or "any" => "EXISTS (SELECT 1 FROM app.Favorites f WHERE f.PostId = d.Id)",
                     "false" or "none" => "NOT EXISTS (SELECT 1 FROM app.Favorites f WHERE f.PostId = d.Id)",
+                    _ => null,
+                };
+            case "blacklisted":
+                return value switch
+                {
+                    "true" => "EXISTS (SELECT 1 FROM app.BlockedPosts bl WHERE bl.PostId = d.Id)",
+                    "false" => "NOT EXISTS (SELECT 1 FROM app.BlockedPosts bl WHERE bl.PostId = d.Id)",
+                    "any" => "1 = 1",
                     _ => null,
                 };
             case "folder":

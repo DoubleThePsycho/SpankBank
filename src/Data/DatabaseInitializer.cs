@@ -265,6 +265,23 @@ public static class DatabaseInitializer
         EnsureColumn(connection, "WatchedItems", "MatchCount", "INTEGER NOT NULL DEFAULT 0");
 
         EnsureColumn(connection, "WatchedItems", "Origin", "TEXT");
+        // 1 = this watch downloads posts even when the blacklist matches them.
+        EnsureColumn(connection, "WatchedItems", "IgnoreBlacklist", "INTEGER NOT NULL DEFAULT 0");
+
+        // Blacklist: one e621-style search per row. BlockedPosts is what they match right now (worker-computed):
+        // those posts are never downloaded and are hidden in listings.
+        Execute(connection, """
+            CREATE TABLE IF NOT EXISTS Blacklist (
+                Id        INTEGER PRIMARY KEY,
+                Query     TEXT NOT NULL UNIQUE COLLATE NOCASE,
+                CreatedAt TEXT NOT NULL
+            );
+            """);
+        Execute(connection, """
+            CREATE TABLE IF NOT EXISTS BlockedPosts (
+                PostId INTEGER PRIMARY KEY
+            ) WITHOUT ROWID;
+            """);
 
         // Pools that contain a watched artist's posts: suggested, added (automatically or by hand) or ignored.
         // State: 0 = suggested, 1 = added to the watches, 2 = ignored.

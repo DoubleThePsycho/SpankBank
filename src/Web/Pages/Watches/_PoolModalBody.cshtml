@@ -25,6 +25,10 @@
       <input type="hidden" name="id" value="@Model.Id"><input type="hidden" name="enabled" value="@((!Model.Enabled).ToString().ToLowerInvariant())">
       <button type="submit" class="st-button">@(Model.Enabled ? "Disable" : "Enable")</button>
     </form>
+    <form method="post" asp-page-handler="IgnoreBlacklist" data-ajax title="Download this watch's posts even when the blacklist matches them">
+      <input type="hidden" name="id" value="@Model.Id"><input type="hidden" name="ignore" value="@((!Model.IgnoreBlacklist).ToString().ToLowerInvariant())">
+      <button type="submit" class="st-button">@(Model.IgnoreBlacklist ? "Use blacklist" : "Ignore blacklist")</button>
+    </form>
     <form method="post" asp-page-handler="Delete" data-ajax data-confirm="Remove this pool?">
       <input type="hidden" name="id" value="@Model.Id">
       <button type="submit" class="st-button">Remove</button>

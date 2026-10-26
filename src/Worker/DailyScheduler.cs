@@ -99,7 +99,8 @@ public sealed class DailyScheduler : BackgroundService
                     continue;
                 }
 
-                // Matches may have changed: the downloader should look for new work.
+                // Matches may have changed: re-apply the blacklist, and the downloader should look for new work.
+                _settings.Set(WorkerSettingsKeys.BlacklistDirty, "true");
                 _signals.Downloads.Notify();
                 // Another request may have arrived while this one ran.
                 signalled = true;

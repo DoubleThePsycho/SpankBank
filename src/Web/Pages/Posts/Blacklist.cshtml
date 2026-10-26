@@ -1,0 +1,30 @@
+@page "/blacklist"
+@model SpankBank.Web.Pages.Posts.BlacklistModel
+@{
+    ViewData["Title"] = "Blacklist";
+    ViewData["BodyClass"] = "c-status";
+}
+@section SecondaryNav {
+  <partial name="_AreaNav" model='"posts"' />
+}
+<div id="c-blacklist" class="container"><div id="a-index">
+  <h1>Blacklist</h1>
+
+  @if (Model.Message is not null) { <div class="notice notice-info">@Model.Message</div> }
+  @if (Model.Error is not null) { <div class="notice notice-error">@Model.Error</div> }
+
+  <p>Posts that match any line are <strong>never downloaded</strong> and are hidden in your listings. One search per line, written like a post search:
+    tags, <code>-tag</code>, <code>~tag</code>, <code>*</code> wildcards, <code>rating:e</code>, <code>score:&lt;0</code>. A line matches only posts that satisfy all of it, so
+    <code>gore -comic</code> blocks gore posts that are not comics. Posts you already have stay on disk and can be shown with <code>blacklisted:true</code> in a search.</p>
+
+  <form method="post" class="settings-form">
+    <div class="input">
+      <label for="entries">Blacklisted searches</label>
+      <textarea id="entries" name="entries" rows="14" style="width:100%" spellcheck="false" autocomplete="off">@Model.Entries</textarea>
+    </div>
+    <button type="submit" class="st-button">Save</button>
+  </form>
+
+  <p class="hint">Currently blocked: @Model.Pending.ToString("N0") waiting posts that will not be downloaded, @Model.Local.ToString("N0") posts already on this device (hidden).
+    A watch can opt out from its own settings (&ldquo;Ignore blacklist&rdquo;). Changes apply within a few seconds.</p>
+</div></div>

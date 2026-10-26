@@ -34,6 +34,7 @@ builder.Services.AddSingleton(new WatchesRepository(paths.AppDatabasePath, paths
 builder.Services.AddSingleton(new DownloadStore(paths));
 builder.Services.AddSingleton(new SettingsRepository(paths.AppDatabasePath));
 builder.Services.AddSingleton(new FavoritesRepository(paths.AppDatabasePath));
+builder.Services.AddSingleton(new SpankBank.Data.Blacklist.BlacklistRepository(paths.AppDatabasePath));
 builder.Services.AddSingleton(new FavoriteFolders(paths.AppDatabasePath));
 builder.Services.AddSingleton(new ImportHistoryRepository(paths.AppDatabasePath));
 
