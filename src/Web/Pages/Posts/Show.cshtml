@@ -10,6 +10,9 @@
     var ratingName = post.Rating switch { PostRating.Safe => "Safe", PostRating.Questionable => "Questionable", _ => "Explicit" };
     var scoreClass = post.Score == 0 ? "neutral" : post.Score > 0 ? "positive" : "negative";
 }
+@section Scripts {
+  <script type="module" src="~/dist/posts.js" asp-append-version="true"></script>
+}
 
 <div id="c-posts"><div id="a-show">
   <div class="post-display" id="post-show-display" data-tab-state="tags">
@@ -23,9 +26,15 @@
           <button type="submit" title="Search"><svg-icon name="search" /></button>
         </form>
       </section>
+
+      <partial name="_SearchControls" />
     </div>
 
     <div class="sidebar">
+      <section id="mode-box">
+        <label>Tags</label>
+      </section>
+
       <section id="tag-list">
         @foreach (var (cssName, header, tags) in Model.TagGroups)
         {

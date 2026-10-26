@@ -23,3 +23,29 @@ body.resp div#page div.st-overlay.hidden { display: none; }
 #image-container {
   img#image, video#image { height: auto; }
 }
+
+// The post page puts the search buttons on the same row as the "Tags" label, like the posts list does.
+@include window-larger-than(50rem) {
+  #a-show .post-display > .search .search-controls {
+    top: unset;
+    bottom: -1.633rem;
+    right: 0.5rem;
+
+    #toggle-fullscreen { display: flex; }
+
+    .sc-btn {
+      height: 1.5rem;
+      svg { height: 1.25rem; }
+    }
+  }
+
+  // The posts list's sidebar starts right under the search box; the post page reserved room for the buttons instead.
+  #a-show .post-display > .sidebar {
+    padding-top: 0.25rem;
+
+    #mode-box label {
+      font-size: 1.16667em;
+      line-height: 1.5rem;
+    }
+  }
+}
