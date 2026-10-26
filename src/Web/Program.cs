@@ -28,6 +28,7 @@ builder.Services.AddSingleton(new WatchesRepository(paths.AppDatabasePath, paths
 builder.Services.AddSingleton(new DownloadStore(paths));
 builder.Services.AddSingleton(new SettingsRepository(paths.AppDatabasePath));
 builder.Services.AddSingleton(new FavoritesRepository(paths.AppDatabasePath));
+builder.Services.AddSingleton(new FavoriteFolders(paths.AppDatabasePath));
 builder.Services.AddSingleton(new ImportHistoryRepository(paths.AppDatabasePath));
 
 var app = builder.Build();
@@ -51,6 +52,18 @@ app.MapDelete("/favorites/{id:long}", (long id, FavoritesRepository favorites) =
     favorites.Remove(id);
     return Results.Ok(new { favorited = false });
 });
+
+// Favorite folders. JSON in, JSON out; a broken rule answers 422 with a message for the user.
+IResult Folder(Func<object> action)
+{
+    try { return Results.Ok(action()); }
+    catch (FavoriteFolderException e) { return Results.Json(new { message = e.Message }, statusCode: 422); }
+}
+app.MapPost("/favorite_folders", (FolderRequest body, FavoriteFolders folders) => Folder(() => folders.Create(body.Name, body.ParentId)));
+app.MapMethods("/favorite_folders/{id:long}", ["PATCH"], (long id, FolderRequest body, FavoriteFolders folders) => Folder(() => folders.Rename(id, body.Name)));
+app.MapPost("/favorite_folders/{id:long}/move", (long id, FolderRequest body, FavoriteFolders folders) => Folder(() => folders.Move(id, body.ParentId)));
+app.MapDelete("/favorite_folders/{id:long}", (long id, FavoriteFolders folders) => Folder(() => new { parent_id = folders.Delete(id) }));
+app.MapPost("/favorites/{id:long}/move", (long id, FolderRequest body, FavoriteFolders folders) => Folder(() => { folders.MovePost(id, body.FolderId); return new { id, folder_id = body.FolderId }; }));
 
 // The watch pages used to live under /watches.
 app.MapGet("/watches", () => Results.Redirect("/artists/local", permanent: true));
@@ -84,3 +97,9 @@ app.MapGet("/status/progress", async (WorkerClient worker) =>
         : Results.Json(new { online = false }));
 
 app.Run();
+
+/// <summary>The JSON body of the folder endpoints; each endpoint reads the fields it needs.</summary>
+internal sealed record FolderRequest(
+    [property: System.Text.Json.Serialization.JsonPropertyName("name")] string? Name = null,
+    [property: System.Text.Json.Serialization.JsonPropertyName("parent_id")] long? ParentId = null,
+    [property: System.Text.Json.Serialization.JsonPropertyName("folder_id")] long? FolderId = null);

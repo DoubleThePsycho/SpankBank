@@ -304,6 +304,13 @@ public sealed class DownloadedPostSearch
                     "false" or "none" => "NOT EXISTS (SELECT 1 FROM app.Favorites f WHERE f.PostId = d.Id)",
                     _ => null,
                 };
+            case "folder":
+                // A favorites folder: "none" is the unfiled favorites, "any" every filed one, a number that folder only.
+                if (value == "none") return "NOT EXISTS (SELECT 1 FROM app.FavoriteFolderPosts fp WHERE fp.PostId = d.Id)";
+                if (value == "any") return "EXISTS (SELECT 1 FROM app.FavoriteFolderPosts fp WHERE fp.PostId = d.Id)";
+                return long.TryParse(value, out var folderId)
+                    ? $"EXISTS (SELECT 1 FROM app.FavoriteFolderPosts fp WHERE fp.PostId = d.Id AND fp.FolderId = {p(folderId)})"
+                    : null;
             case "inpool":
                 return value switch
                 {

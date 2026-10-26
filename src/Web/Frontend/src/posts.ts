@@ -1,6 +1,8 @@
 import SearchControls from "@/pages/posts/SearchControls";
 import SearchFilters from "@/pages/posts/SearchFilters";
 import PostToolbar from "@/pages/posts/PostToolbar";
+import "@/pages/posts/FavoriteFolderDrag";
+import "@/pages/posts/FavoriteFolderOverlay";
 
 $(() => {
   new SearchControls();

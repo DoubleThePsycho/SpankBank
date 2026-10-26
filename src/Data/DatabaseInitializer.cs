@@ -322,6 +322,25 @@ public static class DatabaseInitializer
             );
             """);
 
+        // Nested folders for favorites (design ported from e621ng PR 2572): a favorite is in at most one folder; no row means unfiled.
+        Execute(connection, """
+            CREATE TABLE IF NOT EXISTS FavoriteFolders (
+                Id        INTEGER PRIMARY KEY,
+                ParentId  INTEGER REFERENCES FavoriteFolders (Id),
+                Name      TEXT NOT NULL,
+                CreatedAt TEXT NOT NULL
+            );
+            """);
+        Execute(connection, "CREATE UNIQUE INDEX IF NOT EXISTS IX_FavoriteFolders_Name ON FavoriteFolders (ParentId, lower(Name)) WHERE ParentId IS NOT NULL;");
+        Execute(connection, "CREATE UNIQUE INDEX IF NOT EXISTS IX_FavoriteFolders_RootName ON FavoriteFolders (lower(Name)) WHERE ParentId IS NULL;");
+        Execute(connection, """
+            CREATE TABLE IF NOT EXISTS FavoriteFolderPosts (
+                PostId   INTEGER PRIMARY KEY,
+                FolderId INTEGER NOT NULL REFERENCES FavoriteFolders (Id)
+            );
+            """);
+        Execute(connection, "CREATE INDEX IF NOT EXISTS IX_FavoriteFolderPosts_FolderId ON FavoriteFolderPosts (FolderId);");
+
         // Aliases and characters that belong to a watched artist. Each can be switched off; IsManual rows were added by hand.
         Execute(connection, """
             CREATE TABLE IF NOT EXISTS WatchedArtistTags (

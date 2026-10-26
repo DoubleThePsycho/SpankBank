@@ -24,3 +24,5 @@ The autocomplete and modal files were copied from the local e621ng checkout in `
 `js/core/PaginatorFastTravel.ts` is a copy (only the jquery import was added).
 
 The Tags, Artists and Pools pages (`src/Web/Pages/{Tags,Artists,Pools}`) follow e621ng's `tags/index`, `artists/index` and `pools/index`/`show` views, adapted to the local catalog.
+
+Favorite folders (nested, one folder per favorite) are ported from e621ng pull request 2572 (https://github.com/e621ng/e621ng/pull/2572, by the SpankBank author): `js/pages/posts/FavoriteFolderDrag.ts` (adapted: own endpoints, no CSRF token), `FavoriteFolderOverlay.ts` (rebuilt on the shared `.st-overlay` classes, no ImmersiveInput), `FavoriteFolders.ts` (replaces `models/FavoriteFolder.ts`), the folder card styles in `styles/specific/favorites.scss`, and the folder rules in `Data/Repositories/FavoriteFolders.cs` (`favorite_folder_manager.rb`, `favorite_folder.rb`). The post toolbar (`js/pages/posts/PostToolbar.ts`, markup in `Pages/Posts/Show.cshtml`) follows `PostsShowToolbar.js` and `posts/partials/show/content/_toolbar.html.erb` at the pinned commit.

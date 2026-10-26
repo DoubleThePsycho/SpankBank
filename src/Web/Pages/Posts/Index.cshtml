@@ -66,7 +66,7 @@
       {
         <span class="posts-info-empty">@Model.SearchError</span>
       }
-      else if (Model.Items.Count == 0)
+      else if (Model.Items.Count == 0 && Model.ChildFolders.Count == 0 && Model.CurrentFolder is null)
       {
         <span class="posts-info-empty">@(string.IsNullOrWhiteSpace(Model.Tags) ? (Model.IsFavorites ? "No favorites yet. Use the star under a post." : "Nothing downloaded yet.") : "Nobody here but us chickens!")</span>
       }
@@ -74,7 +74,34 @@
     </div>
 
     <div id="posts" class="post-index-gallery">
-      <section class="posts-container">
+      <section class="posts-container@(Model.FolderView ? " favorites-view" : "")">
+        @if (Model.FolderView)
+        {
+          @if (Model.CurrentFolder is { } here)
+          {
+            <article class="thumbnail favorite-go-up-card" data-drop-target="go-up" data-destination-folder-id="@here.ParentId">
+              <a href="@(here.ParentId is { } up ? $"/favorites?folder_id={up}" : "/favorites")" class="thm-link favorite-go-up-card-link" aria-label="Go up one folder level"><svg-icon name="corner_up_left" /></a>
+              <div class="thm-desc favorite-go-up-card-desc"><span class="thm-desc-a favorite-go-up-card-name"><span class="favorite-go-up-card-name-text">Go Up</span></span></div>
+            </article>
+          }
+          <article class="thumbnail favorite-new-folder-card">
+            <button type="button" id="favorite-folder-new-trigger" class="favorite-new-folder-card-link" data-parent-id="@Model.CurrentFolder?.Id" aria-label="Create a new folder"><svg-icon name="folder_plus" /></button>
+            <div class="thm-desc favorite-new-folder-card-desc"><span class="thm-desc-a favorite-new-folder-card-name"><span class="favorite-new-folder-card-name-text">New Folder</span></span></div>
+          </article>
+          @foreach (var folder in Model.ChildFolders)
+          {
+            <article class="thumbnail favorite-folder-card" data-drop-target="folder" data-folder-drag-source="true" data-folder-id="@folder.Id" data-folder-name="@folder.Name">
+              <a href="/favorites?folder_id=@folder.Id" class="thm-link favorite-folder-card-link" aria-label="Open folder @folder.Name">
+                <svg-icon name="folder" class="folder-icon-closed" /><svg-icon name="folder_open" class="folder-icon-open" />
+              </a>
+              <div class="thm-desc favorite-folder-card-desc">
+                <button type="button" class="thm-desc-b favorite-folder-action-cell favorite-folder-action-btn favorite-folder-rename-trigger" data-folder-id="@folder.Id" data-folder-name="@folder.Name" title="Rename folder" aria-label="Rename folder @folder.Name"><svg-icon name="pencil" width="16" height="16" /></button>
+                <span class="thm-desc-a favorite-folder-card-name"><span class="favorite-folder-card-name-text">@folder.Name</span></span>
+                <button type="button" class="thm-desc-b favorite-folder-action-cell favorite-folder-action-btn favorite-folder-delete-trigger" data-folder-id="@folder.Id" data-folder-name="@folder.Name" title="Delete folder" aria-label="Delete folder @folder.Name"><svg-icon name="trash" width="16" height="16" /></button>
+              </div>
+            </article>
+          }
+        }
         @foreach (var post in Model.Items)
         {
           <partial name="_PostThumbnail" model="post" />

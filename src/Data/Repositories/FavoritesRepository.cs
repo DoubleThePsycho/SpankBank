@@ -39,7 +39,7 @@ public sealed class FavoritesRepository
         using var connection = new SqliteConnection(_connectionString);
         connection.Open();
         using var cmd = connection.CreateCommand();
-        cmd.CommandText = "DELETE FROM Favorites WHERE PostId = $id;";
+        cmd.CommandText = "DELETE FROM FavoriteFolderPosts WHERE PostId = $id; DELETE FROM Favorites WHERE PostId = $id;";
         cmd.Parameters.AddWithValue("$id", postId);
         cmd.ExecuteNonQuery();
     }

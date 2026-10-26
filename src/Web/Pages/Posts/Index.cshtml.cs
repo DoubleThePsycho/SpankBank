@@ -14,8 +14,9 @@ public class IndexModel : PageModel
     private readonly DownloadedPostSearch _search;
     private readonly TagsRepository _tags;
 
-    public IndexModel(DownloadedPostSearch search, TagsRepository tags)
+    public IndexModel(DownloadedPostSearch search, TagsRepository tags, FavoriteFolders folders)
     {
+        _folders = folders;
         _search = search;
         _tags = tags;
     }
@@ -30,6 +31,13 @@ public class IndexModel : PageModel
     public bool IsFavorites => Request.Path.StartsWithSegments("/favorites");
     public string BasePath => IsFavorites ? "/favorites" : "/posts";
 
+    private readonly FavoriteFolders _folders;
+
+    /// <summary>The folder being browsed on /favorites; null at the top level. Folders only show while not searching.</summary>
+    public FavoriteFolder? CurrentFolder { get; private set; }
+    public bool FolderView => IsFavorites && string.IsNullOrWhiteSpace(Tags);
+    public IReadOnlyList<FavoriteFolder> ChildFolders { get; private set; } = [];
+
     public IReadOnlyList<PostListItem> Items { get; private set; } = [];
     public long Total { get; private set; }
     public int LastPage { get; private set; } = 1;
@@ -43,6 +51,11 @@ public class IndexModel : PageModel
     {
         PageNumber = int.TryParse(Request.Query["page"], out var requested) && requested > 0 ? requested : 1;
 
+        if (FolderView)
+        {
+            CurrentFolder = long.TryParse(Request.Query["folder_id"], out var folderId) ? _folders.Get(folderId) : null;
+            if (PageNumber == 1) ChildFolders = _folders.Children(CurrentFolder?.Id);
+        }
         var searchText = SearchText();
         var result = _search.Search(searchText, PageNumber, PageSize);
         PageSizeUsed = result.PageSize;
@@ -64,6 +77,7 @@ public class IndexModel : PageModel
     private string? SearchText()
     {
         if (!IsFavorites) return Tags;
+        if (FolderView) return $"fav:true folder:{(CurrentFolder is { } folder ? folder.Id.ToString() : "none")} order:favorited";
         var text = "fav:true " + Tags;
         return text.Contains("order:", StringComparison.OrdinalIgnoreCase) ? text : text + " order:favorited";
     }
@@ -91,7 +105,7 @@ public class IndexModel : PageModel
     }
 
     /// <summary>Url of a page of this search; page 0 is the fast-travel placeholder the paginator script fills in.</summary>
-    public string PageUrl(int page) => $"{BasePath}?page={page}" + (string.IsNullOrWhiteSpace(Tags) ? "" : $"&tags={Uri.EscapeDataString(Tags)}");
+    public string PageUrl(int page) => $"{BasePath}?page={page}" + (CurrentFolder is { } folder ? $"&folder_id={folder.Id}" : "") + (string.IsNullOrWhiteSpace(Tags) ? "" : $"&tags={Uri.EscapeDataString(Tags)}");
 
     /// <summary>Url of this search with a tag added, or excluded with a leading "-".</summary>
     public string TagUrl(string tag) => BasePath + "?tags=" + Uri.EscapeDataString(((Tags ?? "").Trim() + " " + tag).Trim());
