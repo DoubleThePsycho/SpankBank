@@ -30,6 +30,9 @@ public class ShowModel : PageModel
     public IReadOnlyList<long> ChildIds { get; private set; } = [];
     public bool ParentIsLocal { get; private set; }
     public IReadOnlyList<PoolNavItem> PoolNav { get; private set; } = [];
+    /// <summary>Url of the search this post was reached from with a tag added, or excluded with a leading "-".</summary>
+    public string SearchUrl(string tag) => "/posts?tags=" + Uri.EscapeDataString(((Query ?? "").Trim() + " " + tag).Trim());
+
     public bool IsFavorite { get; private set; }
     /// <summary>The search this post was reached from (?q=), shown in the search box to build on.</summary>
     public string? Query { get; private set; }

@@ -47,6 +47,12 @@
             {
               <li class="tag-list-item tag-@cssName" data-name="@tag.Name" data-category="@cssName" data-count="@tag.PostCount">
                 <a class="tag-list-wiki" rel="nofollow" href="https://e621.net/wiki_pages/show_or_new?title=@Uri.EscapeDataString(tag.Name)">?</a>
+                @if (Model.Query is not null)
+                {
+                  @* Reached from a search: + and – add the tag to it (or exclude it) without typing. *@
+                  <a rel="nofollow" href="@Model.SearchUrl(tag.Name)" class="tag-list-inc">+</a>
+                  <a rel="nofollow" href="@Model.SearchUrl("-" + tag.Name)" class="tag-list-exl">–</a>
+                }
                 <a rel="nofollow tag" class="tag-list-search" href="/posts?tags=@Uri.EscapeDataString(tag.Name)">
                   <span class="tag-list-name">@tag.Name.Replace('_', ' ')</span>
                   <span data-count="@tag.PostCount" class="tag-list-count">@ShowModel.CountLabel(tag.PostCount)</span>
