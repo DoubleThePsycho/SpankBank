@@ -1,4 +1,5 @@
 using SpankBank.Data;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.Extensions.FileProviders;
 using SpankBank.Data.Downloads;
 using SpankBank.Data.Import;
@@ -10,6 +11,11 @@ var builder = WebApplication.CreateBuilder(args);
 var paths = WebPaths.Databases();
 DatabaseInitializer.Initialize(paths);
 
+// Keep the key ring outside the container, or every redeploy invalidates the antiforgery tokens of open pages.
+Directory.CreateDirectory(WebPaths.KeysDir);
+builder.Services.AddDataProtection()
+    .PersistKeysToFileSystem(new DirectoryInfo(WebPaths.KeysDir))
+    .SetApplicationName("SpankBank");
 builder.Services.AddRazorPages(options => options.Conventions.AddPageRoute("/Posts/Index", "/favorites")) // the listing, narrowed to favorites
     .AddMvcOptions(options => options.Filters.Add<WatchChangeNotifier>());
 builder.Services.AddHttpClient<WorkerClient>(client =>

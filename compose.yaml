@@ -17,18 +17,22 @@ services:
       # Host folder : fixed container path. Repoint the left side to move the data.
       - ./data/db:/data/db
       - ./data/imports:/data/imports
-      # Downloaded files: <md5[0:2]>/<md5[2:4]>/<md5>.<ext>, plus preview/ and sample/ like e621.
-      - ./data/media:/data/media
+      # Downloaded files (ZFS dataset storage/spankbank): <md5[0:2]>/<md5[2:4]>/<md5>.<ext>, plus preview/ and sample/ like e621.
+      - /storage/spankbank/media:/data/media
 
   web:
     image: spankbank-web:latest
     pull_policy: never
     restart: unless-stopped
     user: "1000:1000"
+    # Public access goes through Ingressi (Caddy, behind Authentik) as spankbank-web-1:8080 over the spankbank_default network.
+    # Direct access only on the host's Tailscale address (no login: the tailnet is the gate). Never publish on 0.0.0.0.
     ports:
-      - "8621:8080"
+      - "127.0.0.1:8621:8080"
     volumes:
       # Read-write: SQLite in WAL mode needs write access even to read, and the UI writes queue/settings rows.
       - ./data/db:/data/db
+      # Data Protection key ring (antiforgery); must survive redeploys. Created on first start if missing.
+      - ./data/keys:/data/keys
       # Read-only: the web app only shows the files.
-      - ./data/media:/data/media:ro
+      - /storage/spankbank/media:/data/media:ro
