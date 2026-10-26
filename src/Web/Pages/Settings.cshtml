@@ -33,6 +33,15 @@
     </section>
 
     <section class="box-section">
+      <h2>Deleting</h2>
+      <div class="input">
+        <label><input type="checkbox" name="deleteMode" value="true" @(Model.DeleteMode ? "checked" : null)> Allow delete mode</label>
+        <input type="hidden" name="deleteMode" value="false">
+        <p class="hint">Adds a Delete entry to the Mode menu on the posts pages and a Delete button on post pages. Deleted posts go to the <a href="/bin">rubbish bin</a>, are never downloaded again, and their files are removed for good after 30 days (or when you empty the bin).</p>
+      </div>
+    </section>
+
+    <section class="box-section">
       <h2>Pools</h2>
       <div class="input">
         <label><input type="checkbox" name="poolsAutoAdd" value="true" @(Model.PoolsAutoAdd ? "checked" : null)> Add an artist's pools automatically</label>

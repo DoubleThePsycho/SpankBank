@@ -20,6 +20,7 @@ export default class PostToolbar {
   constructor () {
     if (!this.container) return;
     this.initFavorite();
+    this.initDelete();
     this.initSize();
     this.initRelationships();
   }
@@ -52,6 +53,25 @@ export default class PostToolbar {
     } finally {
       this.star.setAttribute("processing", "false");
     }
+  }
+
+  // --- Delete (only rendered when delete mode is enabled in Settings) ------------------------------
+
+  private initDelete (): void {
+    const button = document.querySelector<HTMLButtonElement>(".ptbr-delete-button");
+    button?.addEventListener("click", async () => {
+      if (!confirm("Move this post to the rubbish bin?")) return;
+      button.disabled = true;
+      try {
+        const response = await fetch(`/posts/${this.postId}`, { method: "DELETE" });
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        window.location.href = "/posts";
+      } catch (error) {
+        button.disabled = false;
+        console.error("Could not delete the post", error);
+        alert("The post could not be deleted.");
+      }
+    });
   }
 
   // --- Image size -----------------------------------------------------------------------------

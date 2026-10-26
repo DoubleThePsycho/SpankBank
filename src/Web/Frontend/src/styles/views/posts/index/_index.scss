@@ -138,7 +138,7 @@ body.c-favorites.a-index {
     padding: 0.5rem .75rem var(--content-padding-bottom);
     box-shadow: inset 0px 0.25rem 0.25rem -0.25rem themed("color-background");
 
-    #mode-box label {
+    #mode-box label, #tag-heading label {
       font-size: 1.16667em;
       line-height: 1.5rem;
     }

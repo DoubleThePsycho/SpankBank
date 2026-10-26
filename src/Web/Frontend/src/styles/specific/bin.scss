@@ -1,0 +1,20 @@
+// Delete mode banner (posts index). Not from e621ng.
+#delete-mode-banner {
+  padding: 0.5em 0.75em;
+  margin-bottom: 0.5em;
+  font-weight: bold;
+  color: #fff;
+  background: #b52a2a;
+  border-radius: 3px;
+
+  a { color: #fff; text-decoration: underline; }
+
+  &.hidden { display: none; }
+}
+
+.thumbnail.mode-removing {
+  opacity: 0.25;
+  transition: opacity 0.2s;
+}
+
+.thumbnail.mode-removed { display: none; }

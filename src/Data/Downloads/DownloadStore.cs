@@ -23,6 +23,7 @@ public sealed class DownloadStore
             WHERE NOT EXISTS (SELECT 1 FROM dev.Posts d WHERE d.Id = m.PostId AND d.SavedAt IS NOT NULL)
               AND NOT EXISTS (SELECT 1 FROM DownloadAttempts a WHERE a.PostId = m.PostId AND a.NextAttemptAt > $now)
               AND NOT EXISTS (SELECT 1 FROM BlockedPosts b WHERE b.PostId = m.PostId)
+              AND NOT EXISTS (SELECT 1 FROM DeletedPosts x WHERE x.PostId = m.PostId)
             LIMIT $limit;
             """;
         cmd.Parameters.AddWithValue("$now", now.ToString("o"));
@@ -43,7 +44,8 @@ public sealed class DownloadStore
             JOIN WatchedItems w ON w.Id = m.WatchedItemId AND w.Enabled = 1
             WHERE NOT EXISTS (SELECT 1 FROM dev.Posts d WHERE d.Id = m.PostId AND d.SavedAt IS NOT NULL)
               AND NOT EXISTS (SELECT 1 FROM DownloadAttempts a WHERE a.PostId = m.PostId AND a.NextAttemptAt > $now)
-              AND NOT EXISTS (SELECT 1 FROM BlockedPosts b WHERE b.PostId = m.PostId);
+              AND NOT EXISTS (SELECT 1 FROM BlockedPosts b WHERE b.PostId = m.PostId)
+              AND NOT EXISTS (SELECT 1 FROM DeletedPosts x WHERE x.PostId = m.PostId);
             """;
         cmd.Parameters.AddWithValue("$now", now.ToString("o"));
         return Convert.ToInt32(cmd.ExecuteScalar());

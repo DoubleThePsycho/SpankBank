@@ -25,7 +25,9 @@ builder.Services.AddSingleton(sp =>
 builder.Services.AddSingleton(new DownloadStore(paths));
 builder.Services.AddSingleton(new SpankBank.Data.Blacklist.BlockedPostsRefresher(paths));
 builder.Services.AddHostedService<DailyScheduler>();
+builder.Services.AddSingleton(new SpankBank.Data.RubbishBin.BinStore(paths));
 builder.Services.AddHostedService<DownloadService>();
+builder.Services.AddHostedService<BinService>();
 builder.Services.AddHostedService<CommandServer>();
 
 await builder.Build().RunAsync();

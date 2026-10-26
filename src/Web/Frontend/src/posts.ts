@@ -1,6 +1,7 @@
 import SearchControls from "@/pages/posts/SearchControls";
 import SearchFilters from "@/pages/posts/SearchFilters";
 import PostToolbar from "@/pages/posts/PostToolbar";
+import PostModes from "@/pages/posts/PostModes";
 import "@/pages/posts/WikiExcerpt";
 import "@/pages/posts/SearchInput";
 import "@/pages/posts/FavoriteFolderDrag";
@@ -10,6 +11,7 @@ $(() => {
   new SearchControls();
   SearchFilters.initialize();
   new PostToolbar();
+  new PostModes();
 
   // Left and right arrow keys turn the page (e621ng does the same), unless the user is typing.
   document.addEventListener("keydown", (event) => {

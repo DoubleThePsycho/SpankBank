@@ -100,6 +100,9 @@ public sealed class CommandServer : BackgroundService
                     _settings.Set(WorkerSettingsKeys.MatchRequested, "true");
                     _signals.Scheduler.Notify();
                     break;
+                case "bin":
+                    _signals.Bin.Notify();
+                    break;
                 case "downloads":
                     _signals.Downloads.Notify();
                     break;

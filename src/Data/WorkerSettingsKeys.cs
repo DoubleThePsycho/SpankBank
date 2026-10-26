@@ -13,6 +13,8 @@ public static class WorkerSettingsKeys
     public const string MatchRequested = "Worker.MatchRequested";
     /// <summary>"true" (or missing) when the blocked posts must be recomputed; the downloader does it before its next batch, "running" while it does.</summary>
     public const string BlacklistDirty = "Blacklist.Dirty";
+    /// <summary>"true" lets the posts pages delete (move to the rubbish bin); default off.</summary>
+    public const string DeleteModeEnabled = "Bin.DeleteModeEnabled";
     public const string DailyRunTimeUtc = "Worker.DailyRunTimeUtc";
     public const string LastRunStartedAt = "Worker.LastRunStartedAt";
     public const string LastRunCompletedAt = "Worker.LastRunCompletedAt";

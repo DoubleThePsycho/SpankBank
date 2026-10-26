@@ -60,7 +60,7 @@ public sealed class DownloadedPostSearch
             return new SearchPage([], 0, pageSize, query.Error);
 
         var parameters = new List<(string Name, object Value)>();
-        var where = new StringBuilder("d.SavedAt IS NOT NULL");
+        var where = new StringBuilder("d.SavedAt IS NOT NULL AND NOT EXISTS (SELECT 1 FROM app.DeletedPosts dp WHERE dp.PostId = d.Id)");
         // Blacklisted posts stay hidden unless the search says blacklisted:true or blacklisted:any.
         if (!query.Terms.Any(t => t.Name == "blacklisted"))
             where.Append(" AND NOT EXISTS (SELECT 1 FROM app.BlockedPosts bl WHERE bl.PostId = d.Id)");

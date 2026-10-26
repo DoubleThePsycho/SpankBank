@@ -8,4 +8,7 @@ public sealed class WorkerSignals
 
     /// <summary>New posts may be waiting to download.</summary>
     public Signal Downloads { get; } = new();
+
+    /// <summary>Something for the rubbish bin: a delete, restore or empty request.</summary>
+    public Signal Bin { get; } = new();
 }

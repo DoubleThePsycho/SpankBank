@@ -277,6 +277,18 @@ public static class DatabaseInitializer
                 CreatedAt TEXT NOT NULL
             );
             """);
+        // The rubbish bin (see Data/Bin/BinStore.cs). A post with any row here is never downloaded again.
+        // State: 0 delete requested, 1 binned, 2 restore requested, 3 purged (tombstone), 4 purge requested.
+        Execute(connection, """
+            CREATE TABLE IF NOT EXISTS DeletedPosts (
+                PostId          INTEGER PRIMARY KEY,
+                DeletedAt       TEXT    NOT NULL,
+                State           INTEGER NOT NULL DEFAULT 0,
+                OriginalSavedAt TEXT
+            );
+            """);
+        Execute(connection, "CREATE INDEX IF NOT EXISTS IX_DeletedPosts_State ON DeletedPosts (State);");
+
         Execute(connection, """
             CREATE TABLE IF NOT EXISTS BlockedPosts (
                 PostId INTEGER PRIMARY KEY

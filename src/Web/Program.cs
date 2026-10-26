@@ -35,11 +35,20 @@ builder.Services.AddSingleton(new DownloadStore(paths));
 builder.Services.AddSingleton(new SettingsRepository(paths.AppDatabasePath));
 builder.Services.AddSingleton(new FavoritesRepository(paths.AppDatabasePath));
 builder.Services.AddSingleton(new SpankBank.Data.Blacklist.BlacklistRepository(paths.AppDatabasePath));
+builder.Services.AddSingleton(new SpankBank.Data.RubbishBin.BinStore(paths));
 builder.Services.AddSingleton(new FavoriteFolders(paths.AppDatabasePath));
 builder.Services.AddSingleton(new ImportHistoryRepository(paths.AppDatabasePath));
 
 var app = builder.Build();
 
+// The rubbish bin lives in <media>/.bin; nothing below a dot folder is served.
+app.Use(async (context, next) =>
+{
+    if (context.Request.Path.StartsWithSegments("/media") && context.Request.Path.Value!.Contains("/."))
+        context.Response.StatusCode = StatusCodes.Status404NotFound;
+    else
+        await next();
+});
 app.UseStaticFiles();
 
 // Downloaded files, read-only. The folder exists once the compose volume is mounted.
@@ -58,6 +67,30 @@ app.MapDelete("/favorites/{id:long}", (long id, FavoritesRepository favorites) =
 {
     favorites.Remove(id);
     return Results.Ok(new { favorited = false });
+});
+
+// Delete mode: moves a local post to the rubbish bin (the worker moves the files). Off unless enabled in Settings.
+app.MapDelete("/posts/{id:long}", async (long id, SettingsRepository settings, SpankBank.Data.RubbishBin.BinStore bin, FavoritesRepository favorites, WorkerClient worker) =>
+{
+    if (settings.Get(WorkerSettingsKeys.DeleteModeEnabled) != "true")
+        return Results.Json(new { message = "Delete mode is off. Turn it on in Settings." }, statusCode: 403);
+    if (!bin.RequestDelete(id)) return Results.NotFound();
+    favorites.Remove(id); // a binned post is no longer a favorite; restoring does not bring the star back
+    await worker.NotifyAsync("bin");
+    return Results.Ok(new { deleted = true });
+});
+
+// Thumbnails of binned posts, read from <media>/.bin (the media folder's static route never serves dot folders).
+app.MapGet("/bin/preview/{id:long}", (long id, SpankBank.Data.RubbishBin.BinStore bin) =>
+{
+    var post = bin.Get(id);
+    if (post is null || post.Md5.Length != 32) return Results.NotFound();
+    foreach (var root in new[] { Path.Combine(WebPaths.MediaDir, SpankBank.Data.RubbishBin.BinStore.BinFolder), WebPaths.MediaDir })
+    {
+        var preview = MediaPaths.Preview(root, post.Md5);
+        if (File.Exists(preview)) return Results.File(preview, "image/jpeg");
+    }
+    return Results.NotFound();
 });
 
 // Favorite folders. JSON in, JSON out; a broken rule answers 422 with a message for the user.

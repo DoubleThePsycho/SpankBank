@@ -1,5 +1,6 @@
 @page "/posts/{id:long}"
 @model SpankBank.Web.Pages.Posts.ShowModel
+@inject SpankBank.Data.Repositories.SettingsRepository Settings
 @using SpankBank.Core.Models
 @* Markup follows e621ng app/views/posts/show.html.erb and its sidebar partials (BSD-2, see THIRD-PARTY-NOTICES.md). *@
 @{
@@ -209,6 +210,12 @@
         </div>
 
         <div class="ptbr-row">
+          @if (Settings.Get(SpankBank.Data.WorkerSettingsKeys.DeleteModeEnabled) == "true")
+          {
+            <div class="ptbr-delete">
+              <button type="button" class="st-button kinetic ptbr-delete-button" title="Move this post to the rubbish bin">Delete</button>
+            </div>
+          }
           @if (Model.MediaUrl is not null)
           {
             <div class="ptbr-fullscreen">

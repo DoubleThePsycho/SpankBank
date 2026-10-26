@@ -1,11 +1,13 @@
 @page "/posts"
 @model SpankBank.Web.Pages.Posts.IndexModel
+@inject SpankBank.Data.Repositories.SettingsRepository Settings
 @* Markup ported from e621ng app/views/posts/index.html.erb and its partials (BSD-2, see THIRD-PARTY-NOTICES.md). *@
 @{
     ViewData["Title"] = Model.IsFavorites ? "Favorites" : "Posts";
     ViewData["BodyClass"] = "c-posts a-index"; // the upstream styles key the page layout off these body classes
     var current = Model.PageNumber;
     var last = Model.LastPage;
+    var DeleteMode = Settings.Get(SpankBank.Data.WorkerSettingsKeys.DeleteModeEnabled) == "true";
 }
 @section SecondaryNav {
   <partial name="_AreaNav" model='"posts"' />
@@ -32,6 +34,16 @@
 
   <div class="sidebar">
     <section id="mode-box">
+      <label for="mode-box-mode">Mode</label>
+      <select id="mode-box-mode" data-delete-enabled="@(DeleteMode ? "true" : "false")">
+        <option value="view">View</option>
+        <option value="favorite">Favorite</option>
+        <option value="unfavorite">Unfavorite</option>
+        @if (DeleteMode) { <option value="delete">Delete</option> }
+      </select>
+    </section>
+
+    <section id="tag-heading">
       <label>Tags</label>
     </section>
 
@@ -90,6 +102,7 @@
           <a href="/artist/@Uri.EscapeDataString(artist.Name)" class="wiki-excerpt-readmore"><span>Artist page</span></a>
         </section>
       }
+      <div id="delete-mode-banner" class="hidden" role="alert">Delete mode: clicking a post moves it to the <a href="/bin">rubbish bin</a>. Switch Mode back to View to browse.</div>
       <section class="posts-container@(Model.FolderView ? " favorites-view" : "")">
         @if (Model.FolderView)
         {
