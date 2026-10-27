@@ -23,7 +23,15 @@ public partial class PoolsModel : WatchPageModel
         Suggestions = Watches.GetPoolSuggestions(ShowAll);
     }
 
-    /// <summary>"added automatically from kevinsano" for pools that came from an artist.</summary>
+    /// <summary>The artist a pool was added for ("auto:name" or "suggested:name"), else null.</summary>
+    public static string? OriginArtist(string? origin) => origin switch
+    {
+        _ when origin is not null && origin.StartsWith("auto:") && origin.Length > 5 => origin[5..],
+        _ when origin is not null && origin.StartsWith("suggested:") && origin.Length > 10 => origin[10..],
+        _ => null,
+    };
+
+    /// <summary>"added automatically: mostly name's work" for the pool's details (the listing shows only the artist).</summary>
     public static string? OriginText(string? origin) => origin switch
     {
         null or "" => null,

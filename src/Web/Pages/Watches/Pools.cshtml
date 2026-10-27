@@ -21,15 +21,17 @@
 else
 {
   <table class="striped watches-table">
-    <thead><tr><th>Pool</th><th>Type</th><th>Pages</th><th>Status</th></tr></thead>
+    <thead><tr><th>Pool</th><th>Artist</th><th>Type</th><th>Pages</th><th>Status</th><th></th></tr></thead>
     <tbody>
       @foreach (var pool in Model.Entries)
       {
-        <tr data-open-modal="modal-@pool.Id" tabindex="0">
-          <td data-field="name">@pool.DisplayName@if (PoolsModel.OriginText(pool.Origin) is { } origin) { <div class="watch-origin">@origin</div> }</td>
+        <tr data-href="/pool/@pool.SourceValue" data-modal="modal-@pool.Id" tabindex="0">
+          <td data-field="name"><a href="/pool/@pool.SourceValue">@pool.DisplayName</a></td>
+          <td data-field="artist">@(PoolsModel.OriginArtist(pool.Origin) ?? "-")</td>
           <td data-field="type">@(pool.Pool?.Category ?? "-")</td>
           <td data-field="pages">@(pool.Pool?.PostCount.ToString("N0") ?? "-")</td>
           <td data-field="status">@(pool.Enabled ? "enabled" : "disabled")</td>
+          <td class="watch-row-actions"><a href="#" data-open-modal="modal-@pool.Id">Edit</a></td>
         </tr>
       }
     </tbody>
