@@ -48,7 +48,7 @@ public sealed class PostsRepository
         connection.Open();
         using var cmd = connection.CreateCommand();
         cmd.CommandText = $"""
-            SELECT Id, Rating, CreatedAt, UpdatedAt, Score, FileExt, Md5, FavCount
+            SELECT Id, Rating, CreatedAt, UpdatedAt, Score, FileExt, Md5, FavCount, Duration, TagString
             FROM Posts{where}
             ORDER BY {orderClause}
             LIMIT $limit OFFSET $offset;
@@ -70,7 +70,9 @@ public sealed class PostsRepository
                 Score: reader.GetInt32(4),
                 FileExt: reader.IsDBNull(5) ? null : reader.GetString(5),
                 Md5: reader.IsDBNull(6) ? null : reader.GetString(6),
-                FavCount: reader.GetInt32(7)
+                FavCount: reader.GetInt32(7),
+                Duration: reader.IsDBNull(8) ? null : reader.GetDouble(8),
+                TagString: reader.IsDBNull(9) ? null : reader.GetString(9)
             ));
         }
         return results;

@@ -18,3 +18,21 @@
 }
 
 .thumbnail.mode-removed { display: none; }
+
+// Video length on a thumbnail, opposite the file type badge. Not from e621ng.
+article.thumbnail .thm-duration {
+  position: absolute;
+  z-index: 5;
+  right: 0;
+  bottom: 5%;
+
+  font-size: 0.5rem;
+  line-height: 0.5rem;
+  padding: 0.25rem;
+  font-weight: bold;
+
+  background-color: themed("color-section");
+  color: themed("color-text");
+
+  @include st-radius-left;
+}

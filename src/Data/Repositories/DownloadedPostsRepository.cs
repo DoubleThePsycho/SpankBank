@@ -30,7 +30,7 @@ public sealed class DownloadedPostsRepository
         connection.Open();
         using var cmd = connection.CreateCommand();
         cmd.CommandText = $"""
-            SELECT Id, Rating, CreatedAt, UpdatedAt, Score, FileExt, Md5
+            SELECT Id, Rating, CreatedAt, UpdatedAt, Score, FileExt, Md5, Duration, TagString
             FROM Posts
             WHERE {DownloadedCondition}
             ORDER BY SavedAt DESC, Id DESC
@@ -51,7 +51,9 @@ public sealed class DownloadedPostsRepository
                 Score: reader.GetInt32(4),
                 FileExt: reader.IsDBNull(5) ? null : reader.GetString(5),
                 Md5: reader.IsDBNull(6) ? null : reader.GetString(6),
-                FavCount: 0
+                FavCount: 0,
+                Duration: reader.IsDBNull(7) ? null : reader.GetDouble(7),
+                TagString: reader.IsDBNull(8) ? null : reader.GetString(8)
             ));
         }
         return results;

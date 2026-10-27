@@ -1,13 +1,11 @@
-@page "/blacklist"
+@page "/settings/blacklist"
 @model SpankBank.Web.Pages.Posts.BlacklistModel
 @{
     ViewData["Title"] = "Blacklist";
     ViewData["BodyClass"] = "c-status";
 }
-@section SecondaryNav {
-  <partial name="_AreaNav" model='"posts"' />
-}
 <div id="c-blacklist" class="container"><div id="a-index">
+  <p><a href="/settings">&larr; Settings</a></p>
   <h1>Blacklist</h1>
 
   @if (Model.Message is not null) { <div class="notice notice-info">@Model.Message</div> }

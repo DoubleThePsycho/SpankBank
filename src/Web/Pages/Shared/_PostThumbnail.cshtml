@@ -15,11 +15,12 @@
     var scoreClass = post.Score == 0 ? "neutral" : post.Score > 0 ? "positive" : "negative";
     var scoreIcon = post.Score == 0 ? "square_slash" : post.Score > 0 ? "arrow_up_dash" : "arrow_down_dash";
 }
-<article class="thumbnail @ratingClass blacklistable" data-id="@post.Id" data-rating="@ratingLetter" data-score="@post.Score" data-file-ext="@post.FileExt">
+<article class="thumbnail @ratingClass blacklistable" data-id="@post.Id" data-rating="@ratingLetter" data-score="@post.Score" data-file-ext="@post.FileExt" data-tags="@post.BadgeTags">
   <a href="/posts/@post.Id@PostLinkQuery()" class="thm-link" data-hover-text="Rating: @ratingLetter&#10;ID: @post.Id&#10;Date: @post.CreatedAt.ToString("yyyy-MM-dd HH:mm")&#10;Score: @post.Score" data-file-ext="@post.FileExt">
     <picture>
       <img src="@SpankBank.Web.Pages.Posts.IndexModel.PreviewUrl(post)" alt="post #@post.Id" loading="lazy">
     </picture>
+    @if (post.DurationText is { } duration) { <span class="thm-duration">@duration</span> }
   </a>
   <div class="thm-desc thm-rating-@ratingLetter">
     <span class="thm-desc-a">
