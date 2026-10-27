@@ -14,8 +14,9 @@
   </ItemGroup>
 
   <ItemGroup>
-    <!-- The SDK's default excludes skip any folder named bin/Bin. -->
-    <Compile Include="Bin\**\*.cs" />
+    <!-- Some environments skip a folder named Bin through the SDK's default excludes (and others do not), so add
+         it explicitly without duplicating what the default globs already picked up. -->
+    <Compile Include="Bin\**\*.cs" Exclude="@(Compile)" />
   </ItemGroup>
 
   <ItemGroup>
