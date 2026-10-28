@@ -12,10 +12,12 @@ public class StatusModel : PageModel
     private readonly SettingsRepository _settings;
     private readonly ImportHistoryRepository _history;
     private readonly PostsRepository _posts;
+    private readonly StrayPosts _strays;
     private readonly WorkerClient _worker;
 
-    public StatusModel(SettingsRepository settings, ImportHistoryRepository history, PostsRepository posts, WorkerClient worker)
+    public StatusModel(SettingsRepository settings, ImportHistoryRepository history, PostsRepository posts, StrayPosts strays, WorkerClient worker)
     {
+        _strays = strays;
         _settings = settings;
         _history = history;
         _posts = posts;
@@ -28,6 +30,7 @@ public class StatusModel : PageModel
     public string DailyRunTimeUtc { get; private set; } = "04:00";
     public bool RunRequested { get; private set; }
     public long PostCount { get; private set; }
+    public int StrayCount { get; private set; }
     public IReadOnlyList<ImportHistoryEntry> Imports { get; private set; } = [];
 
     [TempData]
@@ -53,6 +56,7 @@ public class StatusModel : PageModel
         DailyRunTimeUtc = _settings.Get(WorkerSettingsKeys.DailyRunTimeUtc) ?? "04:00";
         RunRequested = _settings.Get(WorkerSettingsKeys.RunNowRequested) is "true" or "running";
         PostCount = _posts.CountPosts();
+        StrayCount = _strays.Count();
         Imports = _history.GetRecent(10);
     }
 }

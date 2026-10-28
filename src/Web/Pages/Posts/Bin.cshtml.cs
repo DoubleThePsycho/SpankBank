@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
+using SpankBank.Data.Repositories;
 using SpankBank.Data.RubbishBin;
 using SpankBank.Web.Services;
 
@@ -8,10 +9,12 @@ namespace SpankBank.Web.Pages.Posts;
 public class BinModel : PageModel
 {
     private readonly BinStore _bin;
+    private readonly StrayPosts _strays;
     private readonly WorkerClient _worker;
 
-    public BinModel(BinStore bin, WorkerClient worker)
+    public BinModel(BinStore bin, StrayPosts strays, WorkerClient worker)
     {
+        _strays = strays;
         _bin = bin;
         _worker = worker;
     }
@@ -20,8 +23,21 @@ public class BinModel : PageModel
     [TempData] public string? Error { get; set; }
 
     public IReadOnlyList<BinnedPost> Posts { get; private set; } = [];
+    public int StrayCount { get; private set; }
 
-    public void OnGet() => Posts = _bin.List();
+    public void OnGet()
+    {
+        Posts = _bin.List();
+        StrayCount = _strays.Count();
+    }
+
+    public async Task<IActionResult> OnPostBinStraysAsync()
+    {
+        var count = _strays.BinAll();
+        if (count > 0) await _worker.NotifyAsync("bin");
+        Message = count == 0 ? "There are no stray posts." : $"Moved {count:N0} stray post(s) to the bin.";
+        return RedirectToPage();
+    }
 
     public async Task<IActionResult> OnPostRestoreAsync(long id)
     {

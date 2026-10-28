@@ -16,6 +16,18 @@
 
   <p>Deleted posts stay here for 30 days, then their files are removed for good. A deleted post is never downloaded again, even after it leaves the bin.</p>
 
+  @if (Model.StrayCount > 0)
+  {
+    <section class="box-section">
+      <h2>Stray posts</h2>
+      <p>@Model.StrayCount.ToString("N0") downloaded post(s) are not matched by any enabled watch and are not favorites.
+        <a href="/posts?tags=stray%3Atrue">Look at them</a> first, favorite the ones you want to keep, then:</p>
+      <form method="post" asp-page-handler="BinStrays">
+        <button type="submit" class="st-button" onclick="return confirm('Move @Model.StrayCount.ToString("N0") stray post(s) to the bin? They stay there for 30 days.')">Move all strays to the bin (@Model.StrayCount.ToString("N0"))</button>
+      </form>
+    </section>
+  }
+
   @if (Model.Posts.Count == 0)
   {
     <p>The bin is empty.</p>

@@ -29,6 +29,7 @@
       <tr><th>Last result</th><td>@(Model.LastRunResult ?? "-")</td></tr>
       <tr><th>Daily run (UTC)</th><td>@Model.DailyRunTimeUtc</td></tr>
       <tr><th>Posts in catalog</th><td>@Model.PostCount.ToString("N0")</td></tr>
+      <tr><th>Stray posts</th><td>@if (Model.StrayCount == 0) { <text>none</text> } else { <a href="/posts?tags=stray%3Atrue">@Model.StrayCount.ToString("N0")</a> <span class="hint">downloaded, but no watch matches them and they are not favorites. <a href="/bin">Move them to the bin</a></span> }</td></tr>
     </tbody>
   </table>
 

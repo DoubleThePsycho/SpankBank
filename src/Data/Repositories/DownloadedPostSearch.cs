@@ -48,6 +48,11 @@ public sealed class DownloadedPostSearch
         ["portrait"] = "(d.ImageWidth * 1.0 / NULLIF(d.ImageHeight, 0))",
     };
 
+    // What keeps a local post: an enabled watch that matches it, or a favorite star.
+    internal const string StrayKeepers =
+        "(EXISTS (SELECT 1 FROM app.WatchMatches sm JOIN app.WatchedItems sw ON sw.Id = sm.WatchedItemId AND sw.Enabled = 1 WHERE sm.PostId = d.Id)"
+        + " OR EXISTS (SELECT 1 FROM app.Favorites sf WHERE sf.PostId = d.Id))";
+
     private readonly DatabasePaths _paths;
 
     public DownloadedPostSearch(DatabasePaths paths) => _paths = paths;
@@ -311,6 +316,14 @@ public sealed class DownloadedPostSearch
                 {
                     "true" or "me" or "any" => "EXISTS (SELECT 1 FROM app.Favorites f WHERE f.PostId = d.Id)",
                     "false" or "none" => "NOT EXISTS (SELECT 1 FROM app.Favorites f WHERE f.PostId = d.Id)",
+                    _ => null,
+                };
+            case "stray":
+                // A local post nothing keeps: no enabled watch matches it and it is not a favorite.
+                return value switch
+                {
+                    "true" => $"NOT ({StrayKeepers})",
+                    "false" => StrayKeepers,
                     _ => null,
                 };
             case "blacklisted":
