@@ -104,3 +104,14 @@
     }
   }
 }
+
+// Sortable column headers of the watch tables. Not from e621ng.
+.watches-table th.sortable-header {
+  cursor: pointer;
+  user-select: none;
+  white-space: nowrap;
+
+  &:hover { text-decoration: underline; }
+  &[aria-sort="ascending"]::after { content: " \25B2"; font-size: 0.7em; }
+  &[aria-sort="descending"]::after { content: " \25BC"; font-size: 0.7em; }
+}

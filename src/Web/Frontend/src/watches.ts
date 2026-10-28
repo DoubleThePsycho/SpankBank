@@ -153,3 +153,58 @@ document.querySelectorAll<HTMLInputElement>("input[data-validate-tag]").forEach(
     }, 200);
   });
 });
+
+// Click a column header to sort the table by that column (first click ascending, then toggling).
+// Numbers sort as numbers ("1,234", "3 / 5" -> 3); "pending", "-" and empty cells always go last.
+function cellValue (row: HTMLTableRowElement, column: number): string {
+  const cell = row.children[column] as HTMLElement | undefined;
+  return (cell?.dataset.sort ?? cell?.textContent ?? "").trim();
+}
+
+function toNumber (text: string): number | null {
+  const number = parseFloat(text.replace(/,/g, ""));
+  return Number.isNaN(number) ? null : number;
+}
+
+function sortTable (table: HTMLTableElement, column: number, ascending: boolean): void {
+  const body = table.tBodies[0];
+  if (!body) return;
+  const rows = Array.from(body.rows);
+  const values = rows.map((row) => cellValue(row, column));
+  const numeric = values.every((value) => value === "" || value === "-" || value === "pending" || toNumber(value) !== null);
+
+  const sorted = rows.map((row, index) => ({ row, value: values[index] }));
+  sorted.sort((a, b) => {
+    const aMissing = a.value === "" || a.value === "-" || a.value === "pending";
+    const bMissing = b.value === "" || b.value === "-" || b.value === "pending";
+    if (aMissing || bMissing) return aMissing === bMissing ? 0 : aMissing ? 1 : -1; // missing last, either direction
+
+    const result = numeric
+      ? toNumber(a.value)! - toNumber(b.value)!
+      : a.value.localeCompare(b.value, undefined, { sensitivity: "base", numeric: true });
+    return ascending ? result : -result;
+  });
+
+  for (const { row } of sorted) body.appendChild(row);
+}
+
+document.querySelectorAll<HTMLTableElement>("table.watches-table").forEach((table) => {
+  const headers = Array.from(table.tHead?.rows[0]?.cells ?? []);
+  headers.forEach((header, column) => {
+    if (!header.textContent?.trim()) return; // the Edit column
+    header.classList.add("sortable-header");
+    header.tabIndex = 0;
+    header.setAttribute("role", "columnheader");
+
+    const sort = () => {
+      const ascending = header.getAttribute("aria-sort") !== "ascending";
+      headers.forEach((other) => other.removeAttribute("aria-sort"));
+      header.setAttribute("aria-sort", ascending ? "ascending" : "descending");
+      sortTable(table, column, ascending);
+    };
+    header.addEventListener("click", sort);
+    header.addEventListener("keydown", (event) => {
+      if (event.key === "Enter" || event.key === " ") { event.preventDefault(); sort(); }
+    });
+  });
+});
