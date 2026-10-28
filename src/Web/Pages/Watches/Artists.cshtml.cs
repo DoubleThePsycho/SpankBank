@@ -34,6 +34,8 @@ public class ArtistsModel : WatchPageModel
             return Fail("Enter an artist tag.");
 
         var tag = Watches.ResolveArtistTag(artist);
+        if (NonArtistTags.Contains(tag))
+            return Fail($"\"{tag}\" is a marker tag, not an artist, so it cannot be watched as one.");
         if (!Watches.IsArtistTag(tag))
             return Fail($"\"{tag}\" is not an artist tag in the catalog.");
 

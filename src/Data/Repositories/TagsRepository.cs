@@ -148,6 +148,8 @@ public sealed class TagsRepository
 
         var results = new List<TagSuggestion>();
         var categoryClause = category is null ? "" : " AND t.Category = $category";
+        // The artist box never offers marker tags such as unknown_artist or conditional_dnp.
+        if (category == 1) categoryClause += $" AND t.Name NOT IN ({NonArtistTags.SqlList})";
 
         using (var cmd = connection.CreateCommand())
         {

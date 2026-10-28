@@ -264,6 +264,25 @@ public sealed class WatchesRepository
         return id;
     }
 
+    /// <summary>Removes watches on marker tags (unknown_artist and the like) that were added before they were excluded.</summary>
+    /// <returns>The tags whose watches were removed.</returns>
+    public IReadOnlyList<string> RemoveNonArtistWatches()
+    {
+        using var connection = new SqliteConnection(_appConnectionString);
+        connection.Open();
+        using (var pragma = connection.CreateCommand())
+        {
+            pragma.CommandText = "PRAGMA foreign_keys = ON;";
+            pragma.ExecuteNonQuery();
+        }
+        using var cmd = connection.CreateCommand();
+        cmd.CommandText = $"DELETE FROM WatchedItems WHERE ItemType = 2 AND SourceValue IN ({NonArtistTags.SqlList}) RETURNING SourceValue;";
+        using var reader = cmd.ExecuteReader();
+        var removed = new List<string>();
+        while (reader.Read()) removed.Add(reader.GetString(0));
+        return removed;
+    }
+
     /// <summary>Lets a watch download posts the blacklist matches. The worker recomputes the blocked posts afterwards.</summary>
     public void SetIgnoreBlacklist(long id, bool ignore)
     {
@@ -405,6 +424,7 @@ public sealed class WatchesRepository
 
     public bool IsArtistTag(string name)
     {
+        if (NonArtistTags.Contains(name)) return false;
         using var connection = new SqliteConnection(_serverConnectionString);
         connection.Open();
         using var cmd = connection.CreateCommand();
@@ -421,9 +441,9 @@ public sealed class WatchesRepository
         connection.Open();
         using var cmd = connection.CreateCommand();
         // A range scan on the Name index; LIKE '%x%' would walk 890k tags per name.
-        cmd.CommandText = """
+        cmd.CommandText = $"""
             SELECT Name FROM Tags
-            WHERE Category = 1 AND Name >= $from AND Name < $to AND PostCount > 0
+            WHERE Category = 1 AND Name >= $from AND Name < $to AND PostCount > 0 AND Name NOT IN ({NonArtistTags.SqlList})
             ORDER BY PostCount DESC LIMIT $limit;
             """;
         cmd.Parameters.AddWithValue("$from", name);

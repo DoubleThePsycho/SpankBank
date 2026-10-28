@@ -30,7 +30,8 @@ builder.Services.AddSingleton(new DownloadedPostSearch(paths));
 builder.Services.AddSingleton(new CatalogBrowser(paths.ServerDatabasePath));
 builder.Services.AddSingleton(new DownloadedPostsRepository(paths.DeviceDatabasePath));
 builder.Services.AddSingleton(new TagsRepository(paths.ServerDatabasePath));
-builder.Services.AddSingleton(new WatchesRepository(paths.AppDatabasePath, paths.ServerDatabasePath));
+var watchesRepository = new WatchesRepository(paths.AppDatabasePath, paths.ServerDatabasePath);
+builder.Services.AddSingleton(watchesRepository);
 builder.Services.AddSingleton(new DownloadStore(paths));
 builder.Services.AddSingleton(new SettingsRepository(paths.AppDatabasePath));
 builder.Services.AddSingleton(new FavoritesRepository(paths.AppDatabasePath));
@@ -40,6 +41,11 @@ builder.Services.AddSingleton(new FavoriteFolders(paths.AppDatabasePath));
 builder.Services.AddSingleton(new ImportHistoryRepository(paths.AppDatabasePath));
 
 var app = builder.Build();
+
+// Marker tags (unknown_artist...) are not artists; drop any watch on one that was added before they were excluded.
+var removedMarkers = watchesRepository.RemoveNonArtistWatches();
+if (removedMarkers.Count > 0)
+    app.Logger.LogWarning("Removed watches on marker tags that are not artists: {Tags}", string.Join(", ", removedMarkers));
 
 // The rubbish bin lives in <media>/.bin; nothing below a dot folder is served.
 app.Use(async (context, next) =>

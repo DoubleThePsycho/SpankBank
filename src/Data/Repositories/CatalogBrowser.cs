@@ -1,3 +1,4 @@
+using SpankBank.Core.Models;
 using System.Text;
 using Microsoft.Data.Sqlite;
 
@@ -13,12 +14,6 @@ public sealed record Page<T>(IReadOnlyList<T> Rows, long Total);
 /// <summary>Read-only browsing of the imported e621 catalog: tags, pools and artists (server.sqlite).</summary>
 public sealed class CatalogBrowser
 {
-    // Tags in the artist category that are markers, not people.
-    private static readonly string[] NotArtists =
-    [
-        "conditional_dnp", "unknown_artist", "anonymous_artist", "avoid_posting", "epilepsy_warning", "sound_warning", "third-party_edit",
-    ];
-
     private readonly string _connectionString;
 
     public CatalogBrowser(string serverDatabasePath) => _connectionString = $"Data Source={serverDatabasePath};Mode=ReadOnly";
@@ -45,7 +40,7 @@ public sealed class CatalogBrowser
 
     public Page<ArtistRow> SearchArtists(string? nameMatches, string? order, bool hideEmpty, int page, int pageSize)
     {
-        var exclusion = $"Name NOT IN ({string.Join(", ", NotArtists.Select(a => $"'{a}'"))})";
+        var exclusion = $"Name NOT IN ({NonArtistTags.SqlList})";
         var (where, parameters) = TagWhere(nameMatches, category: 1, hideEmpty, exclusion);
         var orderBy = order == "name" ? "Name ASC" : "PostCount DESC, Name ASC";
 
