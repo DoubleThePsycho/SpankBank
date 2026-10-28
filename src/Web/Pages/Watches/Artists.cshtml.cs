@@ -1,12 +1,30 @@
 using Microsoft.AspNetCore.Mvc;
 using SpankBank.Core.Models;
 using SpankBank.Data.Repositories;
+using SpankBank.Web.Services;
 
 namespace SpankBank.Web.Pages.Watches;
 
 public class ArtistsModel : WatchPageModel
 {
-    public ArtistsModel(WatchesRepository watches) : base(watches) { }
+    private readonly ArtistPostRemoval _removal;
+    private readonly WorkerClient _worker;
+
+    public ArtistsModel(WatchesRepository watches, ArtistPostRemoval removal, WorkerClient worker) : base(watches)
+    {
+        _removal = removal;
+        _worker = worker;
+    }
+
+    /// <summary>What removing this artist can do to their downloaded posts (the page asks before it removes anyone).</summary>
+    public IActionResult OnGetRemovalCounts(long id) => new JsonResult(_removal.Counts(id));
+
+    protected override async Task BeforeDeleteAsync(long id, string? posts)
+    {
+        if (posts is not ("all" or "exclusive")) return;
+        if (_removal.Remove(id, exclusiveOnly: posts == "exclusive") > 0)
+            await _worker.NotifyAsync("bin");
+    }
 
     protected override WatchedItemType ItemType => WatchedItemType.Artist;
     protected override string ModalBodyPartial => "_ArtistModalBody";

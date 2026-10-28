@@ -288,6 +288,9 @@ public static class DatabaseInitializer
             );
             """);
         Execute(connection, "CREATE INDEX IF NOT EXISTS IX_DeletedPosts_State ON DeletedPosts (State);");
+        // Why it was deleted: 'user' keeps a tombstone after the purge (never downloaded again); 'artist' (the artist was
+        // removed with their posts) leaves no trace after the purge, so adding the artist again downloads them again.
+        EnsureColumn(connection, "DeletedPosts", "Reason", "TEXT NOT NULL DEFAULT 'user'");
 
         Execute(connection, """
             CREATE TABLE IF NOT EXISTS BlockedPosts (

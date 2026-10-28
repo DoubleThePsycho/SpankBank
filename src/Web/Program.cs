@@ -36,7 +36,9 @@ builder.Services.AddSingleton(new DownloadStore(paths));
 builder.Services.AddSingleton(new SettingsRepository(paths.AppDatabasePath));
 builder.Services.AddSingleton(new FavoritesRepository(paths.AppDatabasePath));
 builder.Services.AddSingleton(new SpankBank.Data.Blacklist.BlacklistRepository(paths.AppDatabasePath));
-builder.Services.AddSingleton(new SpankBank.Data.RubbishBin.BinStore(paths));
+var binStore = new SpankBank.Data.RubbishBin.BinStore(paths);
+builder.Services.AddSingleton(binStore);
+builder.Services.AddSingleton(new ArtistPostRemoval(paths, binStore));
 builder.Services.AddSingleton(new FavoriteFolders(paths.AppDatabasePath));
 builder.Services.AddSingleton(new ImportHistoryRepository(paths.AppDatabasePath));
 

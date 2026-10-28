@@ -40,7 +40,7 @@ public sealed class BinStore
     // ---------------------------------------------------------------- the web side
 
     /// <summary>Asks for a local post to be moved to the bin. False when it is not on this device or already deleted.</summary>
-    public bool RequestDelete(long postId)
+    public bool RequestDelete(long postId, string reason = "user")
     {
         using var device = new SqliteConnection($"Data Source={_paths.DeviceDatabasePath}");
         device.Open();
@@ -54,9 +54,10 @@ public sealed class BinStore
         using var app = OpenApp();
         using var cmd = app.CreateCommand();
         cmd.CommandText = """
-            INSERT OR IGNORE INTO DeletedPosts (PostId, DeletedAt, State) VALUES ($id, $now, 0);
+            INSERT OR IGNORE INTO DeletedPosts (PostId, DeletedAt, State, Reason) VALUES ($id, $now, 0, $reason);
             """;
         cmd.Parameters.AddWithValue("$id", postId);
+        cmd.Parameters.AddWithValue("$reason", reason);
         cmd.Parameters.AddWithValue("$now", DateTimeOffset.UtcNow.ToString("o"));
         return cmd.ExecuteNonQuery() > 0;
     }
@@ -121,7 +122,8 @@ public sealed class BinStore
                 case BinState.PurgeRequested:
                     PurgeFiles(mediaRoot, row.PostId);
                     DropDeviceRow(row.PostId);
-                    SetState(row.PostId, BinState.Purged, from: [BinState.PurgeRequested, BinState.Binned]);
+                    if (row.Reason == "user") SetState(row.PostId, BinState.Purged, from: [BinState.PurgeRequested, BinState.Binned]);
+                    else Forget(row.PostId); // removed with their artist: no tombstone, the artist can be added again
                     changed++;
                     break;
             }
@@ -129,21 +131,21 @@ public sealed class BinStore
         return changed;
     }
 
-    private sealed record Row(long PostId, DateTimeOffset DeletedAt, BinState State, string? SavedAt);
+    private sealed record Row(long PostId, DateTimeOffset DeletedAt, BinState State, string? SavedAt, string Reason);
 
     private List<Row> Rows()
     {
         using var connection = OpenAppWithDevice();
         using var cmd = connection.CreateCommand();
         cmd.CommandText = """
-            SELECT x.PostId, x.DeletedAt, x.State, COALESCE(x.OriginalSavedAt, d.SavedAt)
+            SELECT x.PostId, x.DeletedAt, x.State, COALESCE(x.OriginalSavedAt, d.SavedAt), x.Reason
             FROM DeletedPosts x LEFT JOIN dev.Posts d ON d.Id = x.PostId
             WHERE x.State <> 3;
             """;
         using var reader = cmd.ExecuteReader();
         var rows = new List<Row>();
         while (reader.Read())
-            rows.Add(new Row(reader.GetInt64(0), DateTimeOffset.Parse(reader.GetString(1)), (BinState)reader.GetInt32(2), reader.IsDBNull(3) ? null : reader.GetString(3)));
+            rows.Add(new Row(reader.GetInt64(0), DateTimeOffset.Parse(reader.GetString(1)), (BinState)reader.GetInt32(2), reader.IsDBNull(3) ? null : reader.GetString(3), reader.GetString(4)));
         return rows;
     }
 

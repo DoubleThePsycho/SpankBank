@@ -50,8 +50,8 @@
       <input type="hidden" name="id" value="@Model.Id"><input type="hidden" name="ignore" value="@((!Model.IgnoreBlacklist).ToString().ToLowerInvariant())">
       <button type="submit" class="st-button">@(Model.IgnoreBlacklist ? "Use blacklist" : "Ignore blacklist")</button>
     </form>
-    <form method="post" asp-page-handler="Delete" data-ajax data-confirm="Remove @Model.SourceValue?">
-      <input type="hidden" name="id" value="@Model.Id">
+    <form method="post" asp-page-handler="Delete" data-ajax data-removal="@Model.SourceValue">
+      <input type="hidden" name="id" value="@Model.Id"><input type="hidden" name="posts" value="">
       <button type="submit" class="st-button">Remove artist</button>
     </form>
   </div>

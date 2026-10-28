@@ -115,3 +115,14 @@
   &[aria-sort="ascending"]::after { content: " \25B2"; font-size: 0.7em; }
   &[aria-sort="descending"]::after { content: " \25BC"; font-size: 0.7em; }
 }
+
+// The "remove their posts too?" question in an artist's dialog. Not from e621ng.
+.removal-choice {
+  margin-top: 0.75rem;
+  padding: 0.75rem;
+  border: 1px solid themed("color-foreground");
+  @include st-radius;
+
+  p { margin: 0 0 0.5rem; max-width: none; }
+  .st-button { margin: 0 0.35rem 0.35rem 0; }
+}

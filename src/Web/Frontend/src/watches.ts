@@ -55,6 +55,61 @@ document.addEventListener("submit", (event) => {
   if (message && !confirm(message)) event.preventDefault();
 });
 
+// Removing an artist: if some of their posts are on this device, ask what to do with them first.
+// "posts" in the form tells the server: "all", "exclusive" (no other watch matches them) or "" (keep them).
+interface RemovalCounts { total: number; exclusive: number; removable: number; favorites: number }
+
+document.addEventListener("submit", (event) => {
+  const form = event.target as HTMLFormElement;
+  if (!form.dataset.removal) return;
+  if (form.dataset.approved === "1") { delete form.dataset.approved; return; }
+  event.preventDefault();
+  void askRemoval(form, form.dataset.removal);
+});
+
+async function askRemoval (form: HTMLFormElement, name: string): Promise<void> {
+  const id = form.querySelector<HTMLInputElement>("input[name=id]")!.value;
+  let counts: RemovalCounts = { total: 0, exclusive: 0, removable: 0, favorites: 0 };
+  try {
+    const response = await fetch(`${location.pathname}?handler=RemovalCounts&id=${encodeURIComponent(id)}`);
+    if (response.ok) counts = await response.json();
+  } catch { /* treated as no downloaded posts */ }
+
+  const submit = (posts: string) => {
+    form.querySelector<HTMLInputElement>("input[name=posts]")!.value = posts;
+    form.dataset.approved = "1";
+    form.requestSubmit();
+  };
+
+  if (counts.total === 0) {
+    if (confirm(`Remove ${name}?`)) submit("");
+    return;
+  }
+
+  const panel = document.createElement("div");
+  panel.className = "removal-choice";
+  const text = document.createElement("p");
+  const kept = counts.favorites > 0 ? ` ${counts.favorites.toLocaleString()} favorite(s) are always kept.` : "";
+  text.textContent = `${name} has ${counts.total.toLocaleString()} downloaded post(s). Remove them too? They go to the rubbish bin for 30 days.${kept}`;
+  panel.appendChild(text);
+
+  const add = (label: string, action: () => void, disabled = false) => {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "st-button";
+    button.textContent = label;
+    button.disabled = disabled;
+    button.addEventListener("click", () => { panel.remove(); action(); });
+    panel.appendChild(button);
+  };
+  add(`Yes (${counts.removable.toLocaleString()} posts)`, () => submit("all"), counts.removable === 0);
+  add(`Yes, owned only by ${name} (${counts.exclusive.toLocaleString()})`, () => submit("exclusive"), counts.exclusive === 0);
+  add("No, keep the posts", () => submit(""));
+  add("Cancel", () => { /* nothing removed */ });
+
+  form.closest(".watch-actions")?.after(panel);
+}
+
 // <a data-submit> inside a form acts as its submit button.
 document.addEventListener("click", (event) => {
   const link = (event.target as HTMLElement).closest<HTMLAnchorElement>("a[data-submit]");

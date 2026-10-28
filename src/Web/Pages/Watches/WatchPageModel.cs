@@ -38,11 +38,15 @@ public abstract class WatchPageModel : PageModel
         return Updated(id);
     }
 
-    public IActionResult OnPostDelete(long id)
+    public async Task<IActionResult> OnPostDeleteAsync(long id, string? posts)
     {
+        await BeforeDeleteAsync(id, posts);
         Watches.Delete(id);
         return IsFetch ? new NoContentResult() : Done("Removed.");
     }
+
+    /// <summary>Runs before a watch is deleted, while its matches still exist. <paramref name="posts"/> is "all", "exclusive" or empty.</summary>
+    protected virtual Task BeforeDeleteAsync(long id, string? posts) => Task.CompletedTask;
 
     /// <summary>The entry's modal body after a change (fetch), or a redirect back to the list.</summary>
     protected IActionResult Updated(long id)
