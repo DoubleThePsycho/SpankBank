@@ -6,7 +6,7 @@ namespace SpankBank.Data.Repositories;
 
 public sealed record TagRow(string Name, int Category, long PostCount);
 public sealed record PoolRow(long Id, string Name, string Category, int PostCount, bool IsActive);
-public sealed record ArtistRow(string Name, long PostCount, IReadOnlyList<string> OtherNames);
+public sealed record ArtistRow(string Name, long PostCount, IReadOnlyList<string> OtherNames, long Id = 0);
 public sealed record PoolDetails(long Id, string Name, string Category, string? Description, bool IsActive,
     DateTimeOffset? CreatedAt, DateTimeOffset? UpdatedAt, IReadOnlyList<long> PostIds);
 public sealed record Page<T>(IReadOnlyList<T> Rows, long Total);
@@ -44,15 +44,20 @@ public sealed class CatalogBrowser
         var (where, parameters) = TagWhere(nameMatches, category: 1, hideEmpty, exclusion);
         // "name" sorts by name; anything else by post count.
         var direction = descending ? "DESC" : "ASC";
-        var orderBy = order == "name" ? $"Name {direction}" : $"PostCount {direction}, Name ASC";
+        var orderBy = order switch
+        {
+            "name" => $"Name {direction}",
+            "id" => $"Id {direction}",
+            _ => $"PostCount {direction}, Name ASC",
+        };
 
         var tags = Query(
-            $"FROM Tags WHERE {where}", parameters, "Name, PostCount", orderBy, page, pageSize,
-            reader => (Name: reader.GetString(0), Count: reader.GetInt64(1)));
+            $"FROM Tags WHERE {where}", parameters, "Name, PostCount, Id", orderBy, page, pageSize,
+            reader => (Name: reader.GetString(0), Count: reader.GetInt64(1), Id: reader.GetInt64(2)));
 
         var aliases = AliasesOf(tags.Rows.Select(t => t.Name).ToList());
         return new Page<ArtistRow>(
-            tags.Rows.Select(t => new ArtistRow(t.Name, t.Count, aliases.TryGetValue(t.Name, out var names) ? names : [])).ToList(),
+            tags.Rows.Select(t => new ArtistRow(t.Name, t.Count, aliases.TryGetValue(t.Name, out var names) ? names : [], t.Id)).ToList(),
             tags.Total);
     }
 
@@ -69,15 +74,16 @@ public sealed class CatalogBrowser
         }
 
         using var cmd = connection.CreateCommand();
-        cmd.CommandText = "SELECT Name, PostCount FROM Tags WHERE Name = $name AND Category = 1;";
+        cmd.CommandText = "SELECT Name, PostCount, Id FROM Tags WHERE Name = $name AND Category = 1;";
         cmd.Parameters.AddWithValue("$name", canonical);
         using var reader = cmd.ExecuteReader();
         if (!reader.Read()) return null;
 
         var found = reader.GetString(0);
         var count = reader.GetInt64(1);
+        var id = reader.GetInt64(2);
         reader.Close();
-        return new ArtistRow(found, count, AliasesOf([found]).GetValueOrDefault(found) ?? []);
+        return new ArtistRow(found, count, AliasesOf([found]).GetValueOrDefault(found) ?? [], id);
     }
 
     private Dictionary<string, IReadOnlyList<string>> AliasesOf(IReadOnlyList<string> names)

@@ -54,23 +54,23 @@ else
   <table class="striped watches-table artists-table" data-server-sorted>
     <thead>
       <tr class="group-headers">
-        <th colspan="3"></th>
-        <th colspan="3" class="group-label">Characters</th>
-        <th colspan="4" class="group-label">Posts</th>
-        <th></th>
+        <th colspan="3" class="group-blank"></th>
+        <th colspan="3" class="group-label sep">Characters</th>
+        <th colspan="4" class="group-label sep">Posts</th>
+        <th class="group-blank sep"></th>
       </tr>
       <tr class="column-headers">
-        <th class="col-id" aria-sort="@view.AriaSort("id")"><a href="@view.SortUrl("id")">ID@(view.Mark("id"))</a></th>
-        <th aria-sort="@view.AriaSort("name")"><a href="@view.SortUrl("name")">Artist@(view.Mark("name"))</a></th>
-        <th class="col-num" aria-sort="@view.AriaSort("aliases")"><a href="@view.SortUrl("aliases")">Aliases@(view.Mark("aliases"))</a></th>
-        <th class="col-count count-found" aria-sort="@view.AriaSort("found")"><a href="@view.SortUrl("found")" title="Characters found automatically"><svg-icon name="users" width="16" height="16" /><span class="sr-only">Found</span>@view.Mark("found")</a></th>
-        <th class="col-count count-enabled" aria-sort="@view.AriaSort("enabled")"><a href="@view.SortUrl("enabled")" title="Characters switched on"><svg-icon name="user_check" width="16" height="16" /><span class="sr-only">Enabled</span>@view.Mark("enabled")</a></th>
-        <th class="col-count count-custom" aria-sort="@view.AriaSort("custom")"><a href="@view.SortUrl("custom")" title="Characters you added yourself"><svg-icon name="user_plus" width="16" height="16" /><span class="sr-only">Custom</span>@view.Mark("custom")</a></th>
-        <th class="col-count count-db" aria-sort="@view.AriaSort("total")"><a href="@view.SortUrl("total")" title="Posts in the e621 exports"><svg-icon name="database" width="16" height="16" /><span class="sr-only">In the exports</span>@view.Mark("total")</a></th>
-        <th class="col-count count-downloaded" aria-sort="@view.AriaSort("downloaded")"><a href="@view.SortUrl("downloaded")" title="Downloaded from e621"><svg-icon name="download" width="16" height="16" /><span class="sr-only">Downloaded</span>@view.Mark("downloaded")</a></th>
-        <th class="col-count count-restored" aria-sort="@view.AriaSort("restored")"><a href="@view.SortUrl("restored")" title="Restored from the Wayback Machine"><svg-icon name="history" width="16" height="16" /><span class="sr-only">Restored</span>@view.Mark("restored")</a></th>
-        <th class="col-count count-lost" aria-sort="@view.AriaSort("lost")"><a href="@view.SortUrl("lost")" title="Deleted on e621 and not recoverable"><svg-icon name="skull" width="16" height="16" /><span class="sr-only">Lost</span>@view.Mark("lost")</a></th>
-        <th class="col-status">Status</th>
+        <th class="col-id" aria-sort="@view.AriaSort("id")"><a href="@view.SortUrl("id")">ID<span class="sort-mark">@(view.Mark("id"))</span></a></th>
+        <th aria-sort="@view.AriaSort("name")"><a href="@view.SortUrl("name")">Artist<span class="sort-mark">@(view.Mark("name"))</span></a></th>
+        <th class="col-num" aria-sort="@view.AriaSort("aliases")"><a href="@view.SortUrl("aliases")">Aliases<span class="sort-mark">@(view.Mark("aliases"))</span></a></th>
+        <th class="col-count count-found sep" aria-sort="@view.AriaSort("found")"><a href="@view.SortUrl("found")" title="Characters found automatically"><svg-icon name="users" width="16" height="16" /><span class="sr-only">Found</span><span class="sort-mark">@(view.Mark("found"))</span></a></th>
+        <th class="col-count count-enabled" aria-sort="@view.AriaSort("enabled")"><a href="@view.SortUrl("enabled")" title="Characters switched on"><svg-icon name="user_check" width="16" height="16" /><span class="sr-only">Enabled</span><span class="sort-mark">@(view.Mark("enabled"))</span></a></th>
+        <th class="col-count count-custom" aria-sort="@view.AriaSort("custom")"><a href="@view.SortUrl("custom")" title="Characters you added yourself"><svg-icon name="user_plus" width="16" height="16" /><span class="sr-only">Custom</span><span class="sort-mark">@(view.Mark("custom"))</span></a></th>
+        <th class="col-count count-db sep" aria-sort="@view.AriaSort("total")"><a href="@view.SortUrl("total")" title="Posts in the e621 exports"><svg-icon name="database" width="16" height="16" /><span class="sr-only">In the exports</span><span class="sort-mark">@(view.Mark("total"))</span></a></th>
+        <th class="col-count count-downloaded" aria-sort="@view.AriaSort("downloaded")"><a href="@view.SortUrl("downloaded")" title="Downloaded from e621"><svg-icon name="download" width="16" height="16" /><span class="sr-only">Downloaded</span><span class="sort-mark">@(view.Mark("downloaded"))</span></a></th>
+        <th class="col-count count-restored" aria-sort="@view.AriaSort("restored")"><a href="@view.SortUrl("restored")" title="Restored from the Wayback Machine"><svg-icon name="history" width="16" height="16" /><span class="sr-only">Restored</span><span class="sort-mark">@(view.Mark("restored"))</span></a></th>
+        <th class="col-count count-lost" aria-sort="@view.AriaSort("lost")"><a href="@view.SortUrl("lost")" title="Deleted on e621 and not recoverable"><svg-icon name="skull" width="16" height="16" /><span class="sr-only">Lost</span><span class="sort-mark">@(view.Mark("lost"))</span></a></th>
+        <th class="col-status sep">Status</th>
       </tr>
     </thead>
     <tbody>
@@ -81,14 +81,14 @@ else
           <td class="col-id" data-field="id">@artist.Id</td>
           <td data-field="name"><a href="/artist/@Uri.EscapeDataString(artist.SourceValue)" class="tag-type-1">@artist.DisplayName</a></td>
           <td class="col-num" data-field="aliases">@item.Aliases</td>
-          <td class="col-count count-found">@item.Found.ToString("N0")</td>
+          <td class="col-count count-found sep">@item.Found.ToString("N0")</td>
           <td class="col-count count-enabled">@item.Enabled.ToString("N0")</td>
           <td class="col-count count-custom">@item.Custom.ToString("N0")</td>
-          <td class="col-count count-db">@(artist.Matched ? artist.MatchCount.ToString("N0") : "-")</td>
+          <td class="col-count count-db sep">@(artist.Matched ? artist.MatchCount.ToString("N0") : "-")</td>
           <td class="col-count count-downloaded">@item.Stats.Downloaded.ToString("N0")</td>
           <td class="col-count count-restored">@item.Stats.Restored.ToString("N0")</td>
           <td class="col-count count-lost">@item.Stats.Lost.ToString("N0")</td>
-          <td class="col-status watch-row-actions">
+          <td class="col-status sep watch-row-actions">
             <form method="post" asp-page-handler="Toggle" data-pill-toggle>
               <input type="hidden" name="id" value="@artist.Id"><input type="hidden" name="enabled" value="@((!artist.Enabled).ToString().ToLowerInvariant())"><input type="hidden" name="returnUrl" value="@view.Current">
               <button type="submit" class="status-pill @(artist.Enabled ? "is-enabled" : "is-disabled")" title="@(artist.Enabled ? "Click to disable" : "Click to enable")">@(artist.Enabled ? "Enabled" : "Disabled")</button>

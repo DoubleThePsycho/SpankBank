@@ -10,23 +10,26 @@
 }
 <div id="c-artists" class="container-fluid">
   <div id="a-index">
-    <div class="section" id="searchform">
+    @* The search form is folded away until asked for; it opens by itself while a search is active. *@
+    <details class="search-dropdown" id="searchform" @(Model.SearchActive ? "open" : null)>
+      <summary class="st-button">Search</summary>
       <form method="get" action="/artists/online" class="simple_form inline-form">
         <div class="input string"><label for="name">Name</label><input type="text" id="name" name="name" value="@Model.Name" data-autocomplete="artist-tag" autocomplete="off"><p class="hint">Use * for wildcard</p></div>
         <div class="input boolean"><label for="empty">Show empty?</label><input type="checkbox" id="empty" name="empty" value="1" checked="@Model.ShowEmpty"></div>
         <input type="hidden" name="sort" value="@view.Sort"><input type="hidden" name="dir" value="@(view.Descending ? "desc" : "asc")">
         <input type="submit" value="Search" class="st-button">
       </form>
-    </div>
+    </details>
 
     <div class="table-scroll">
     <table class="striped watches-table online-artists-table" data-server-sorted>
       <thead>
         <tr class="column-headers">
-          <th aria-sort="@view.AriaSort("name")"><a href="@view.SortUrl("name")">Primary Name@(view.Mark("name"))</a></th>
-          <th class="col-count count-db" aria-sort="@view.AriaSort("posts")"><a href="@view.SortUrl("posts")" title="Posts in the e621 exports"><svg-icon name="database" width="16" height="16" /><span class="sr-only">Posts</span>@view.Mark("posts")</a></th>
-          <th>Secondary Names</th>
-          <th class="col-status">Watched</th>
+          <th class="col-id" aria-sort="@view.AriaSort("id")"><a href="@view.SortUrl("id")">ID<span class="sort-mark">@(view.Mark("id"))</span></a></th>
+          <th aria-sort="@view.AriaSort("name")"><a href="@view.SortUrl("name")">Primary Name<span class="sort-mark">@(view.Mark("name"))</span></a></th>
+          <th class="col-num" aria-sort="@view.AriaSort("posts")"><a href="@view.SortUrl("posts")">Posts<span class="sort-mark">@(view.Mark("posts"))</span></a></th>
+          <th>Aliases</th>
+          <th class="col-status sep">Watched</th>
         </tr>
       </thead>
       <tbody>
@@ -34,15 +37,16 @@
         {
           var watched = Model.Watched.Contains(artist.Name);
           <tr>
+            <td class="col-id">@artist.Id</td>
             <td class="category-1"><a href="/artist/@Uri.EscapeDataString(artist.Name)">@artist.Name</a></td>
-            <td class="col-count count-db">@artist.PostCount.ToString("N0")</td>
+            <td class="col-num">@artist.PostCount.ToString("N0")</td>
             <td>@string.Join(", ", artist.OtherNames)</td>
-            <td class="col-status"><span class="status-pill @(watched ? "is-enabled" : "is-disabled")">@(watched ? "Yes" : "No")</span></td>
+            <td class="col-status sep"><span class="status-pill @(watched ? "is-enabled" : "is-disabled")">@(watched ? "Yes" : "No")</span></td>
           </tr>
         }
         @if (Model.Result.Rows.Count == 0)
         {
-          <tr><td colspan="4">No artists match.</td></tr>
+          <tr><td colspan="5">No artists match.</td></tr>
         }
       </tbody>
     </table>

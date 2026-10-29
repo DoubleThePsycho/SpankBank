@@ -168,5 +168,10 @@ public class WatchListTests : IDisposable
         Assert.Equal(["charlie", "bravo", "alpha"], catalog.SearchArtists(null, "posts", true, 1, 10, descending: false).Rows.Select(r => r.Name));
         Assert.Equal(["alpha", "bravo", "charlie"], catalog.SearchArtists(null, "name", true, 1, 10, descending: false).Rows.Select(r => r.Name));
         Assert.Equal(["charlie", "bravo", "alpha"], catalog.SearchArtists(null, "name", true, 1, 10, descending: true).Rows.Select(r => r.Name));
+
+        var byId = catalog.SearchArtists(null, "id", true, 1, 10, descending: true).Rows;
+        Assert.Equal([3L, 2L, 1L], byId.Select(r => r.Id));
+        Assert.Equal("charlie", byId[0].Name);
+        Assert.Equal(2, catalog.GetArtist("alpha")!.Id);
     }
 }

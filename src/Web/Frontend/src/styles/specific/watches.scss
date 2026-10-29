@@ -239,8 +239,12 @@ $count-red: #e0605e;
     th[aria-sort="ascending"], th[aria-sort="descending"] { background: themed("color-section-lighten-5"); }
   }
 
-  // Group labels sit in a thin row above the column headers.
+  // Faint vertical rules between column groups (header and body).
+  th.sep, td.sep { border-left: 1px solid rgba(255, 255, 255, 0.09); }
+
+  // Group labels sit in a thin row above the column headers, on a darker band of their own.
   tr.group-headers th {
+    background: rgba(0, 0, 0, 0.3);
     padding: 0.15rem 0.5rem;
     font-size: 0.7rem;
     font-weight: normal;
@@ -253,12 +257,16 @@ $count-red: #e0605e;
   }
   tr.column-headers th { vertical-align: bottom; }
 
-  // Count columns: centred under their icon, with room on both sides. Only as wide as that.
+  // Numbers always line up on the right. Icon headers sit on the left; the caret of a sorted column has its own
+  // reserved space after the label, so sorting never changes a column's width.
   .col-count, .col-num, .col-id, .col-status { width: 1%; white-space: nowrap; }
-  .col-count { text-align: center; padding-left: 1.25rem; padding-right: 1.25rem; font-variant-numeric: tabular-nums; }
-  th.col-count { text-align: center; a { justify-content: center; } }
-  .col-num { text-align: right; font-variant-numeric: tabular-nums; padding-left: 1rem; padding-right: 1rem; }
-  .col-id { text-align: right; font-variant-numeric: tabular-nums; padding-right: 0.75rem; }
+  td.col-count, td.col-num, td.col-id { text-align: right; font-variant-numeric: tabular-nums; }
+  .col-count { padding-left: 1rem; padding-right: 1rem; }
+  .col-num { padding-left: 1rem; padding-right: 1rem; }
+  .col-id { padding-left: 0.75rem; padding-right: 1rem; }
+  th.col-count { text-align: left; a { justify-content: flex-start; } }
+  th.col-num, th.col-id { text-align: right; a { justify-content: flex-end; } }
+  .sort-mark { display: inline-block; width: 1em; flex: none; font-size: 0.75em; text-align: center; }
   // A fixed-width cell, so switching a status never moves the other columns.
   .col-status { text-align: center; min-width: 8.5rem; padding-left: 1.25rem; padding-right: 1.25rem; }
   .col-auto { width: 1%; white-space: nowrap; text-align: right; }
@@ -329,3 +337,19 @@ $count-red: #e0605e;
 
 // The "Watched" column of the online list: only as wide as its pill.
 .online-artists-table .col-status { min-width: 0; width: 1%; padding-left: 1rem; padding-right: 1rem; .status-pill { min-width: 3rem; } }
+
+// The folded search form of the online artists list (a dropdown like e621ng's).
+.search-dropdown {
+  margin-bottom: 0.75rem;
+
+  summary {
+    display: inline-block;
+    cursor: pointer;
+    list-style: none;
+    &::-webkit-details-marker { display: none; }
+    &::after { content: " \25BE"; }
+  }
+  &[open] summary::after { content: " \25B4"; }
+
+  form { margin-top: 0.5rem; padding: 0.75rem; background: themed("color-section"); @include st-radius; }
+}

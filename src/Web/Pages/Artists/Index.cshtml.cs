@@ -20,6 +20,8 @@ public class IndexModel : PageModel
 
     public string? Name { get; private set; }
     public bool ShowEmpty { get; private set; }
+    /// <summary>A name filter or "show empty" is in effect: the search form starts open.</summary>
+    public bool SearchActive => !string.IsNullOrWhiteSpace(Name) || ShowEmpty;
     public int PageNumber { get; private set; } = 1;
     public int LastPage { get; private set; } = 1;
     public Page<ArtistRow> Result { get; private set; } = new([], 0);
@@ -35,7 +37,7 @@ public class IndexModel : PageModel
 
         // Headers sort by name or post count; an old ?order= link still works.
         var sort = query["sort"].ToString();
-        if (sort is not ("name" or "posts")) sort = query["order"] == "name" ? "name" : "posts";
+        if (sort is not ("name" or "posts" or "id")) sort = query["order"] == "name" ? "name" : "posts";
         View = new ListView("/artists/online", sort, query["dir"], PageNumber, defaultSort: "posts", defaultDescending: true, extraQuery: ListQuery());
 
         Result = _catalog.SearchArtists(Name, View.Sort, hideEmpty: !ShowEmpty, PageNumber, PageSize, View.Descending);

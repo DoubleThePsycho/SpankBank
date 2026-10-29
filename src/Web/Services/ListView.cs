@@ -32,7 +32,8 @@ public sealed class ListView
 
     public string AriaSort(string column) => Sort != column ? "none" : Descending ? "descending" : "ascending";
 
-    public string Mark(string column) => Sort != column ? "" : Descending ? " \u25BC" : " \u25B2";
+    /// <summary>The caret for the active column, else empty. Shown inside a fixed-width span so it never changes the column width.</summary>
+    public string Mark(string column) => Sort != column ? "" : Descending ? "\u25BC" : "\u25B2";
 
     private string Url(string sort, bool descending, int page)
         => $"{_path}?sort={sort}&dir={(descending ? "desc" : "asc")}&page={page}{_extraQuery}";
