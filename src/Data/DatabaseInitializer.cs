@@ -267,6 +267,10 @@ public static class DatabaseInitializer
         EnsureColumn(connection, "WatchedItems", "Origin", "TEXT");
         // 1 = this watch downloads posts even when the blacklist matches them.
         EnsureColumn(connection, "WatchedItems", "IgnoreBlacklist", "INTEGER NOT NULL DEFAULT 0");
+        // An artist's own filters: one tag expression per line. Whitelist: a post must match at least one line to count as
+        // theirs (empty = no restriction). Blacklist: a post matching any line is not theirs. Applied when the watch is matched.
+        EnsureColumn(connection, "WatchedItems", "Whitelist", "TEXT NOT NULL DEFAULT ''");
+        EnsureColumn(connection, "WatchedItems", "Blacklist", "TEXT NOT NULL DEFAULT ''");
 
         // Blacklist: one e621-style search per row. BlockedPosts is what they match right now (worker-computed):
         // those posts are never downloaded and are hidden in listings.

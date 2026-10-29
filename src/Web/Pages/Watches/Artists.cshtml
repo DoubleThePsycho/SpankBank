@@ -53,13 +53,18 @@ else
     <tbody>
       @foreach (var artist in Model.Entries)
       {
-        <tr data-href="/artist/@Uri.EscapeDataString(artist.SourceValue)" data-modal="modal-@artist.Id" tabindex="0">
+        <tr data-href="/artist/@Uri.EscapeDataString(artist.SourceValue)" tabindex="0">
           <td><a href="/artist/@Uri.EscapeDataString(artist.SourceValue)" class="tag-type-1">@artist.SourceValue</a></td>
           <td data-field="aliases">@artist.ArtistTags.Count(t => t.Kind == ArtistTagKind.Alias)</td>
           <td data-field="characters">@artist.ArtistTags.Count(t => t.Kind == ArtistTagKind.Character && t.Enabled) / @artist.ArtistTags.Count(t => t.Kind == ArtistTagKind.Character)</td>
           <td data-field="matches">@artist.MatchText</td>
           <td data-field="status">@(artist.Enabled ? "enabled" : "disabled")</td>
-          <td class="watch-row-actions"><a href="#" data-open-modal="modal-@artist.Id">Edit</a></td>
+          <td class="watch-row-actions">
+            <form method="post" asp-page-handler="Toggle">
+              <input type="hidden" name="id" value="@artist.Id"><input type="hidden" name="enabled" value="@((!artist.Enabled).ToString().ToLowerInvariant())">
+              <a href="#" data-submit>@(artist.Enabled ? "Disable" : "Enable")</a>
+            </form>
+          </td>
         </tr>
       }
     </tbody>
@@ -75,7 +80,7 @@ else
         <label for="add-artist">Artist tag</label>
         <input type="text" name="artist" id="add-artist" data-autocomplete="artist-tag" autocomplete="off" required>
       </div>
-      <p class="hint">Discovers characters automatically.</p>
+      <p class="hint">Opens the artist's page, where you can adjust characters and filters. The artist is not enabled (and nothing is downloaded) until you press Enable there.</p>
       <button type="submit" class="st-button submit">Add</button>
     </form>
   </div>
@@ -95,26 +100,3 @@ else
     </form>
   </div>
 </div>
-
-@foreach (var artist in Model.Entries)
-{
-  <div class="st-overlay hidden" id="modal-@artist.Id" role="dialog" aria-modal="true" aria-labelledby="modal-@artist.Id-title" tabindex="-1">
-    <div class="st-overlay-wrapper wide">
-      <button type="button" class="st-button close-button" aria-label="Close">&times;</button>
-      <div class="simple_form">
-        <h1 id="modal-@artist.Id-title"><a href="/artist/@Uri.EscapeDataString(artist.SourceValue)" class="tag-type-1">@artist.SourceValue</a></h1>
-
-        <form method="post" asp-page-handler="AddTag" data-ajax class="watch-add-tag">
-          <input type="hidden" name="id" value="@artist.Id">
-          <input type="text" name="tag" data-autocomplete="character-tag" data-validate-tag="4" autocomplete="off" placeholder="Add a character" required>
-          <button type="submit" class="st-button" disabled>Add</button>
-        </form>
-        <div class="st-overlay-error" data-error></div>
-
-        <div data-slot>
-          <partial name="_ArtistModalBody" model="artist" />
-        </div>
-      </div>
-    </div>
-  </div>
-}

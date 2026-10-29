@@ -1,5 +1,6 @@
 @page "/artist/{name}"
 @model SpankBank.Web.Pages.Artists.ShowModel
+@using SpankBank.Core.Models
 @{
     var artist = Model.Artist;
     ViewData["Title"] = artist.Name;
@@ -23,11 +24,11 @@
           <td>
             @if (Model.Watch is { } watch)
             {
-              <text>Yes, @(watch.Enabled ? "enabled" : "disabled"): @(watch.Matched ? $"{watch.MatchText} posts matched" : "waiting to be matched"). <a href="/artists/local">Manage</a></text>
+              <text>@(watch.Enabled ? "Enabled" : "Not enabled"): @(watch.Matched ? $"{watch.MatchText} posts matched" : "waiting to be matched"). <a href="#watch">Settings</a></text>
             }
             else
             {
-              <form method="post" asp-page-handler="Watch" style="display:inline">
+              <form method="post" asp-page-handler="Watch" asp-route-name="@artist.Name" style="display:inline">
                 <input type="hidden" name="name" value="@artist.Name">
                 <button type="submit" class="st-button">Watch this artist</button>
               </form>
@@ -37,14 +38,121 @@
       </tbody>
     </table>
 
-    @if (Model.Characters.Count > 0)
+    @if (Model.Watch is { } w)
+    {
+      var aliases = w.ArtistTags.Where(t => t.Kind == ArtistTagKind.Alias).ToList();
+      var characters = w.ArtistTags.Where(t => t.Kind == ArtistTagKind.Character).ToList();
+      var enabledCharacters = characters.Count(c => c.Enabled);
+      <section id="watch" class="artist-watch">
+        <div class="artist-watch-head">
+          <h2>Watch settings</h2>
+          <span class="watch-state @(w.Enabled ? "is-enabled" : "is-disabled")">@(w.Enabled ? "Enabled" : "Not enabled")</span>
+        </div>
+
+        @if (Model.Error is not null) { <div class="notice notice-error">@Model.Error</div> }
+        @if (!w.Enabled)
+        {
+          <div class="notice notice-info">This artist is not enabled: nothing is matched or downloaded. Adjust the characters and filters below, then press <strong>Enable</strong>.</div>
+        }
+
+        <div class="watch-actions">
+          <form method="post" asp-page-handler="Toggle" asp-route-name="@artist.Name">
+            <input type="hidden" name="id" value="@w.Id"><input type="hidden" name="enabled" value="@((!w.Enabled).ToString().ToLowerInvariant())">
+            <button type="submit" class="st-button@(w.Enabled ? "" : " primary")">@(w.Enabled ? "Disable" : "Enable")</button>
+          </form>
+          <form method="post" asp-page-handler="Rescan" asp-route-name="@artist.Name">
+            <input type="hidden" name="id" value="@w.Id">
+            <button type="submit" class="st-button" title="Look for new aliases and characters in the catalog">Rescan</button>
+          </form>
+          <form method="post" asp-page-handler="IgnoreBlacklist" asp-route-name="@artist.Name" title="Download this artist's posts even when the global blacklist matches them">
+            <input type="hidden" name="id" value="@w.Id"><input type="hidden" name="ignore" value="@((!w.IgnoreBlacklist).ToString().ToLowerInvariant())">
+            <button type="submit" class="st-button">@(w.IgnoreBlacklist ? "Use global blacklist" : "Ignore global blacklist")</button>
+          </form>
+          <form method="post" asp-page-handler="Delete" asp-route-name="@artist.Name" data-removal="@artist.Name">
+            <input type="hidden" name="id" value="@w.Id"><input type="hidden" name="posts" value="">
+            <button type="submit" class="st-button">Remove artist</button>
+          </form>
+        </div>
+
+        @if (aliases.Count > 0)
+        {
+          <p class="watch-aliases"><strong>Also known as:</strong> @string.Join(", ", aliases.Select(a => a.Tag))</p>
+        }
+
+        <details class="artist-characters" @(characters.Count <= 40 ? "open" : null) data-artist-characters>
+          <summary>Characters <span class="count" data-char-count>@enabledCharacters / @characters.Count enabled</span></summary>
+          <p class="hint">Character tags ending in <code>_(@artist.Name)</code> or one of the other names. Click a character to switch it on or off; a switched-off character is not part of this artist's posts.</p>
+
+          <form method="post" asp-page-handler="ToggleTag" asp-route-name="@artist.Name" id="chip-form" hidden>
+            <input type="hidden" name="tagId" value=""><input type="hidden" name="enabled" value="">
+          </form>
+
+          @if (characters.Count > 0)
+          {
+            <div class="character-tools">
+              <input type="search" placeholder="Filter characters" data-char-filter autocomplete="off">
+              <form method="post" asp-page-handler="SetAllTags" asp-route-name="@artist.Name">
+                <input type="hidden" name="id" value="@w.Id"><input type="hidden" name="enabled" value="true">
+                <button type="submit" class="st-button">Enable all</button>
+              </form>
+              <form method="post" asp-page-handler="SetAllTags" asp-route-name="@artist.Name">
+                <input type="hidden" name="id" value="@w.Id"><input type="hidden" name="enabled" value="false">
+                <button type="submit" class="st-button">Disable all</button>
+              </form>
+            </div>
+            <ul class="character-chips">
+              @foreach (var tag in characters)
+              {
+                <li class="character-chip@(tag.Enabled ? " is-on" : "")@(tag.IsManual ? " is-manual" : "")" data-name="@tag.Tag">
+                  <button type="button" class="chip-toggle" data-tag-id="@tag.Id" aria-pressed="@(tag.Enabled ? "true" : "false")" title="@(tag.Enabled ? "Click to switch off" : "Click to switch on")">@tag.Tag.Replace('_', ' ')</button>
+                  @if (tag.IsManual)
+                  {
+                    <button type="button" class="chip-remove" data-tag-id="@tag.Id" title="Remove this character you added" aria-label="Remove @tag.Tag">&times;</button>
+                  }
+                </li>
+              }
+            </ul>
+          }
+          else
+          {
+            <p>No characters found for this artist.</p>
+          }
+
+          <form method="post" asp-page-handler="AddTag" asp-route-name="@artist.Name" class="watch-add-tag">
+            <input type="hidden" name="id" value="@w.Id">
+            <input type="text" name="tag" data-autocomplete="character-tag" data-validate-tag="4" autocomplete="off" placeholder="Add a character">
+            <button type="submit" class="st-button" disabled>Add</button>
+          </form>
+        </details>
+
+        <form method="post" asp-page-handler="SaveFilters" asp-route-name="@artist.Name" class="artist-filters-form">
+          <input type="hidden" name="id" value="@w.Id">
+          <h3>Filters</h3>
+          <p class="hint">One tag expression per line, written like a post search: <code>rating:s canine</code> is a single expression that needs both. Applied to this artist's posts only.</p>
+          <div class="artist-filters">
+            <div class="input">
+              <label for="whitelist">Whitelist</label>
+              <textarea id="whitelist" name="whitelist" rows="8" spellcheck="false" autocomplete="off" placeholder="rating:s&#10;canine -comic">@w.Whitelist</textarea>
+              <p class="hint">A post must match at least one line to be downloaded and kept. Empty means every post of the artist.</p>
+            </div>
+            <div class="input">
+              <label for="blacklist">Blacklist</label>
+              <textarea id="blacklist" name="blacklist" rows="8" spellcheck="false" autocomplete="off" placeholder="gore&#10;rating:e feline">@w.Blacklist</textarea>
+              <p class="hint">A post matching any line is not downloaded, and one already downloaded becomes a <a href="/posts?tags=stray%3Atrue">stray</a>.</p>
+            </div>
+          </div>
+          <button type="submit" class="st-button">Save filters</button>
+        </form>
+      </section>
+    }
+    else if (Model.Characters.Count > 0)
     {
       <h2 style="margin-top: 1.5rem;">Characters</h2>
       <p>Character tags ending in <code>_(@artist.Name)</code> or one of the other names. Watching the artist includes them.</p>
-      <ul>
+      <ul class="character-chips">
         @foreach (var character in Model.Characters)
         {
-          <li class="category-4"><a href="/posts?tags=@Uri.EscapeDataString(character)">@character</a></li>
+          <li class="character-chip is-on"><a href="/posts?tags=@Uri.EscapeDataString(character)" class="chip-toggle">@character.Replace('_', ' ')</a></li>
         }
       </ul>
     }

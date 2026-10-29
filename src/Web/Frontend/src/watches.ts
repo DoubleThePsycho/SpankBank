@@ -263,3 +263,63 @@ document.querySelectorAll<HTMLTableElement>("table.watches-table").forEach((tabl
     });
   });
 });
+
+// ---- Artist page: character chips ------------------------------------------------------------
+// Clicking a chip switches that character on or off without reloading; the x on a chip you added yourself removes it.
+const chipForm = document.querySelector<HTMLFormElement>("#chip-form");
+
+function updateCharacterCount (): void {
+  const counter = document.querySelector<HTMLElement>("[data-char-count]");
+  if (!counter) return;
+  const chips = document.querySelectorAll(".character-chips .character-chip");
+  counter.textContent = `${document.querySelectorAll(".character-chips .character-chip.is-on").length} / ${chips.length} enabled`;
+}
+
+async function sendChip (handler: string, tagId: string, enabled?: boolean): Promise<boolean> {
+  if (!chipForm) return false;
+  const url = new URL(chipForm.action, location.href);
+  url.searchParams.set("handler", handler);
+  const body = new FormData(chipForm);
+  body.set("tagId", tagId);
+  body.set("enabled", String(enabled ?? true));
+  try {
+    const response = await fetch(url, { method: "POST", body, headers: { "X-Fetch": "1" } });
+    return response.ok;
+  } catch {
+    return false;
+  }
+}
+
+document.addEventListener("click", async (event) => {
+  const target = event.target as HTMLElement;
+
+  const toggle = target.closest<HTMLButtonElement>(".chip-toggle[data-tag-id]");
+  if (toggle && chipForm) {
+    const chip = toggle.closest<HTMLElement>(".character-chip")!;
+    const enable = toggle.getAttribute("aria-pressed") !== "true";
+    toggle.disabled = true;
+    if (await sendChip("ToggleTag", toggle.dataset.tagId!, enable)) {
+      chip.classList.toggle("is-on", enable);
+      toggle.setAttribute("aria-pressed", String(enable));
+      toggle.title = enable ? "Click to switch off" : "Click to switch on";
+      updateCharacterCount();
+    }
+    toggle.disabled = false;
+    return;
+  }
+
+  const remove = target.closest<HTMLButtonElement>(".chip-remove[data-tag-id]");
+  if (remove && chipForm) {
+    if (await sendChip("RemoveTag", remove.dataset.tagId!)) {
+      remove.closest(".character-chip")?.remove();
+      updateCharacterCount();
+    }
+  }
+});
+
+document.querySelector<HTMLInputElement>("[data-char-filter]")?.addEventListener("input", (event) => {
+  const needle = (event.target as HTMLInputElement).value.trim().toLowerCase().replace(/ /g, "_");
+  document.querySelectorAll<HTMLElement>(".character-chips .character-chip").forEach((chip) => {
+    chip.hidden = needle.length > 0 && !(chip.dataset.name ?? "").includes(needle);
+  });
+});

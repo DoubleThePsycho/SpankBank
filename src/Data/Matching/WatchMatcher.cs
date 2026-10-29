@@ -106,6 +106,7 @@ public sealed class WatchMatcher
     private sealed class ScanWatch(long id) : Watch(id)
     {
         public string? ArtistName;        // set for artist watches: their pools are suggested afterwards
+        public ArtistFilter? Filter;      // the artist's own whitelist/blacklist, when they have any
         public int[][] Required = [];     // each term: any of these tag indexes
         public int[][] Excluded = [];     // each term: none of these tag indexes
         public int[]? AnyOf;              // when set: at least one of these tag indexes
@@ -119,6 +120,7 @@ public sealed class WatchMatcher
     {
         var rows = new List<(long Id, WatchedItemType Type, string Source)>();
         var artistTags = new Dictionary<long, List<string>>();
+        var filters = new Dictionary<long, ArtistFilter>();
 
         using (var connection = new SqliteConnection(_appConnectionString))
         {
@@ -126,12 +128,16 @@ public sealed class WatchMatcher
             using (var cmd = connection.CreateCommand())
             {
                 cmd.CommandText = $"""
-                    SELECT Id, ItemType, SourceValue FROM WatchedItems
+                    SELECT Id, ItemType, SourceValue, Whitelist, Blacklist FROM WatchedItems
                     WHERE Enabled = 1 {(all ? "" : "AND LastCheckedAt IS NULL")};
                     """;
                 using var reader = cmd.ExecuteReader();
                 while (reader.Read())
+                {
                     rows.Add((reader.GetInt64(0), (WatchedItemType)reader.GetInt32(1), reader.GetString(2)));
+                    var filter = ArtistFilter.Create(reader.GetString(3), reader.GetString(4));
+                    if (!filter.IsEmpty) filters[reader.GetInt64(0)] = filter;
+                }
             }
 
             using (var cmd = connection.CreateCommand())
@@ -184,6 +190,7 @@ public sealed class WatchMatcher
                         Query = PostSearchQuery.Parse("status:any"),
                         AnyOf = tags.SelectMany(Expand).Distinct().ToArray(),
                         NeedsAnyTag = true,
+                        Filter = filters.GetValueOrDefault(id),
                     });
                     break;
                 }
@@ -308,7 +315,7 @@ public sealed class WatchMatcher
                 TagCount: tagCount);
 
             foreach (var watch in watches)
-                if (Matches(watch, row, present))
+                if (Matches(watch, row, present) && (watch.Filter is null || watch.Filter.Allows(tagString, row)))
                     watch.Matches.Add(row.Id);
 
             foreach (var index in touched) present[index] = false;

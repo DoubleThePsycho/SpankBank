@@ -7,27 +7,11 @@ namespace SpankBank.Web.Pages.Watches;
 
 public class ArtistsModel : WatchPageModel
 {
-    private readonly ArtistPostRemoval _removal;
-    private readonly WorkerClient _worker;
-
-    public ArtistsModel(WatchesRepository watches, ArtistPostRemoval removal, WorkerClient worker) : base(watches)
-    {
-        _removal = removal;
-        _worker = worker;
-    }
-
-    /// <summary>What removing this artist can do to their downloaded posts (the page asks before it removes anyone).</summary>
-    public IActionResult OnGetRemovalCounts(long id) => new JsonResult(_removal.Counts(id));
-
-    protected override async Task BeforeDeleteAsync(long id, string? posts)
-    {
-        if (posts is not ("all" or "exclusive")) return;
-        if (_removal.Remove(id, exclusiveOnly: posts == "exclusive") > 0)
-            await _worker.NotifyAsync("bin");
-    }
+    public ArtistsModel(WatchesRepository watches) : base(watches) { }
 
     protected override WatchedItemType ItemType => WatchedItemType.Artist;
-    protected override string ModalBodyPartial => "_ArtistModalBody";
+    // Artists are managed on their own page (/artist/<name>); only the Enable/Disable link on this list posts here.
+    protected override string ModalBodyPartial => throw new NotSupportedException();
 
     public IReadOnlyList<WatchEntry> Entries { get; private set; } = [];
 
@@ -57,42 +41,13 @@ public class ArtistsModel : WatchPageModel
         if (!Watches.IsArtistTag(tag))
             return Fail($"\"{tag}\" is not an artist tag in the catalog.");
 
-        var id = Watches.Add(WatchedItemType.Artist, tag, tag);
+        // Added disabled: nothing is matched or downloaded until the artist is enabled on their page.
+        var id = Watches.Add(WatchedItemType.Artist, tag, tag, enabled: false);
         if (id is null)
             return Fail($"{tag} is already watched.");
 
         Watches.RefreshArtist(id.Value, tag);
-        return Done($"Added artist {tag}.");
-    }
-
-    public IActionResult OnPostToggleTag(long id, long tagId, bool enabled)
-    {
-        Watches.SetArtistTagEnabled(tagId, enabled);
-        return Updated(id);
-    }
-
-    public IActionResult OnPostRemoveTag(long id, long tagId)
-    {
-        Watches.DeleteArtistTag(tagId);
-        return Updated(id);
-    }
-
-    public IActionResult OnPostAddTag(long id, string? tag)
-    {
-        if (string.IsNullOrWhiteSpace(tag))
-            return Fail("Enter a character tag.");
-
-        var name = WatchesRepository.Normalize(tag);
-        if (!Watches.IsCharacterTag(name))
-            return Fail($"\"{name}\" is not a character tag in the catalog.");
-
-        Watches.AddArtistTag(id, name, ArtistTagKind.Character, isManual: true);
-        return Updated(id);
-    }
-
-    public IActionResult OnPostRescan(long id, string artist)
-    {
-        Watches.RefreshArtist(id, artist);
-        return Updated(id);
+        TempData["Message"] = $"Added {tag}, not enabled yet. Adjust the characters and filters below, then press Enable.";
+        return Redirect($"/artist/{Uri.EscapeDataString(tag)}");
     }
 }

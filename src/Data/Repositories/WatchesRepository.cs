@@ -33,7 +33,9 @@ public sealed record WatchEntry(
     string? Error = null,
     string? Origin = null,
     int SuggestedPools = 0,
-    bool IgnoreBlacklist = false)
+    bool IgnoreBlacklist = false,
+    string Whitelist = "",
+    string Blacklist = "")
 {
     /// <summary>"1,234" once the worker has matched this watch, "pending" until then.</summary>
     public string MatchText => Matched ? MatchCount.ToString("N0") : "pending";
@@ -56,16 +58,16 @@ public sealed class WatchesRepository
         using var connection = new SqliteConnection(_appConnectionString);
         connection.Open();
 
-        var entries = new List<(long Id, string Source, string Display, bool Enabled, string? LocalName, int Count, bool Matched, string? Error, string? Origin, bool IgnoreBlacklist)>();
+        var entries = new List<(long Id, string Source, string Display, bool Enabled, string? LocalName, int Count, bool Matched, string? Error, string? Origin, bool IgnoreBlacklist, string Whitelist, string Blacklist)>();
         using (var cmd = connection.CreateCommand())
         {
-            cmd.CommandText = "SELECT Id, SourceValue, DisplayName, Enabled, LocalName, MatchCount, LastCheckedAt IS NOT NULL, ErrorMessage, Origin, IgnoreBlacklist FROM WatchedItems WHERE ItemType = $type ORDER BY SourceValue COLLATE NOCASE;";
+            cmd.CommandText = "SELECT Id, SourceValue, DisplayName, Enabled, LocalName, MatchCount, LastCheckedAt IS NOT NULL, ErrorMessage, Origin, IgnoreBlacklist, Whitelist, Blacklist FROM WatchedItems WHERE ItemType = $type ORDER BY SourceValue COLLATE NOCASE;";
             cmd.Parameters.AddWithValue("$type", (int)type);
             using var reader = cmd.ExecuteReader();
             while (reader.Read())
                 entries.Add((reader.GetInt64(0), reader.GetString(1), reader.GetString(2), reader.GetInt32(3) != 0, reader.IsDBNull(4) ? null : reader.GetString(4),
                     reader.GetInt32(5), reader.GetInt32(6) != 0, reader.IsDBNull(7) ? null : reader.GetString(7),
-                    reader.IsDBNull(8) ? null : reader.GetString(8), reader.GetInt32(9) != 0));
+                    reader.IsDBNull(8) ? null : reader.GetString(8), reader.GetInt32(9) != 0, reader.GetString(10), reader.GetString(11)));
         }
 
         var tagsByItem = new Dictionary<long, List<WatchedArtistTag>>();
@@ -103,7 +105,7 @@ public sealed class WatchesRepository
                     : e.Display;
                 return new WatchEntry(e.Id, type, e.Source, display, e.Enabled,
                     tagsByItem.TryGetValue(e.Id, out var tags) ? tags : [], e.LocalName, pool, e.Count, e.Matched, e.Error,
-                    e.Origin, suggested.GetValueOrDefault(e.Id), e.IgnoreBlacklist);
+                    e.Origin, suggested.GetValueOrDefault(e.Id), e.IgnoreBlacklist, e.Whitelist, e.Blacklist);
             })
             .ToList();
     }
@@ -242,20 +244,21 @@ public sealed class WatchesRepository
     }
 
     /// <summary>Adds a watch. Returns null when the same source is already watched.</summary>
-    public long? Add(WatchedItemType type, string sourceValue, string displayName, string? origin = null)
+    public long? Add(WatchedItemType type, string sourceValue, string displayName, string? origin = null, bool enabled = true)
     {
         using var connection = new SqliteConnection(_appConnectionString);
         connection.Open();
         using var cmd = connection.CreateCommand();
         cmd.CommandText = """
             INSERT INTO WatchedItems (ItemType, SourceValue, DisplayName, Enabled, AutoDownload, Origin)
-            SELECT $type, $source, $display, 1, 1, $origin
+            SELECT $type, $source, $display, $enabled, 1, $origin
             WHERE NOT EXISTS (SELECT 1 FROM WatchedItems WHERE ItemType = $type AND SourceValue = $source COLLATE NOCASE);
             """;
         cmd.Parameters.AddWithValue("$type", (int)type);
         cmd.Parameters.AddWithValue("$source", sourceValue);
         cmd.Parameters.AddWithValue("$display", displayName);
         cmd.Parameters.AddWithValue("$origin", (object?)origin ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("$enabled", enabled ? 1 : 0);
         if (cmd.ExecuteNonQuery() == 0) return null;
 
         cmd.CommandText = "SELECT last_insert_rowid();";
@@ -281,6 +284,58 @@ public sealed class WatchesRepository
         var removed = new List<string>();
         while (reader.Read()) removed.Add(reader.GetString(0));
         return removed;
+    }
+
+    /// <summary>The artist watch for this tag, or null.</summary>
+    public WatchEntry? GetArtist(string artistTag)
+        => GetAll(WatchedItemType.Artist).FirstOrDefault(w => string.Equals(w.SourceValue, artistTag, StringComparison.OrdinalIgnoreCase));
+
+    /// <summary>
+    /// Saves an artist's whitelist and blacklist (one tag expression per line) and has the watch matched again.
+    /// </summary>
+    /// <returns>The first problem found as "line: message", or null when saved.</returns>
+    public string? SetFilters(long id, string? whitelist, string? blacklist)
+    {
+        string? Clean(string? text, out string normalized, string label)
+        {
+            var lines = new List<string>();
+            foreach (var line in Matching.ArtistFilter.Lines(text))
+            {
+                if (lines.Contains(line, StringComparer.OrdinalIgnoreCase)) continue;
+                if (Blacklist.BlacklistRules.Validate(line) is { } problem) { normalized = ""; return $"{label}, \"{line}\": {problem}"; }
+                lines.Add(line);
+            }
+            normalized = string.Join('\n', lines);
+            return null;
+        }
+
+        if (Clean(whitelist, out var wl, "Whitelist") is { } wlProblem) return wlProblem;
+        if (Clean(blacklist, out var bl, "Blacklist") is { } blProblem) return blProblem;
+
+        using var connection = new SqliteConnection(_appConnectionString);
+        connection.Open();
+        using var cmd = connection.CreateCommand();
+        cmd.CommandText = "UPDATE WatchedItems SET Whitelist = $wl, Blacklist = $bl WHERE Id = $id;";
+        cmd.Parameters.AddWithValue("$wl", wl);
+        cmd.Parameters.AddWithValue("$bl", bl);
+        cmd.Parameters.AddWithValue("$id", id);
+        cmd.ExecuteNonQuery();
+        MarkChanged(id);
+        return null;
+    }
+
+    /// <summary>Enables or disables every character tag of an artist at once.</summary>
+    public void SetAllArtistTags(long watchId, bool enabled)
+    {
+        using var connection = new SqliteConnection(_appConnectionString);
+        connection.Open();
+        using var cmd = connection.CreateCommand();
+        cmd.CommandText = "UPDATE WatchedArtistTags SET Enabled = $enabled WHERE WatchedItemId = $id AND Kind = $character;";
+        cmd.Parameters.AddWithValue("$enabled", enabled ? 1 : 0);
+        cmd.Parameters.AddWithValue("$id", watchId);
+        cmd.Parameters.AddWithValue("$character", (int)ArtistTagKind.Character);
+        cmd.ExecuteNonQuery();
+        MarkChanged(watchId);
     }
 
     /// <summary>Lets a watch download posts the blacklist matches. The worker recomputes the blocked posts afterwards.</summary>
