@@ -37,8 +37,8 @@ public class ShowModel : PageModel
     public long DownloadedCount { get; private set; }
     /// <summary>Pools that were added for this artist (automatically or from a suggestion).</summary>
     public IReadOnlyList<WatchedPoolItem> WatchedPools { get; private set; } = [];
-    /// <summary>Post counts (catalog) of the artist's character tags, by tag name.</summary>
-    public IReadOnlyDictionary<string, long> CharacterCounts { get; private set; } = new Dictionary<string, long>();
+    /// <summary>Id and post count (catalog) of the artist's character tags, by tag name.</summary>
+    public IReadOnlyDictionary<string, TagInfo> CharacterTags { get; private set; } = new Dictionary<string, TagInfo>();
     public IReadOnlyList<PoolSuggestion> Suggestions { get; private set; } = [];
     public bool ShowAllSuggestions { get; private set; }
 
@@ -58,8 +58,8 @@ public class ShowModel : PageModel
             ShowAllSuggestions = Request.Query["all"] == "1";
             Suggestions = _watches.GetPoolSuggestions(ShowAllSuggestions, Watch.Id);
             WatchedPools = _watches.GetArtistPools(artist.Name);
-            CharacterCounts = _tags.GetTagInfo(Watch.ArtistTags.Where(t => t.Kind == ArtistTagKind.Character).Select(t => t.Tag).ToList())
-                .ToDictionary(t => t.Name, t => t.PostCount);
+            CharacterTags = _tags.GetTagInfo(Watch.ArtistTags.Where(t => t.Kind == ArtistTagKind.Character).Select(t => t.Tag).ToList())
+                .ToDictionary(t => t.Name);
         }
 
         var local = _downloaded.Search(artist.Name, 1, 24);
@@ -104,9 +104,10 @@ public class ShowModel : PageModel
     }
 
     /// <summary>Enables or disables one of the artist's pools; a disabled pool is hidden from /pools/local.</summary>
-    public IActionResult OnPostTogglePool(string name, long poolWatchId, bool enabled)
+    public IActionResult OnPostTogglePool(string name, long id, bool enabled)
     {
-        _watches.SetEnabled(poolWatchId, enabled);
+        _watches.SetEnabled(id, enabled);
+        if (Request.Headers["X-Fetch"] == "pill") return new NoContentResult(); // the table updates the pill in place
         return RedirectToPage(null, null, new { name }, "pools");
     }
 

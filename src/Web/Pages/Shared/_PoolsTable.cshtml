@@ -1,0 +1,70 @@
+@model SpankBank.Web.Services.PoolsTableModel
+@* The table of watched pools, shared by /pools/local and the artist page. With a ListView its headers are sort links; without one the browser sorts. *@
+@{
+    var view = Model.View;
+    var lead = Model.ShowArtist ? 4 : 3;
+    var trail = Model.Editable ? 2 : 1;
+
+    async Task Head(string key, string label, string? cssClass = null, string? icon = null, string? title = null)
+    {
+        var aria = view?.AriaSort(key);
+        <th class="@cssClass" aria-sort="@aria">
+          @if (view is null)
+          {
+            if (icon is null) { @label }
+            else { <span title="@title"><svg-icon name="@icon" width="16" height="16" /><span class="sr-only">@label</span></span> }
+          }
+          else
+          {
+            <a href="@view.SortUrl(key)" title="@title">
+              @if (icon is null) { @label }
+              else { <svg-icon name="@icon" width="16" height="16" /><span class="sr-only">@label</span> }
+              <span class="sort-mark">@(view.Mark(key))</span>
+            </a>
+          }
+        </th>
+    }
+}
+<div class="table-scroll">
+  <table class="striped watches-table pools-table" @(view is null ? null : "data-server-sorted")>
+    <thead>
+      <tr class="group-headers">
+        <th colspan="@lead" class="group-blank"></th>
+        <th colspan="2" class="group-label sep">Pages</th>
+        <th colspan="@trail" class="group-blank sep"></th>
+      </tr>
+      <tr class="column-headers">
+        @{ await Head("id", "ID", "col-id"); await Head("name", "Pool"); }
+        @if (Model.ShowArtist) { await Head("artist", "Artist"); }
+        @{
+            await Head("type", "Type");
+            await Head("pages", "In the export", "col-count count-db sep", "database", "Pages in the e621 export");
+            await Head("local", "Local", "col-count count-downloaded", "download", "Pages on this device");
+            await Head("status", "Status", "col-status sep");
+        }
+        @if (Model.Editable) { <th class="col-auto"></th> }
+      </tr>
+    </thead>
+    <tbody>
+      @foreach (var item in Model.Items)
+      {
+        var pool = item.Entry;
+        <tr class="@(pool.Enabled ? null : "is-off")" data-href="/pool/@pool.SourceValue" data-modal="modal-@pool.Id" tabindex="0">
+          <td class="col-id" data-field="id">@pool.SourceValue</td>
+          <td data-field="name"><a href="/pool/@pool.SourceValue">@pool.DisplayName</a>@if (pool.Pool is null) { <span class="watch-origin"> (not in the export yet)</span> }</td>
+          @if (Model.ShowArtist) { <td data-field="artist">@(SpankBank.Web.Pages.Pools.LocalModel.OriginArtist(pool.Origin) ?? "-")</td> }
+          <td data-field="type">@(pool.Pool?.Category ?? "-")</td>
+          <td class="col-count count-db sep">@(pool.Pool is null ? "-" : item.PagesInExport.ToString("N0"))</td>
+          <td class="col-count count-downloaded">@item.Stats.Local.ToString("N0")</td>
+          <td class="col-status sep watch-row-actions" data-sort="@(pool.Enabled ? "Enabled" : "Disabled")">
+            <form method="post" action="@Model.ToggleAction" asp-antiforgery="true" data-pill-toggle>
+              <input type="hidden" name="id" value="@pool.Id"><input type="hidden" name="enabled" value="@((!pool.Enabled).ToString().ToLowerInvariant())"><input type="hidden" name="returnUrl" value="@view?.Current">
+              <button type="submit" class="status-pill @(pool.Enabled ? "is-enabled" : "is-disabled")" title="@(pool.Enabled ? "Click to disable" : "Click to enable")">@(pool.Enabled ? "Enabled" : "Disabled")</button>
+            </form>
+          </td>
+          @if (Model.Editable) { <td class="col-auto watch-row-actions"><a href="#" data-open-modal="modal-@pool.Id">Edit</a></td> }
+        </tr>
+      }
+    </tbody>
+  </table>
+</div>

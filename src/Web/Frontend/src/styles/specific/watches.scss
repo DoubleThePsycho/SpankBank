@@ -128,9 +128,7 @@
 }
 
 // ---- Artist page: watch settings. Not from e621ng. ----
-.artist-watch {
-  margin-top: 1.5rem;
-  max-width: 110rem;
+.artist-watch, .artist-side {
 
   .artist-watch-head {
     display: flex;
@@ -159,7 +157,6 @@
   }
 
   .artist-characters {
-    margin: 1rem 0;
     padding: 0.5rem 0.75rem;
     background: themed("color-section");
     @include st-radius;
@@ -167,20 +164,19 @@
     summary { cursor: pointer; font-weight: bold; font-size: 1.1em; .count { font-weight: normal; color: themed("color-text-muted"); margin-left: 0.5rem; } }
     .hint { margin: 0.5rem 0; max-width: none; }
 
-    .character-tools {
+    // The add box and the filter box use the whole width, one row each.
+    .character-add, .character-tools {
       display: flex;
-      flex-wrap: wrap;
       align-items: center;
       gap: 0.5rem;
-      margin-bottom: 0.5rem;
+      margin: 0 0 0.5rem;
       form { margin: 0; }
-      input[type="search"] { flex: 1 1 12rem; max-width: 20rem; padding: 0.35em 0.5em; }
+      input[type="text"], input[type="search"] { flex: 1 1 auto; min-width: 0; max-width: none; width: auto; padding: 0.35em 0.5em; box-sizing: border-box; }
     }
 
     .character-table-wrap {
-      max-height: 30rem;
+      max-height: 40rem;
       overflow-y: auto;
-      margin-bottom: 0.75rem;
       background: themed("color-background");
       @include st-radius;
     }
@@ -190,22 +186,12 @@
       margin: 0;
       thead th { position: sticky; top: 0; background: themed("color-section"); z-index: 1; }
       tr[hidden] { display: none; }
-      tr:not(.is-on) td:first-child a { opacity: 0.45; text-decoration: line-through; }
-      .character-actions .st-button { padding: 0.15rem 0.6rem; margin-left: 0.25rem; }
+      tr:not(.is-on) td:nth-child(2) a { opacity: 0.45; text-decoration: line-through; }
+      .character-actions a { margin-left: 0.75rem; &.is-busy { opacity: 0.5; pointer-events: none; } }
     }
-
-    .watch-add-tag { display: flex; gap: 0.5rem; flex-wrap: wrap; input[type="text"] { flex: 1 1 14rem; max-width: 24rem; } }
   }
 
-  // Characters on the left, the filters on the right when there is room; stacked otherwise.
-  .artist-columns {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr);
-    gap: 1.25rem;
-    align-items: start;
-    @media (min-width: 75rem) { grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); }
-  }
-
+  // The artist's table and settings on the left, the character list on the right when there is room.
   .artist-filters-form {
     margin-top: 0;
     h3 { margin: 0 0 0.25rem; }
@@ -215,11 +201,9 @@
   // Whitelist and blacklist side by side on wide screens, stacked on narrow ones.
   .artist-filters {
     display: grid;
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
     gap: 1rem;
     margin-bottom: 0.75rem;
-
-    @media (min-width: 50rem) { grid-template-columns: 1fr 1fr; }
 
     .input { margin: 0; }
     label { display: block; font-weight: bold; margin-bottom: 0.25rem; }
@@ -322,18 +306,26 @@ $count-red: #e0605e;
   nav.pagination { margin: 0; }
 }
 
-.artist-info-table { max-width: 60rem; }
+.artist-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 1.25rem;
+  align-items: start;
+  @media (min-width: 75rem) { &.has-side { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } }
 
-#pools .artist-pools-table { margin-bottom: 0.75rem; tr.is-off td { opacity: 0.55; } }
+  .artist-watch { margin-top: 1.5rem; }
+  .artist-side { margin-top: 0; @media (min-width: 75rem) { margin-top: 0; } }
+}
+
+// The key column is only as wide as its text, left-aligned.
+.artist-info-table {
+  width: 100%;
+  th { width: 1%; white-space: nowrap; text-align: left; padding-right: 1rem; }
+}
+
+#pools .pools-table { margin-bottom: 0.75rem; }
 
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
-
-.artist-watch .character-table {
-  .col-count, .col-auto { width: 1%; white-space: nowrap; }
-  .col-count { text-align: right; font-variant-numeric: tabular-nums; }
-  .col-auto { text-align: right; }
-  th.col-count svg { vertical-align: middle; }
-}
 
 // The "Watched" column of the online list: only as wide as its pill.
 .online-artists-table .col-status { min-width: 0; width: 1%; padding-left: 1rem; padding-right: 1rem; .status-pill { min-width: 3rem; } }

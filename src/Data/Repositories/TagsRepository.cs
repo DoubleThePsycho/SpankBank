@@ -124,13 +124,13 @@ public sealed class TagsRepository
         connection.Open();
         using var cmd = connection.CreateCommand();
         var placeholders = names.Select((_, i) => $"$n{i}").ToList();
-        cmd.CommandText = $"SELECT Name, Category, PostCount FROM Tags WHERE Name IN ({string.Join(", ", placeholders)});";
+        cmd.CommandText = $"SELECT Name, Category, PostCount, Id FROM Tags WHERE Name IN ({string.Join(", ", placeholders)});";
         var index = 0;
         foreach (var name in names) cmd.Parameters.AddWithValue(placeholders[index++], name);
 
         using var reader = cmd.ExecuteReader();
         var result = new List<TagInfo>();
-        while (reader.Read()) result.Add(new TagInfo(reader.GetString(0), reader.GetInt32(1), reader.GetInt64(2)));
+        while (reader.Read()) result.Add(new TagInfo(reader.GetString(0), reader.GetInt32(1), reader.GetInt64(2), reader.GetInt64(3)));
         return result;
     }
 
@@ -216,6 +216,6 @@ public sealed class TagsRepository
     }
 }
 
-public sealed record TagInfo(string Name, int Category, long PostCount);
+public sealed record TagInfo(string Name, int Category, long PostCount, long Id = 0);
 
 public sealed record TagSuggestion(long Id, string Name, int Category, long PostCount, string? AntecedentName);

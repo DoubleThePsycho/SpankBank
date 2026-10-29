@@ -286,7 +286,7 @@ function sortTable (table: HTMLTableElement, column: number, ascending: boolean)
 
 // Tables marked data-server-sorted are sorted by the server (their header cells are links); the rest sort here.
 document.querySelectorAll<HTMLTableElement>("table.watches-table:not([data-server-sorted])").forEach((table) => {
-  const headers = Array.from(table.tHead?.rows[0]?.cells ?? []);
+  const headers = Array.from((table.tHead?.querySelector<HTMLTableRowElement>("tr.column-headers") ?? table.tHead?.rows[0])?.cells ?? []);
   headers.forEach((header, column) => {
     if (!header.textContent?.trim()) return; // the Edit column
     header.classList.add("sortable-header");
@@ -335,21 +335,24 @@ async function sendCharacter (handler: string, tagId: string, enabled?: boolean)
 document.addEventListener("click", async (event) => {
   const target = event.target as HTMLElement;
 
-  const toggle = target.closest<HTMLButtonElement>(".char-toggle[data-tag-id]");
+  const toggle = target.closest<HTMLElement>(".char-toggle[data-tag-id]");
   if (toggle && chipForm) {
+    event.preventDefault();
+    if (toggle.classList.contains("is-busy")) return;
     const row = toggle.closest<HTMLElement>(".character-row")!;
     const enable = !row.classList.contains("is-on");
-    toggle.disabled = true;
+    toggle.classList.add("is-busy");
     if (await sendCharacter("ToggleTag", toggle.dataset.tagId!, enable)) {
       row.classList.toggle("is-on", enable);
       toggle.textContent = enable ? "Disable" : "Enable";
       updateCharacterCount();
     }
-    toggle.disabled = false;
+    toggle.classList.remove("is-busy");
     return;
   }
 
-  const remove = target.closest<HTMLButtonElement>(".char-remove[data-tag-id]");
+  const remove = target.closest<HTMLElement>(".char-remove[data-tag-id]");
+  if (remove) event.preventDefault();
   if (remove && chipForm && await sendCharacter("RemoveTag", remove.dataset.tagId!)) {
     remove.closest(".character-row")?.remove();
     updateCharacterCount();
