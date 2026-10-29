@@ -49,6 +49,9 @@ var app = builder.Build();
 var removedMarkers = watchesRepository.RemoveNonArtistWatches();
 if (removedMarkers.Count > 0)
     app.Logger.LogWarning("Removed watches on marker tags that are not artists: {Tags}", string.Join(", ", removedMarkers));
+var removedMarkerPools = watchesRepository.RemovePoolsOfNonArtists();
+if (removedMarkerPools > 0)
+    app.Logger.LogWarning("Removed {Count} pool watches that were added for marker tags treated as artists.", removedMarkerPools);
 
 // The rubbish bin lives in <media>/.bin; nothing below a dot folder is served.
 app.Use(async (context, next) =>

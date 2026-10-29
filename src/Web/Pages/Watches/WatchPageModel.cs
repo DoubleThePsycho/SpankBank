@@ -25,9 +25,11 @@ public abstract class WatchPageModel : PageModel
 
     private bool IsFetch => Request.Headers["X-Fetch"] == "1";
 
-    public IActionResult OnPostToggle(long id, bool enabled)
+    public IActionResult OnPostToggle(long id, bool enabled, string? returnUrl)
     {
         Watches.SetEnabled(id, enabled);
+        // A plain post comes back to the same page, sorting and all.
+        if (!IsFetch && returnUrl is not null && Url.IsLocalUrl(returnUrl)) return LocalRedirect(returnUrl);
         return Updated(id);
     }
 

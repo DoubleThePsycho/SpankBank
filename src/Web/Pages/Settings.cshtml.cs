@@ -28,6 +28,7 @@ public class SettingsModel : PageModel
     public bool DownloadsEnabled { get; private set; } = true;
     public int DailyLimit { get; private set; } = 2000;
     public bool DeleteMode { get; private set; }
+    public int ListPageSize { get; private set; } = WatchesRepository.DefaultListPageSize;
     public bool PoolsAutoAdd { get; private set; } = true;
     public int PoolsPercent { get; private set; } = PoolSuggester.DefaultAutoAddPercent;
 
@@ -37,16 +38,19 @@ public class SettingsModel : PageModel
         DownloadsEnabled = _settings.Get(WorkerSettingsKeys.DownloadEnabled) != "false";
         DailyLimit = int.TryParse(_settings.Get(WorkerSettingsKeys.DownloadMaxPerDay), out var limit) ? limit : 2000;
         DeleteMode = _settings.Get(WorkerSettingsKeys.DeleteModeEnabled) == "true";
+        ListPageSize = Web.Services.ListView.PageSize(_settings.Get(WorkerSettingsKeys.ListPageSize));
         PoolsAutoAdd = _settings.Get(WorkerSettingsKeys.PoolsAutoAddEnabled) != "false";
         PoolsPercent = int.TryParse(_settings.Get(WorkerSettingsKeys.PoolsAutoAddPercent), out var percent) ? percent : PoolSuggester.DefaultAutoAddPercent;
     }
 
-    public async Task<IActionResult> OnPostAsync(string? dailyRunTime, bool downloadsEnabled, int dailyLimit, bool poolsAutoAdd, int poolsPercent, bool deleteMode)
+    public async Task<IActionResult> OnPostAsync(string? dailyRunTime, bool downloadsEnabled, int dailyLimit, bool poolsAutoAdd, int poolsPercent, bool deleteMode, int listPageSize)
     {
         if (!TimeOnly.TryParseExact(dailyRunTime, "HH:mm", CultureInfo.InvariantCulture, DateTimeStyles.None, out _))
             return Fail("The daily update time must look like 04:00.");
         if (dailyLimit < 0 || dailyLimit > 100_000)
             return Fail("The daily download limit must be between 0 and 100,000.");
+        if (listPageSize is < 10 or > 1000)
+            return Fail("Rows per page must be between 10 and 1,000.");
         if (poolsPercent is < 1 or > 100)
             return Fail("The pool percentage must be between 1 and 100.");
 
@@ -57,6 +61,7 @@ public class SettingsModel : PageModel
         _settings.Set(WorkerSettingsKeys.DailyRunTimeUtc, dailyRunTime!);
         _settings.Set(WorkerSettingsKeys.DownloadEnabled, downloadsEnabled ? "true" : "false");
         _settings.Set(WorkerSettingsKeys.DownloadMaxPerDay, dailyLimit.ToString(CultureInfo.InvariantCulture));
+        _settings.Set(WorkerSettingsKeys.ListPageSize, listPageSize.ToString(CultureInfo.InvariantCulture));
         _settings.Set(WorkerSettingsKeys.DeleteModeEnabled, deleteMode ? "true" : "false");
         _settings.Set(WorkerSettingsKeys.PoolsAutoAddEnabled, poolsAutoAdd ? "true" : "false");
         _settings.Set(WorkerSettingsKeys.PoolsAutoAddPercent, poolsPercent.ToString(CultureInfo.InvariantCulture));

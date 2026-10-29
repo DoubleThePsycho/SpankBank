@@ -243,7 +243,8 @@ function sortTable (table: HTMLTableElement, column: number, ascending: boolean)
   for (const { row } of sorted) body.appendChild(row);
 }
 
-document.querySelectorAll<HTMLTableElement>("table.watches-table").forEach((table) => {
+// Tables marked data-server-sorted are sorted by the server (their header cells are links); the rest sort here.
+document.querySelectorAll<HTMLTableElement>("table.watches-table:not([data-server-sorted])").forEach((table) => {
   const headers = Array.from(table.tHead?.rows[0]?.cells ?? []);
   headers.forEach((header, column) => {
     if (!header.textContent?.trim()) return; // the Edit column
@@ -264,18 +265,18 @@ document.querySelectorAll<HTMLTableElement>("table.watches-table").forEach((tabl
   });
 });
 
-// ---- Artist page: character chips ------------------------------------------------------------
-// Clicking a chip switches that character on or off without reloading; the x on a chip you added yourself removes it.
+// ---- Artist page: character table ----------------------------------------------------------------
+// The Enable/Disable button of a character row switches it without reloading; Remove drops one you added yourself.
 const chipForm = document.querySelector<HTMLFormElement>("#chip-form");
 
 function updateCharacterCount (): void {
   const counter = document.querySelector<HTMLElement>("[data-char-count]");
   if (!counter) return;
-  const chips = document.querySelectorAll(".character-chips .character-chip");
-  counter.textContent = `${document.querySelectorAll(".character-chips .character-chip.is-on").length} / ${chips.length} enabled`;
+  const rows = document.querySelectorAll(".character-table .character-row");
+  counter.textContent = `${document.querySelectorAll(".character-table .character-row.is-on").length} / ${rows.length} enabled`;
 }
 
-async function sendChip (handler: string, tagId: string, enabled?: boolean): Promise<boolean> {
+async function sendCharacter (handler: string, tagId: string, enabled?: boolean): Promise<boolean> {
   if (!chipForm) return false;
   const url = new URL(chipForm.action, location.href);
   url.searchParams.set("handler", handler);
@@ -293,33 +294,30 @@ async function sendChip (handler: string, tagId: string, enabled?: boolean): Pro
 document.addEventListener("click", async (event) => {
   const target = event.target as HTMLElement;
 
-  const toggle = target.closest<HTMLButtonElement>(".chip-toggle[data-tag-id]");
+  const toggle = target.closest<HTMLButtonElement>(".char-toggle[data-tag-id]");
   if (toggle && chipForm) {
-    const chip = toggle.closest<HTMLElement>(".character-chip")!;
-    const enable = toggle.getAttribute("aria-pressed") !== "true";
+    const row = toggle.closest<HTMLElement>(".character-row")!;
+    const enable = !row.classList.contains("is-on");
     toggle.disabled = true;
-    if (await sendChip("ToggleTag", toggle.dataset.tagId!, enable)) {
-      chip.classList.toggle("is-on", enable);
-      toggle.setAttribute("aria-pressed", String(enable));
-      toggle.title = enable ? "Click to switch off" : "Click to switch on";
+    if (await sendCharacter("ToggleTag", toggle.dataset.tagId!, enable)) {
+      row.classList.toggle("is-on", enable);
+      toggle.textContent = enable ? "Disable" : "Enable";
       updateCharacterCount();
     }
     toggle.disabled = false;
     return;
   }
 
-  const remove = target.closest<HTMLButtonElement>(".chip-remove[data-tag-id]");
-  if (remove && chipForm) {
-    if (await sendChip("RemoveTag", remove.dataset.tagId!)) {
-      remove.closest(".character-chip")?.remove();
-      updateCharacterCount();
-    }
+  const remove = target.closest<HTMLButtonElement>(".char-remove[data-tag-id]");
+  if (remove && chipForm && await sendCharacter("RemoveTag", remove.dataset.tagId!)) {
+    remove.closest(".character-row")?.remove();
+    updateCharacterCount();
   }
 });
 
 document.querySelector<HTMLInputElement>("[data-char-filter]")?.addEventListener("input", (event) => {
   const needle = (event.target as HTMLInputElement).value.trim().toLowerCase().replace(/ /g, "_");
-  document.querySelectorAll<HTMLElement>(".character-chips .character-chip").forEach((chip) => {
-    chip.hidden = needle.length > 0 && !(chip.dataset.name ?? "").includes(needle);
+  document.querySelectorAll<HTMLElement>(".character-table .character-row").forEach((row) => {
+    row.hidden = needle.length > 0 && !(row.dataset.name ?? "").includes(needle);
   });
 });

@@ -12,10 +12,12 @@ public class ShowModel : PageModel
     private readonly WatchesRepository _watches;
     private readonly DownloadedPostSearch _downloaded;
     private readonly ArtistPostRemoval _removal;
+    private readonly TagsRepository _tags;
     private readonly WorkerClient _worker;
 
-    public ShowModel(CatalogBrowser catalog, WatchesRepository watches, DownloadedPostSearch downloaded, ArtistPostRemoval removal, WorkerClient worker)
+    public ShowModel(CatalogBrowser catalog, WatchesRepository watches, DownloadedPostSearch downloaded, ArtistPostRemoval removal, TagsRepository tags, WorkerClient worker)
     {
+        _tags = tags;
         _catalog = catalog;
         _watches = watches;
         _downloaded = downloaded;
@@ -34,7 +36,9 @@ public class ShowModel : PageModel
     public IReadOnlyList<PostListItem> RecentPosts { get; private set; } = [];
     public long DownloadedCount { get; private set; }
     /// <summary>Pools that were added for this artist (automatically or from a suggestion).</summary>
-    public IReadOnlyList<WatchEntry> WatchedPools { get; private set; } = [];
+    public IReadOnlyList<WatchedPoolItem> WatchedPools { get; private set; } = [];
+    /// <summary>Post counts (catalog) of the artist's character tags, by tag name.</summary>
+    public IReadOnlyDictionary<string, long> CharacterCounts { get; private set; } = new Dictionary<string, long>();
     public IReadOnlyList<PoolSuggestion> Suggestions { get; private set; } = [];
     public bool ShowAllSuggestions { get; private set; }
 
@@ -53,9 +57,9 @@ public class ShowModel : PageModel
         {
             ShowAllSuggestions = Request.Query["all"] == "1";
             Suggestions = _watches.GetPoolSuggestions(ShowAllSuggestions, Watch.Id);
-            WatchedPools = _watches.GetAll(WatchedItemType.Pool)
-                .Where(p => p.Origin is { } origin && (origin == $"auto:{artist.Name}" || origin == $"suggested:{artist.Name}"))
-                .ToList();
+            WatchedPools = _watches.GetArtistPools(artist.Name);
+            CharacterCounts = _tags.GetTagInfo(Watch.ArtistTags.Where(t => t.Kind == ArtistTagKind.Character).Select(t => t.Tag).ToList())
+                .ToDictionary(t => t.Name, t => t.PostCount);
         }
 
         var local = _downloaded.Search(artist.Name, 1, 24);
@@ -97,6 +101,13 @@ public class ShowModel : PageModel
         _watches.SetEnabled(id, enabled);
         Message = enabled ? "Enabled. Matching starts now; downloads follow." : "Disabled.";
         return Back(name);
+    }
+
+    /// <summary>Enables or disables one of the artist's pools; a disabled pool is hidden from /pools/local.</summary>
+    public IActionResult OnPostTogglePool(string name, long poolWatchId, bool enabled)
+    {
+        _watches.SetEnabled(poolWatchId, enabled);
+        return RedirectToPage(null, null, new { name }, "pools");
     }
 
     public IActionResult OnPostRescan(string name, long id)

@@ -15,6 +15,8 @@ public static class WorkerSettingsKeys
     public const string BlacklistDirty = "Blacklist.Dirty";
     /// <summary>"true" lets the posts pages delete (move to the rubbish bin); default off.</summary>
     public const string DeleteModeEnabled = "Bin.DeleteModeEnabled";
+    /// <summary>Rows per page in the artist and pool lists (default 100).</summary>
+    public const string ListPageSize = "Ui.ListPageSize";
     public const string DailyRunTimeUtc = "Worker.DailyRunTimeUtc";
     public const string LastRunStartedAt = "Worker.LastRunStartedAt";
     public const string LastRunCompletedAt = "Worker.LastRunCompletedAt";

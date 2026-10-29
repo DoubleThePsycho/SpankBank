@@ -33,6 +33,14 @@
     </section>
 
     <section class="box-section">
+      <h2>Lists</h2>
+      <div class="input">
+        <label for="listPageSize">Rows per page in the artist and pool lists</label>
+        <input type="number" id="listPageSize" name="listPageSize" min="10" max="1000" value="@Model.ListPageSize" required>
+      </div>
+    </section>
+
+    <section class="box-section">
       <h2>Blacklist</h2>
       <div class="input">
         <p>Posts matching a blacklisted search are never downloaded and are hidden in your listings. <a href="/settings/blacklist">Edit the blacklist</a>. Deleted posts are in the <a href="/bin">rubbish bin</a>.</p>

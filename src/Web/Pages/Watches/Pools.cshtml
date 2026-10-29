@@ -14,29 +14,64 @@
 @if (Model.Message is not null) { <div class="notice notice-info">@Model.Message</div> }
 @if (Model.Error is not null) { <div class="notice notice-error">@Model.Error</div> }
 
-@if (Model.Entries.Count == 0)
+@{ var view = Model.View; }
+@if (Model.Pools.Total == 0)
 {
   <p>Nothing watched.</p>
 }
 else
 {
-  <table class="striped watches-table">
-    <thead><tr><th>Pool</th><th>Artist</th><th>Type</th><th>Pages</th><th>Status</th><th></th></tr></thead>
+  <table class="striped watches-table" data-server-sorted>
+    <thead>
+      <tr>
+        <th rowspan="2" class="col-id" aria-sort="@view.AriaSort("id")"><a href="@view.SortUrl("id")">ID@(view.Mark("id"))</a></th>
+        <th rowspan="2" aria-sort="@view.AriaSort("name")"><a href="@view.SortUrl("name")">Pool@(view.Mark("name"))</a></th>
+        <th rowspan="2" aria-sort="@view.AriaSort("artist")"><a href="@view.SortUrl("artist")">Artist@(view.Mark("artist"))</a></th>
+        <th rowspan="2" aria-sort="@view.AriaSort("type")"><a href="@view.SortUrl("type")">Type@(view.Mark("type"))</a></th>
+        <th colspan="2" class="posts-group">Pages</th>
+        <th rowspan="2" class="col-auto">Enabled</th>
+        <th rowspan="2" class="col-auto"></th>
+      </tr>
+      <tr class="count-headers">
+        <th class="col-count count-db" aria-sort="@view.AriaSort("pages")"><a href="@view.SortUrl("pages")" title="Pages in the e621 export"><svg-icon name="database" width="16" height="16" /><span class="sr-only">In the export</span>@view.Mark("pages")</a></th>
+        <th class="col-count count-downloaded" aria-sort="@view.AriaSort("local")"><a href="@view.SortUrl("local")" title="Pages on this device"><svg-icon name="download" width="16" height="16" /><span class="sr-only">Local</span>@view.Mark("local")</a></th>
+      </tr>
+    </thead>
     <tbody>
-      @foreach (var pool in Model.Entries)
+      @foreach (var item in Model.Pools.Items)
       {
+        var pool = item.Entry;
         <tr data-href="/pool/@pool.SourceValue" data-modal="modal-@pool.Id" tabindex="0">
+          <td class="col-id" data-field="id">@pool.SourceValue</td>
           <td data-field="name"><a href="/pool/@pool.SourceValue">@pool.DisplayName</a></td>
           <td data-field="artist">@(PoolsModel.OriginArtist(pool.Origin) ?? "-")</td>
           <td data-field="type">@(pool.Pool?.Category ?? "-")</td>
-          <td data-field="pages">@(pool.Pool?.PostCount.ToString("N0") ?? "-")</td>
-          <td data-field="status">@(pool.Enabled ? "enabled" : "disabled")</td>
-          <td class="watch-row-actions"><a href="#" data-open-modal="modal-@pool.Id">Edit</a></td>
+          <td class="col-count count-db">@(pool.Pool is null ? "-" : item.PagesInExport.ToString("N0"))</td>
+          <td class="col-count count-downloaded">@item.Stats.Local.ToString("N0")</td>
+          <td class="col-auto watch-row-actions">
+            <form method="post" asp-page-handler="Toggle">
+              <input type="hidden" name="id" value="@pool.Id"><input type="hidden" name="enabled" value="@((!pool.Enabled).ToString().ToLowerInvariant())"><input type="hidden" name="returnUrl" value="@view.Current">
+              <button type="submit" class="status-pill @(pool.Enabled ? "is-enabled" : "is-disabled")" title="@(pool.Enabled ? "Click to disable (hides it from this list)" : "Click to enable")">@(pool.Enabled ? "Enabled" : "Disabled")</button>
+            </form>
+          </td>
+          <td class="col-auto watch-row-actions"><a href="#" data-open-modal="modal-@pool.Id">Edit</a></td>
         </tr>
       }
     </tbody>
   </table>
+
+  <div class="list-footer">
+    <span class="hint">Showing @(((view.Page - 1) * Model.Pools.PageSize) + 1)-@(Math.Min(view.Page * Model.Pools.PageSize, Model.Pools.Total)) of @Model.Pools.Total.ToString("N0")</span>
+    @if (Model.Pools.LastPage > 1)
+    {
+      <partial name="_Paginator" model="new SpankBank.Web.Services.PagerModel(view.Page, Model.Pools.LastPage, view.PageUrl)" />
+    }
+  </div>
 }
+<p class="hint">
+  @if (Model.ShowDisabled) { <a href="/pools/local">Hide disabled pools</a> }
+  else if (Model.DisabledCount > 0) { <a href="/pools/local?show=disabled">Show @Model.DisabledCount.ToString("N0") disabled pool@(Model.DisabledCount == 1 ? "" : "s")</a> }
+</p>
 
 <section id="suggested" class="watch-suggestions">
   <h2>Suggested pools</h2>
@@ -89,7 +124,7 @@ else
   </div>
 </div>
 
-@foreach (var pool in Model.Entries)
+@foreach (var pool in Model.Pools.Items.Select(i => i.Entry))
 {
   <div class="st-overlay hidden" id="modal-@pool.Id" role="dialog" aria-modal="true" aria-labelledby="modal-@pool.Id-title" tabindex="-1">
     <div class="st-overlay-wrapper">

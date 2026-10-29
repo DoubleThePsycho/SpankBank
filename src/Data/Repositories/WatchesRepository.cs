@@ -42,15 +42,20 @@ public sealed record WatchEntry(
 }
 
 /// <summary>Watched artists, pools and searches (SpankBank.sqlite). Artist alias/character discovery reads the catalog.</summary>
-public sealed class WatchesRepository
+public sealed partial class WatchesRepository
 {
     private readonly string _appConnectionString;
     private readonly string _serverConnectionString;
+    private readonly string _serverPath;
+    private readonly string _devicePath;
 
-    public WatchesRepository(string appDatabasePath, string serverDatabasePath)
+    /// <param name="deviceDatabasePath">Defaults to device.sqlite next to the app database (the layout DatabaseInitializer creates).</param>
+    public WatchesRepository(string appDatabasePath, string serverDatabasePath, string? deviceDatabasePath = null)
     {
         _appConnectionString = $"Data Source={appDatabasePath}";
         _serverConnectionString = $"Data Source={serverDatabasePath};Mode=ReadOnly";
+        _serverPath = serverDatabasePath;
+        _devicePath = deviceDatabasePath ?? Path.Combine(Path.GetDirectoryName(Path.GetFullPath(appDatabasePath))!, "device.sqlite");
     }
 
     public IReadOnlyList<WatchEntry> GetAll(WatchedItemType type)

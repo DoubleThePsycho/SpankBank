@@ -1,25 +1,35 @@
 using System.Text.RegularExpressions;
 using Microsoft.AspNetCore.Mvc;
 using SpankBank.Core.Models;
+using SpankBank.Data;
 using SpankBank.Data.Repositories;
+using SpankBank.Web.Services;
 
 namespace SpankBank.Web.Pages.Watches;
 
 public partial class PoolsModel : WatchPageModel
 {
-    public PoolsModel(WatchesRepository watches) : base(watches) { }
+    private readonly SettingsRepository _settings;
+
+    public PoolsModel(WatchesRepository watches, SettingsRepository settings) : base(watches) => _settings = settings;
 
     protected override WatchedItemType ItemType => WatchedItemType.Pool;
     protected override string ModalBodyPartial => "_PoolModalBody";
 
-    public IReadOnlyList<WatchEntry> Entries { get; private set; } = [];
+    public WatchPage<WatchedPoolItem> Pools { get; private set; } = new([], 0, 1, 1);
+    public ListView View { get; private set; } = new("/pools/local", null, null, 1, "id", true);
+    public bool ShowDisabled { get; private set; }
+    public int DisabledCount { get; private set; }
     public IReadOnlyList<PoolSuggestion> Suggestions { get; private set; } = [];
     public bool ShowAll { get; private set; }
 
-    public void OnGet()
+    public void OnGet(string? sort = null, string? dir = null, string? show = null)
     {
         ShowAll = Request.Query["all"] == "1";
-        Entries = Watches.GetAll(WatchedItemType.Pool);
+        ShowDisabled = show == "disabled";
+        View = new ListView("/pools/local", sort, dir, int.TryParse(Request.Query["page"], out var page) ? page : 1, defaultSort: "id", defaultDescending: true, extraQuery: ShowDisabled ? "&show=disabled" : "");
+        Pools = Watches.GetPoolPage(View.Sort, View.Descending, View.Page, ListView.PageSize(_settings.Get(WorkerSettingsKeys.ListPageSize)), ShowDisabled);
+        DisabledCount = Watches.CountDisabledPools();
         Suggestions = Watches.GetPoolSuggestions(ShowAll);
     }
 

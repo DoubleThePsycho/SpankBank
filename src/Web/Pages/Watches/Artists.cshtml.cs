@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using SpankBank.Core.Models;
+using SpankBank.Data;
 using SpankBank.Data.Repositories;
 using SpankBank.Web.Services;
 
@@ -7,18 +8,27 @@ namespace SpankBank.Web.Pages.Watches;
 
 public class ArtistsModel : WatchPageModel
 {
-    public ArtistsModel(WatchesRepository watches) : base(watches) { }
+    private readonly SettingsRepository _settings;
+
+    public ArtistsModel(WatchesRepository watches, SettingsRepository settings) : base(watches) => _settings = settings;
 
     protected override WatchedItemType ItemType => WatchedItemType.Artist;
     // Artists are managed on their own page (/artist/<name>); only the Enable/Disable link on this list posts here.
     protected override string ModalBodyPartial => throw new NotSupportedException();
 
-    public IReadOnlyList<WatchEntry> Entries { get; private set; } = [];
+    public WatchPage<ArtistListItem> Artists { get; private set; } = new([], 0, 1, 1);
+    public ListView View { get; private set; } = new("/artists/local", null, null, 1, "name", false);
 
     /// <summary>Set after a bulk add; the page shows it above the list.</summary>
     public BulkAddResult? Bulk { get; private set; }
 
-    public void OnGet() => Entries = Watches.GetAll(WatchedItemType.Artist);
+    public void OnGet(string? sort = null, string? dir = null) => Load(int.TryParse(Request.Query["page"], out var page) ? page : 1, sort, dir);
+
+    private void Load(int page, string? sort, string? dir)
+    {
+        View = new ListView("/artists/local", sort, dir, page, defaultSort: "name", defaultDescending: false);
+        Artists = Watches.GetArtistPage(View.Sort, View.Descending, View.Page, ListView.PageSize(_settings.Get(WorkerSettingsKeys.ListPageSize)));
+    }
 
     public IActionResult OnPostBulk(string? names)
     {
@@ -26,7 +36,7 @@ public class ArtistsModel : WatchPageModel
             return Fail("Paste at least one artist name.");
 
         Bulk = ArtistBulkAdd.Run(Watches, names);
-        Entries = Watches.GetAll(WatchedItemType.Artist);
+        Load(1, null, null);
         return Page();
     }
 
