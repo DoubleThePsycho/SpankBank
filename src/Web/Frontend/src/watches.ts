@@ -118,6 +118,35 @@ document.addEventListener("click", (event) => {
   link.closest("form")?.requestSubmit();
 });
 
+// An Enable/Disable pill in a list switches in place: post in the background, then flip the pill and the form's next value.
+document.addEventListener("submit", async (event) => {
+  const form = event.target as HTMLFormElement;
+  if (!form.hasAttribute("data-pill-toggle")) return;
+  event.preventDefault();
+
+  const pill = form.querySelector<HTMLButtonElement>(".status-pill");
+  const next = form.querySelector<HTMLInputElement>("input[name=enabled]");
+  if (!pill || !next || pill.disabled) return;
+
+  pill.disabled = true;
+  try {
+    const response = await fetch(form.action, { method: "POST", body: new FormData(form), headers: { "X-Fetch": "pill" } });
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+    const nowEnabled = next.value === "true";
+    pill.classList.toggle("is-enabled", nowEnabled);
+    pill.classList.toggle("is-disabled", !nowEnabled);
+    pill.textContent = nowEnabled ? "Enabled" : "Disabled";
+    pill.title = nowEnabled ? "Click to disable" : "Click to enable";
+    next.value = String(!nowEnabled);
+    form.closest("tr")?.classList.toggle("is-off", !nowEnabled);
+  } catch {
+    pill.title = "Could not save; try again";
+  } finally {
+    pill.disabled = false;
+  }
+});
+
 // Forms marked data-ajax post in the background; the server answers with the entry's re-rendered modal body.
 document.addEventListener("submit", async (event) => {
   const form = event.target as HTMLFormElement;

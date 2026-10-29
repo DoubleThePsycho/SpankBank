@@ -13,7 +13,10 @@ public sealed record WatchPostStats(int Downloaded, int Restored, int Lost)
     public int Local => Downloaded + Restored;
 }
 
-public sealed record ArtistListItem(WatchEntry Entry, int Aliases, int Characters, int CharactersEnabled, WatchPostStats Stats);
+/// <param name="Found">Character tags discovered automatically (not added by hand).</param>
+/// <param name="Enabled">Characters that are switched on, found or custom.</param>
+/// <param name="Custom">Characters the user added by hand.</param>
+public sealed record ArtistListItem(WatchEntry Entry, int Aliases, int Found, int Enabled, int Custom, WatchPostStats Stats);
 
 public sealed record WatchedPoolItem(WatchEntry Entry, int PagesInExport, WatchPostStats Stats);
 
@@ -65,7 +68,7 @@ public sealed partial class WatchesRepository
         return stats;
     }
 
-    /// <param name="sort">id, name, aliases, characters, total, downloaded, restored or lost (default name).</param>
+    /// <param name="sort">id, name, aliases, found, enabled, custom, total, downloaded, restored or lost (default name).</param>
     public WatchPage<ArtistListItem> GetArtistPage(string? sort, bool descending, int page, int pageSize)
     {
         var all = GetAll(WatchedItemType.Artist);
@@ -73,15 +76,17 @@ public sealed partial class WatchesRepository
         var items = all.Select(e =>
         {
             var characters = e.ArtistTags.Where(t => t.Kind == ArtistTagKind.Character).ToList();
-            return new ArtistListItem(e, e.ArtistTags.Count(t => t.Kind == ArtistTagKind.Alias), characters.Count,
-                characters.Count(c => c.Enabled), stats.GetValueOrDefault(e.Id, WatchPostStats.None));
+            return new ArtistListItem(e, e.ArtistTags.Count(t => t.Kind == ArtistTagKind.Alias), characters.Count(c => !c.IsManual),
+                characters.Count(c => c.Enabled), characters.Count(c => c.IsManual), stats.GetValueOrDefault(e.Id, WatchPostStats.None));
         });
 
         Func<ArtistListItem, IComparable> key = sort switch
         {
             "id" => i => i.Entry.Id,
             "aliases" => i => i.Aliases,
-            "characters" => i => i.CharactersEnabled,
+            "found" => i => i.Found,
+            "enabled" => i => i.Enabled,
+            "custom" => i => i.Custom,
             "total" => i => i.Entry.MatchCount,
             "downloaded" => i => i.Stats.Downloaded,
             "restored" => i => i.Stats.Restored,

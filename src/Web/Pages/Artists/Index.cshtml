@@ -3,6 +3,7 @@
 @* Markup follows e621ng app/views/artists/index.html.erb (BSD-2, see THIRD-PARTY-NOTICES.md). *@
 @{
     ViewData["Title"] = "Online artists";
+    var view = Model.View;
 }
 @section SecondaryNav {
   <partial name="_AreaNav" model='"artists"' />
@@ -12,28 +13,31 @@
     <div class="section" id="searchform">
       <form method="get" action="/artists/online" class="simple_form inline-form">
         <div class="input string"><label for="name">Name</label><input type="text" id="name" name="name" value="@Model.Name" data-autocomplete="artist-tag" autocomplete="off"><p class="hint">Use * for wildcard</p></div>
-        <div class="input select">
-          <label for="order">Order</label>
-          <select id="order" name="order">
-            <option value="count" selected="@(Model.Order == "count")">Post count</option>
-            <option value="name" selected="@(Model.Order == "name")">Name</option>
-          </select>
-        </div>
         <div class="input boolean"><label for="empty">Show empty?</label><input type="checkbox" id="empty" name="empty" value="1" checked="@Model.ShowEmpty"></div>
+        <input type="hidden" name="sort" value="@view.Sort"><input type="hidden" name="dir" value="@(view.Descending ? "desc" : "asc")">
         <input type="submit" value="Search" class="st-button">
       </form>
     </div>
 
-    <table class="striped">
-      <thead><tr><th width="35%">Primary Name</th><th width="10%">Posts</th><th width="45%">Secondary Names</th><th width="10%"></th></tr></thead>
+    <div class="table-scroll">
+    <table class="striped watches-table online-artists-table" data-server-sorted>
+      <thead>
+        <tr class="column-headers">
+          <th aria-sort="@view.AriaSort("name")"><a href="@view.SortUrl("name")">Primary Name@(view.Mark("name"))</a></th>
+          <th class="col-count count-db" aria-sort="@view.AriaSort("posts")"><a href="@view.SortUrl("posts")" title="Posts in the e621 exports"><svg-icon name="database" width="16" height="16" /><span class="sr-only">Posts</span>@view.Mark("posts")</a></th>
+          <th>Secondary Names</th>
+          <th class="col-status">Watched</th>
+        </tr>
+      </thead>
       <tbody>
         @foreach (var artist in Model.Result.Rows)
         {
+          var watched = Model.Watched.Contains(artist.Name);
           <tr>
             <td class="category-1"><a href="/artist/@Uri.EscapeDataString(artist.Name)">@artist.Name</a></td>
-            <td>@artist.PostCount.ToString("N0")</td>
+            <td class="col-count count-db">@artist.PostCount.ToString("N0")</td>
             <td>@string.Join(", ", artist.OtherNames)</td>
-            <td>@(Model.Watched.Contains(artist.Name) ? "local" : "")</td>
+            <td class="col-status"><span class="status-pill @(watched ? "is-enabled" : "is-disabled")">@(watched ? "Yes" : "No")</span></td>
           </tr>
         }
         @if (Model.Result.Rows.Count == 0)
@@ -42,7 +46,13 @@
         }
       </tbody>
     </table>
+    </div>
 
-    <partial name="_Paginator" model="new SpankBank.Web.Services.PagerModel(Model.PageNumber, Model.LastPage, Model.PageUrl)" />
+    @if (Model.LastPage > 1)
+    {
+      <div class="list-footer">
+        <partial name="_Paginator" model="new SpankBank.Web.Services.PagerModel(Model.PageNumber, Model.LastPage, Model.PageUrl)" />
+      </div>
+    }
   </div>
 </div>

@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using SpankBank.Core.Models;
 using SpankBank.Data.Repositories;
+using SpankBank.Web.Services;
 
 namespace SpankBank.Web.Pages.Artists;
 
@@ -18,31 +19,37 @@ public class IndexModel : PageModel
     }
 
     public string? Name { get; private set; }
-    public string Order { get; private set; } = "count";
     public bool ShowEmpty { get; private set; }
     public int PageNumber { get; private set; } = 1;
     public int LastPage { get; private set; } = 1;
     public Page<ArtistRow> Result { get; private set; } = new([], 0);
     public HashSet<string> Watched { get; private set; } = [];
+    public ListView View { get; private set; } = new("/artists/online", null, null, 1, "posts", true);
 
     public void OnGet()
     {
         var query = Request.Query;
         Name = query["name"].ToString();
-        Order = query["order"] == "name" ? "name" : "count";
         ShowEmpty = query["empty"] == "1";
         PageNumber = int.TryParse(query["page"], out var page) && page > 0 ? page : 1;
 
-        Result = _catalog.SearchArtists(Name, Order, hideEmpty: !ShowEmpty, PageNumber, PageSize);
+        // Headers sort by name or post count; an old ?order= link still works.
+        var sort = query["sort"].ToString();
+        if (sort is not ("name" or "posts")) sort = query["order"] == "name" ? "name" : "posts";
+        View = new ListView("/artists/online", sort, query["dir"], PageNumber, defaultSort: "posts", defaultDescending: true, extraQuery: ListQuery());
+
+        Result = _catalog.SearchArtists(Name, View.Sort, hideEmpty: !ShowEmpty, PageNumber, PageSize, View.Descending);
         LastPage = (int)Math.Max(1, (Result.Total + PageSize - 1) / PageSize);
         if (PageNumber > LastPage)
         {
             PageNumber = LastPage;
-            Result = _catalog.SearchArtists(Name, Order, hideEmpty: !ShowEmpty, PageNumber, PageSize);
+            Result = _catalog.SearchArtists(Name, View.Sort, hideEmpty: !ShowEmpty, PageNumber, PageSize, View.Descending);
+            View = new ListView("/artists/online", View.Sort, View.Descending ? "desc" : "asc", PageNumber, "posts", true, ListQuery());
         }
         Watched = _watches.WatchedSources(WatchedItemType.Artist);
     }
 
-    public string PageUrl(int page)
-        => $"/artists/online?page={page}&name={Uri.EscapeDataString(Name ?? "")}&order={Order}" + (ShowEmpty ? "&empty=1" : "");
+    private string ListQuery() => $"&name={Uri.EscapeDataString(Name ?? "")}" + (ShowEmpty ? "&empty=1" : "");
+
+    public string PageUrl(int page) => View.PageUrl(page);
 }

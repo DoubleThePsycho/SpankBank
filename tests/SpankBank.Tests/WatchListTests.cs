@@ -141,4 +141,32 @@ public class WatchListTests : IDisposable
         Assert.Equal(["7"], pools.Select(p => p.Entry.SourceValue));
         Assert.Equal(1, pools[0].Stats.Downloaded);
     }
+
+    [Fact]
+    public void Characters_split_into_found_enabled_and_custom_and_sort_on_them()
+    {
+        var a = Artist("alpha"); var b = Artist("bravo");
+        App($"""
+            INSERT INTO WatchedArtistTags (WatchedItemId, Tag, Kind, IsManual, Enabled) VALUES
+                ({a}, 'x_(alpha)', 1, 0, 1), ({a}, 'y_(alpha)', 1, 0, 0), ({a}, 'mine_(alpha)', 1, 1, 1),
+                ({b}, 'z_(bravo)', 1, 0, 1), ({a}, 'old', 0, 0, 1);
+            """);
+
+        var alpha = _watches.GetArtistPage(null, false, 1, 10).Items.Single(i => i.Entry.SourceValue == "alpha");
+        Assert.Equal((2, 2, 1, 1), (alpha.Found, alpha.Enabled, alpha.Custom, alpha.Aliases));
+        Assert.Equal("alpha", Names(_watches.GetArtistPage("custom", true, 1, 10))[0]);
+        Assert.Equal("alpha", Names(_watches.GetArtistPage("found", true, 1, 10))[0]);
+    }
+
+    [Fact]
+    public void The_online_artist_list_sorts_by_name_or_post_count_in_either_direction()
+    {
+        Server("INSERT INTO Tags (Id, Name, Category, PostCount) VALUES (1, 'bravo', 1, 50), (2, 'alpha', 1, 90), (3, 'charlie', 1, 10);");
+        var catalog = new CatalogBrowser(_db.Paths.ServerDatabasePath);
+
+        Assert.Equal(["alpha", "bravo", "charlie"], catalog.SearchArtists(null, "posts", true, 1, 10, descending: true).Rows.Select(r => r.Name));
+        Assert.Equal(["charlie", "bravo", "alpha"], catalog.SearchArtists(null, "posts", true, 1, 10, descending: false).Rows.Select(r => r.Name));
+        Assert.Equal(["alpha", "bravo", "charlie"], catalog.SearchArtists(null, "name", true, 1, 10, descending: false).Rows.Select(r => r.Name));
+        Assert.Equal(["charlie", "bravo", "alpha"], catalog.SearchArtists(null, "name", true, 1, 10, descending: true).Rows.Select(r => r.Name));
+    }
 }

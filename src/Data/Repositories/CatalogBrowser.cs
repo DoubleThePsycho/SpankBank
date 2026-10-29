@@ -38,11 +38,13 @@ public sealed class CatalogBrowser
 
     // ---------------------------------------------------------------- artists
 
-    public Page<ArtistRow> SearchArtists(string? nameMatches, string? order, bool hideEmpty, int page, int pageSize)
+    public Page<ArtistRow> SearchArtists(string? nameMatches, string? order, bool hideEmpty, int page, int pageSize, bool descending)
     {
         var exclusion = $"Name NOT IN ({NonArtistTags.SqlList})";
         var (where, parameters) = TagWhere(nameMatches, category: 1, hideEmpty, exclusion);
-        var orderBy = order == "name" ? "Name ASC" : "PostCount DESC, Name ASC";
+        // "name" sorts by name; anything else by post count.
+        var direction = descending ? "DESC" : "ASC";
+        var orderBy = order == "name" ? $"Name {direction}" : $"PostCount {direction}, Name ASC";
 
         var tags = Query(
             $"FROM Tags WHERE {where}", parameters, "Name, PostCount", orderBy, page, pageSize,

@@ -28,6 +28,7 @@ public abstract class WatchPageModel : PageModel
     public IActionResult OnPostToggle(long id, bool enabled, string? returnUrl)
     {
         Watches.SetEnabled(id, enabled);
+        if (Request.Headers["X-Fetch"] == "pill") return new NoContentResult(); // the list updates the pill in place
         // A plain post comes back to the same page, sorting and all.
         if (!IsFetch && returnUrl is not null && Url.IsLocalUrl(returnUrl)) return LocalRedirect(returnUrl);
         return Updated(id);

@@ -30,22 +30,24 @@ public class ArtistsModel : WatchPageModel
         Artists = Watches.GetArtistPage(View.Sort, View.Descending, View.Page, ListView.PageSize(_settings.Get(WorkerSettingsKeys.ListPageSize)));
     }
 
-    public IActionResult OnPostBulk(string? names)
+    /// <summary>
+    /// One name: add the artist disabled and open their page. Several names (one per line, or comma separated): add them all
+    /// enabled and show what was added, what was already watched and which names are not artists.
+    /// </summary>
+    public IActionResult OnPostAdd(string? names)
     {
-        if (ArtistBulkAdd.ParseNames(names).Count == 0)
-            return Fail("Paste at least one artist name.");
+        var parsed = ArtistBulkAdd.ParseNames(names);
+        if (parsed.Count == 0)
+            return Fail("Enter at least one artist name.");
 
-        Bulk = ArtistBulkAdd.Run(Watches, names);
-        Load(1, null, null);
-        return Page();
-    }
+        if (parsed.Count > 1)
+        {
+            Bulk = ArtistBulkAdd.Run(Watches, names);
+            Load(1, null, null);
+            return Page();
+        }
 
-    public IActionResult OnPostAdd(string? artist)
-    {
-        if (string.IsNullOrWhiteSpace(artist))
-            return Fail("Enter an artist tag.");
-
-        var tag = Watches.ResolveArtistTag(artist);
+        var tag = Watches.ResolveArtistTag(parsed[0]);
         if (NonArtistTags.Contains(tag))
             return Fail($"\"{tag}\" is a marker tag, not an artist, so it cannot be watched as one.");
         if (!Watches.IsArtistTag(tag))

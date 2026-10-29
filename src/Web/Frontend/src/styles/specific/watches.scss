@@ -239,24 +239,57 @@ $count-red: #e0605e;
     th[aria-sort="ascending"], th[aria-sort="descending"] { background: themed("color-section-lighten-5"); }
   }
 
-  th.posts-group { text-align: center; border-bottom: 1px solid themed("color-text-muted"); }
-  tr.count-headers th { text-align: right; padding-top: 0.25rem; padding-bottom: 0.25rem; }
+  // Group labels sit in a thin row above the column headers.
+  tr.group-headers th {
+    padding: 0.15rem 0.5rem;
+    font-size: 0.7rem;
+    font-weight: normal;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: themed("color-text-muted");
+    text-align: center;
+    border-bottom: 0;
+    &.group-label { border-bottom: 1px solid themed("color-text-muted"); }
+  }
+  tr.column-headers th { vertical-align: bottom; }
 
-  // Only as wide as their content: the numbers never get longer than a few digits.
-  .col-id, .col-num, .col-count, .col-auto { width: 1%; white-space: nowrap; }
-  .col-id, .col-num, .col-count { text-align: right; font-variant-numeric: tabular-nums; }
-  .col-auto { text-align: right; }
+  // Count columns: centred under their icon, with room on both sides. Only as wide as that.
+  .col-count, .col-num, .col-id, .col-status { width: 1%; white-space: nowrap; }
+  .col-count { text-align: center; padding-left: 1.25rem; padding-right: 1.25rem; font-variant-numeric: tabular-nums; }
+  th.col-count { text-align: center; a { justify-content: center; } }
+  .col-num { text-align: right; font-variant-numeric: tabular-nums; padding-left: 1rem; padding-right: 1rem; }
+  .col-id { text-align: right; font-variant-numeric: tabular-nums; padding-right: 0.75rem; }
+  // A fixed-width cell, so switching a status never moves the other columns.
+  .col-status { text-align: center; min-width: 8.5rem; padding-left: 1.25rem; padding-right: 1.25rem; }
+  .col-auto { width: 1%; white-space: nowrap; text-align: right; }
+
+  tr.is-off td:not(.col-status) { opacity: 0.55; }
+
+  // Anchor the screen-reader-only labels to their header cell, so they never widen the page.
+  th a { position: relative; }
+
+  @media (max-width: 40rem) {
+    &.artists-table .col-num { display: none; } // the aliases column is the first to go on a phone
+    .col-count { padding-left: 0.5rem; padding-right: 0.5rem; }
+    .col-status { min-width: 6.5rem; padding-left: 0.5rem; padding-right: 0.5rem; }
+  }
 
   .count-db { color: themed("color-text"); }
   .count-downloaded { color: $count-green; }
   .count-restored { color: $count-yellow; }
   .count-lost { color: $count-red; }
-  th.count-db a, th.count-downloaded a, th.count-restored a, th.count-lost a { color: inherit; }
+  .count-found { color: #9aa5b1; }
+  .count-enabled { color: #4db6e5; }
+  .count-custom { color: #c792ea; }
+  th.count-db a, th.count-downloaded a, th.count-restored a, th.count-lost a, th.count-found a, th.count-enabled a, th.count-custom a { color: inherit; }
 
   .watch-row-actions form { display: inline; margin: 0; }
 }
 
 .status-pill {
+  display: inline-block;
+  min-width: 5.75rem;
+  text-align: center;
   padding: 0.1rem 0.7rem;
   border: 0;
   border-radius: 1rem;
@@ -269,11 +302,13 @@ $count-red: #e0605e;
   &:hover { filter: brightness(1.15); }
 }
 
+.table-scroll { overflow-x: auto; max-width: 100%; }
+
 .list-footer {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  justify-content: space-between;
+  justify-content: center;
   gap: 0.75rem;
   margin: 0.75rem 0;
   nav.pagination { margin: 0; }
@@ -291,3 +326,6 @@ $count-red: #e0605e;
   .col-auto { text-align: right; }
   th.col-count svg { vertical-align: middle; }
 }
+
+// The "Watched" column of the online list: only as wide as its pill.
+.online-artists-table .col-status { min-width: 0; width: 1%; padding-left: 1rem; padding-right: 1rem; .status-pill { min-width: 3rem; } }

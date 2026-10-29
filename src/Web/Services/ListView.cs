@@ -4,7 +4,7 @@ namespace SpankBank.Web.Services;
 public sealed class ListView
 {
     // Count columns are most useful biggest first, so their first click sorts descending.
-    private static readonly HashSet<string> DescendingFirst = ["total", "downloaded", "restored", "lost", "pages", "local", "characters", "aliases"];
+    private static readonly HashSet<string> DescendingFirst = ["total", "downloaded", "restored", "lost", "pages", "local", "found", "enabled", "custom", "aliases", "posts"];
 
     private readonly string _path;
     private readonly string _extraQuery;

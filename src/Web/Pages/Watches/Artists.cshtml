@@ -9,8 +9,7 @@
 
 <div class="watches-header">
   <h1>Local artists</h1>
-  <button type="button" class="st-button" data-open-modal="modal-add">Add artist</button>
-  <button type="button" class="st-button" data-open-modal="modal-bulk">Add many</button>
+  <button type="button" class="st-button" data-open-modal="modal-add">Add artists</button>
 </div>
 
 @if (Model.Message is not null) { <div class="notice notice-info">@Model.Message</div> }
@@ -51,21 +50,27 @@
 }
 else
 {
-  <table class="striped watches-table" data-server-sorted>
+  <div class="table-scroll">
+  <table class="striped watches-table artists-table" data-server-sorted>
     <thead>
-      <tr>
-        <th rowspan="2" class="col-id" aria-sort="@view.AriaSort("id")"><a href="@view.SortUrl("id")">ID@(view.Mark("id"))</a></th>
-        <th rowspan="2" aria-sort="@view.AriaSort("name")"><a href="@view.SortUrl("name")">Artist@(view.Mark("name"))</a></th>
-        <th rowspan="2" class="col-num" aria-sort="@view.AriaSort("aliases")"><a href="@view.SortUrl("aliases")">Aliases@(view.Mark("aliases"))</a></th>
-        <th rowspan="2" class="col-num" aria-sort="@view.AriaSort("characters")"><a href="@view.SortUrl("characters")">Characters@(view.Mark("characters"))</a></th>
-        <th colspan="4" class="posts-group">Posts</th>
-        <th rowspan="2" class="col-auto">Enabled</th>
+      <tr class="group-headers">
+        <th colspan="3"></th>
+        <th colspan="3" class="group-label">Characters</th>
+        <th colspan="4" class="group-label">Posts</th>
+        <th></th>
       </tr>
-      <tr class="count-headers">
+      <tr class="column-headers">
+        <th class="col-id" aria-sort="@view.AriaSort("id")"><a href="@view.SortUrl("id")">ID@(view.Mark("id"))</a></th>
+        <th aria-sort="@view.AriaSort("name")"><a href="@view.SortUrl("name")">Artist@(view.Mark("name"))</a></th>
+        <th class="col-num" aria-sort="@view.AriaSort("aliases")"><a href="@view.SortUrl("aliases")">Aliases@(view.Mark("aliases"))</a></th>
+        <th class="col-count count-found" aria-sort="@view.AriaSort("found")"><a href="@view.SortUrl("found")" title="Characters found automatically"><svg-icon name="users" width="16" height="16" /><span class="sr-only">Found</span>@view.Mark("found")</a></th>
+        <th class="col-count count-enabled" aria-sort="@view.AriaSort("enabled")"><a href="@view.SortUrl("enabled")" title="Characters switched on"><svg-icon name="user_check" width="16" height="16" /><span class="sr-only">Enabled</span>@view.Mark("enabled")</a></th>
+        <th class="col-count count-custom" aria-sort="@view.AriaSort("custom")"><a href="@view.SortUrl("custom")" title="Characters you added yourself"><svg-icon name="user_plus" width="16" height="16" /><span class="sr-only">Custom</span>@view.Mark("custom")</a></th>
         <th class="col-count count-db" aria-sort="@view.AriaSort("total")"><a href="@view.SortUrl("total")" title="Posts in the e621 exports"><svg-icon name="database" width="16" height="16" /><span class="sr-only">In the exports</span>@view.Mark("total")</a></th>
         <th class="col-count count-downloaded" aria-sort="@view.AriaSort("downloaded")"><a href="@view.SortUrl("downloaded")" title="Downloaded from e621"><svg-icon name="download" width="16" height="16" /><span class="sr-only">Downloaded</span>@view.Mark("downloaded")</a></th>
         <th class="col-count count-restored" aria-sort="@view.AriaSort("restored")"><a href="@view.SortUrl("restored")" title="Restored from the Wayback Machine"><svg-icon name="history" width="16" height="16" /><span class="sr-only">Restored</span>@view.Mark("restored")</a></th>
         <th class="col-count count-lost" aria-sort="@view.AriaSort("lost")"><a href="@view.SortUrl("lost")" title="Deleted on e621 and not recoverable"><svg-icon name="skull" width="16" height="16" /><span class="sr-only">Lost</span>@view.Mark("lost")</a></th>
+        <th class="col-status">Status</th>
       </tr>
     </thead>
     <tbody>
@@ -76,13 +81,15 @@ else
           <td class="col-id" data-field="id">@artist.Id</td>
           <td data-field="name"><a href="/artist/@Uri.EscapeDataString(artist.SourceValue)" class="tag-type-1">@artist.DisplayName</a></td>
           <td class="col-num" data-field="aliases">@item.Aliases</td>
-          <td class="col-num" data-field="characters">@item.CharactersEnabled / @item.Characters</td>
+          <td class="col-count count-found">@item.Found.ToString("N0")</td>
+          <td class="col-count count-enabled">@item.Enabled.ToString("N0")</td>
+          <td class="col-count count-custom">@item.Custom.ToString("N0")</td>
           <td class="col-count count-db">@(artist.Matched ? artist.MatchCount.ToString("N0") : "-")</td>
           <td class="col-count count-downloaded">@item.Stats.Downloaded.ToString("N0")</td>
           <td class="col-count count-restored">@item.Stats.Restored.ToString("N0")</td>
           <td class="col-count count-lost">@item.Stats.Lost.ToString("N0")</td>
-          <td class="col-auto watch-row-actions">
-            <form method="post" asp-page-handler="Toggle">
+          <td class="col-status watch-row-actions">
+            <form method="post" asp-page-handler="Toggle" data-pill-toggle>
               <input type="hidden" name="id" value="@artist.Id"><input type="hidden" name="enabled" value="@((!artist.Enabled).ToString().ToLowerInvariant())"><input type="hidden" name="returnUrl" value="@view.Current">
               <button type="submit" class="status-pill @(artist.Enabled ? "is-enabled" : "is-disabled")" title="@(artist.Enabled ? "Click to disable" : "Click to enable")">@(artist.Enabled ? "Enabled" : "Disabled")</button>
             </form>
@@ -91,42 +98,27 @@ else
       }
     </tbody>
   </table>
-
-  <div class="list-footer">
-    <span class="hint">Showing @(((view.Page - 1) * Model.Artists.PageSize) + 1)-@(Math.Min(view.Page * Model.Artists.PageSize, Model.Artists.Total)) of @Model.Artists.Total.ToString("N0")</span>
-    @if (Model.Artists.LastPage > 1)
-    {
-      <partial name="_Paginator" model="new SpankBank.Web.Services.PagerModel(view.Page, Model.Artists.LastPage, view.PageUrl)" />
-    }
   </div>
+
+  @if (Model.Artists.LastPage > 1)
+  {
+    <div class="list-footer">
+      <partial name="_Paginator" model="new SpankBank.Web.Services.PagerModel(view.Page, Model.Artists.LastPage, view.PageUrl)" />
+    </div>
+  }
 }
 
 <div class="st-overlay hidden" id="modal-add" role="dialog" aria-modal="true" aria-labelledby="modal-add-title" tabindex="-1">
   <div class="st-overlay-wrapper">
     <button type="button" class="st-button close-button" aria-label="Close">&times;</button>
     <form method="post" asp-page-handler="Add" class="simple_form">
-      <h1 id="modal-add-title">Add artist</h1>
+      <h1 id="modal-add-title">Add artists</h1>
       <div class="input">
-        <label for="add-artist">Artist tag</label>
-        <input type="text" name="artist" id="add-artist" data-autocomplete="artist-tag" autocomplete="off" required>
+        <label for="add-artists">Artist names</label>
+        <textarea name="names" id="add-artists" rows="10" data-autocomplete="artist-list" autocomplete="off" spellcheck="false" required></textarea>
       </div>
-      <p class="hint">Opens the artist's page, where you can adjust characters and filters. The artist is not enabled (and nothing is downloaded) until you press Enable there.</p>
+      <p class="hint">One name per line (or comma separated); names suggest as you type. One artist opens their page, where you can adjust characters and filters before pressing Enable. Several are added enabled, and names that are not artists are listed afterwards.</p>
       <button type="submit" class="st-button submit">Add</button>
-    </form>
-  </div>
-</div>
-
-<div class="st-overlay hidden" id="modal-bulk" role="dialog" aria-modal="true" aria-labelledby="modal-bulk-title" tabindex="-1">
-  <div class="st-overlay-wrapper">
-    <button type="button" class="st-button close-button" aria-label="Close">&times;</button>
-    <form method="post" asp-page-handler="Bulk" class="simple_form">
-      <h1 id="modal-bulk-title">Add many artists</h1>
-      <div class="input">
-        <label for="bulk-names">Artist names</label>
-        <textarea name="names" id="bulk-names" rows="12" autocomplete="off" required></textarea>
-      </div>
-      <p class="hint">One per line, or separated by commas. Aliases are resolved; names that are not artist tags are listed afterwards.</p>
-      <button type="submit" class="st-button submit">Add all</button>
     </form>
   </div>
 </div>

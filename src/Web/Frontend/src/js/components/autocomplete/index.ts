@@ -6,9 +6,11 @@ import Provider from "@/components/autocomplete/Provider";
 import ArtistTagProvider from "@/components/autocomplete/providers/ArtistTagProvider";
 import CharacterTagProvider from "@/components/autocomplete/providers/CharacterTagProvider";
 import TagProvider from "@/components/autocomplete/providers/TagProvider";
+import ArtistListProvider from "@/components/autocomplete/providers/ArtistListProvider";
 import TagQueryProvider from "@/components/autocomplete/providers/TagQueryProvider";
 
 const PROVIDERS: Record<string, new () => Provider> = {
+  "artist-list": ArtistListProvider,
   "tag-query": TagQueryProvider,
   "tag-edit": TagQueryProvider,
   "tag": TagProvider,
