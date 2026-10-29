@@ -1,15 +1,24 @@
 @page "/pools/online"
-@model SpankBank.Web.Pages.Pools.IndexModel
+@model SpankBank.Web.Pages.Pools.OnlineModel
 @* Markup follows e621ng app/views/pools/index.html.erb and _search.html.erb (BSD-2, see THIRD-PARTY-NOTICES.md). *@
 @{
     ViewData["Title"] = "Online pools";
+}
+@section Scripts {
+  <script type="module" src="~/dist/watches.js" asp-append-version="true"></script>
 }
 @section SecondaryNav {
   <partial name="_AreaNav" model='"pools"' />
 }
 <div id="c-pools" class="container-fluid">
   <div id="a-index">
-    <div class="section" id="searchform">
+    @* The search form is folded away until the Search button is pressed; it is open while a search is active. *@
+    <div class="watches-header">
+      <h1>Online pools</h1>
+      <button type="button" class="st-button search-toggle" data-toggle="searchform" aria-controls="searchform" aria-expanded="@(Model.SearchActive ? "true" : "false")">Search</button>
+    </div>
+
+    <div class="search-dropdown" id="searchform" hidden="@(!Model.SearchActive)">
       <form method="get" action="/pools/online" class="simple_form inline-form">
         <div class="input string"><label for="name">Name</label><input type="text" id="name" name="name" value="@Model.Name"></div>
         <div class="input string"><label for="description">Description</label><input type="text" id="description" name="description" value="@Model.Description"></div>
@@ -42,7 +51,6 @@
       </form>
     </div>
 
-    <h2>Online pools</h2>
     <table class="striped">
       <thead><tr><th width="60%">Name</th><th width="10%">Count</th><th width="15%">Type</th><th width="15%"></th></tr></thead>
       <tbody>

@@ -4,14 +4,14 @@ using SpankBank.Data.Repositories;
 
 namespace SpankBank.Web.Pages.Pools;
 
-public class IndexModel : PageModel
+public class OnlineModel : PageModel
 {
     public const int PageSize = 50;
 
     private readonly CatalogBrowser _catalog;
     private readonly WatchesRepository _watches;
 
-    public IndexModel(CatalogBrowser catalog, WatchesRepository watches)
+    public OnlineModel(CatalogBrowser catalog, WatchesRepository watches)
     {
         _catalog = catalog;
         _watches = watches;
@@ -22,6 +22,8 @@ public class IndexModel : PageModel
     public string? Category { get; private set; }
     public string? Status { get; private set; }
     public string Order { get; private set; } = "updated";
+    /// <summary>Any filter or a non-default order is in effect: the search form starts open.</summary>
+    public bool SearchActive => !string.IsNullOrWhiteSpace(Name) || !string.IsNullOrWhiteSpace(Description) || Category is not null || Status is not null || Order != "updated";
     public int PageNumber { get; private set; } = 1;
     public int LastPage { get; private set; } = 1;
     public Page<PoolRow> Result { get; private set; } = new([], 0);

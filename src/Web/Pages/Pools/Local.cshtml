@@ -1,0 +1,151 @@
+@page "/pools/local"
+@model SpankBank.Web.Pages.Pools.LocalModel
+@{
+    ViewData["Title"] = "Local pools";
+    var view = Model.View;
+}
+@section SecondaryNav {
+  <partial name="_AreaNav" model='"pools"' />
+}
+@section Scripts {
+  <script type="module" src="~/dist/watches.js" asp-append-version="true"></script>
+}
+<div id="c-pools" class="container-fluid">
+  <div id="a-index">
+    <div class="watches-header">
+      <h1>Local pools</h1>
+      <button type="button" class="st-button" data-open-modal="modal-add">Add pool</button>
+    </div>
+
+    @if (Model.Message is not null) { <div class="notice notice-info">@Model.Message</div> }
+    @if (Model.Error is not null) { <div class="notice notice-error">@Model.Error</div> }
+
+    @if (Model.Pools.Total == 0)
+    {
+      <p>Nothing watched.</p>
+    }
+    else
+    {
+      <div class="table-scroll">
+      <table class="striped watches-table pools-table" data-server-sorted>
+        <thead>
+          <tr class="group-headers">
+            <th colspan="4" class="group-blank"></th>
+            <th colspan="2" class="group-label sep">Pages</th>
+            <th colspan="2" class="group-blank sep"></th>
+          </tr>
+          <tr class="column-headers">
+            <th class="col-id" aria-sort="@view.AriaSort("id")"><a href="@view.SortUrl("id")">ID<span class="sort-mark">@(view.Mark("id"))</span></a></th>
+            <th aria-sort="@view.AriaSort("name")"><a href="@view.SortUrl("name")">Pool<span class="sort-mark">@(view.Mark("name"))</span></a></th>
+            <th aria-sort="@view.AriaSort("artist")"><a href="@view.SortUrl("artist")">Artist<span class="sort-mark">@(view.Mark("artist"))</span></a></th>
+            <th aria-sort="@view.AriaSort("type")"><a href="@view.SortUrl("type")">Type<span class="sort-mark">@(view.Mark("type"))</span></a></th>
+            <th class="col-count count-db sep" aria-sort="@view.AriaSort("pages")"><a href="@view.SortUrl("pages")" title="Pages in the e621 export"><svg-icon name="database" width="16" height="16" /><span class="sr-only">In the export</span><span class="sort-mark">@(view.Mark("pages"))</span></a></th>
+            <th class="col-count count-downloaded" aria-sort="@view.AriaSort("local")"><a href="@view.SortUrl("local")" title="Pages on this device"><svg-icon name="download" width="16" height="16" /><span class="sr-only">Local</span><span class="sort-mark">@(view.Mark("local"))</span></a></th>
+            <th class="col-status sep">Status</th>
+            <th class="col-auto"></th>
+          </tr>
+        </thead>
+        <tbody>
+          @foreach (var item in Model.Pools.Items)
+          {
+            var pool = item.Entry;
+            <tr data-href="/pool/@pool.SourceValue" data-modal="modal-@pool.Id" tabindex="0">
+              <td class="col-id" data-field="id">@pool.SourceValue</td>
+              <td data-field="name"><a href="/pool/@pool.SourceValue">@pool.DisplayName</a></td>
+              <td data-field="artist">@(LocalModel.OriginArtist(pool.Origin) ?? "-")</td>
+              <td data-field="type">@(pool.Pool?.Category ?? "-")</td>
+              <td class="col-count count-db sep">@(pool.Pool is null ? "-" : item.PagesInExport.ToString("N0"))</td>
+              <td class="col-count count-downloaded">@item.Stats.Local.ToString("N0")</td>
+              <td class="col-status sep watch-row-actions">
+                <form method="post" asp-page-handler="Toggle" data-pill-toggle>
+                  <input type="hidden" name="id" value="@pool.Id"><input type="hidden" name="enabled" value="@((!pool.Enabled).ToString().ToLowerInvariant())"><input type="hidden" name="returnUrl" value="@view.Current">
+                  <button type="submit" class="status-pill @(pool.Enabled ? "is-enabled" : "is-disabled")" title="@(pool.Enabled ? "Click to disable (hides it from this list)" : "Click to enable")">@(pool.Enabled ? "Enabled" : "Disabled")</button>
+                </form>
+              </td>
+              <td class="col-auto watch-row-actions"><a href="#" data-open-modal="modal-@pool.Id">Edit</a></td>
+            </tr>
+          }
+        </tbody>
+      </table>
+      </div>
+
+      @if (Model.Pools.LastPage > 1)
+      {
+        <div class="list-footer">
+          <partial name="_Paginator" model="new SpankBank.Web.Services.PagerModel(view.Page, Model.Pools.LastPage, view.PageUrl)" />
+        </div>
+      }
+    }
+    <p class="hint">
+      @if (Model.ShowDisabled) { <a href="/pools/local">Hide disabled pools</a> }
+      else if (Model.DisabledCount > 0) { <a href="/pools/local?show=disabled">Show @Model.DisabledCount.ToString("N0") disabled pool@(Model.DisabledCount == 1 ? "" : "s")</a> }
+    </p>
+
+    <section id="suggested" class="watch-suggestions">
+      <h2>Suggested pools</h2>
+      <p class="hint">Pools that contain posts from your watched artists. Pools that are mostly an artist's work are added on their own (see Settings); the rest wait here for you.</p>
+      @if (Model.Suggestions.Count == 0)
+      {
+        <p>Nothing to review.</p>
+      }
+      else
+      {
+        <table class="striped">
+          <thead><tr><th>Pool</th><th>Type</th><th>Artist</th><th>Their share</th><th></th></tr></thead>
+          <tbody>
+            @foreach (var suggestion in Model.Suggestions)
+            {
+              <tr>
+                <td><a href="https://e621.net/pools/@suggestion.PoolId" rel="nofollow noopener">@suggestion.PoolName</a></td>
+                <td>@suggestion.Category</td>
+                <td>@suggestion.Artist</td>
+                <td>@suggestion.ArtistPosts of @suggestion.PoolPosts (@suggestion.SharePercent.ToString("0")%)@(suggestion.IsRoot ? "" : " · part of a larger pool")</td>
+                <td class="watch-row-actions">
+                  <form method="post" asp-page-handler="AcceptSuggestion">
+                    <input type="hidden" name="poolId" value="@suggestion.PoolId"><input type="hidden" name="artist" value="@suggestion.Artist">
+                    <a href="#" data-submit>Add</a>
+                  </form>
+                  <form method="post" asp-page-handler="IgnoreSuggestion">
+                    <input type="hidden" name="artistId" value="@suggestion.ArtistWatchId"><input type="hidden" name="poolId" value="@suggestion.PoolId">
+                    <a href="#" data-submit>Ignore</a>
+                  </form>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      }
+      <p><a href="@(Model.ShowAll ? "/pools/local#suggested" : "/pools/local?all=1#suggested")">@(Model.ShowAll ? "Show only likely pools" : "Show every pool with at least two of their posts")</a></p>
+    </section>
+
+    <div class="st-overlay hidden" id="modal-add" role="dialog" aria-modal="true" aria-labelledby="modal-add-title" tabindex="-1">
+      <div class="st-overlay-wrapper">
+        <button type="button" class="st-button close-button" aria-label="Close">&times;</button>
+        <form method="post" asp-page-handler="Add" class="simple_form">
+          <h1 id="modal-add-title">Add pool</h1>
+          <div class="input">
+            <label for="add-pool">Pool ID or URL</label>
+            <input type="text" name="pool" id="add-pool" autocomplete="off" required>
+          </div>
+          <button type="submit" class="st-button submit">Add</button>
+        </form>
+      </div>
+    </div>
+
+    @foreach (var pool in Model.Pools.Items.Select(i => i.Entry))
+    {
+      <div class="st-overlay hidden" id="modal-@pool.Id" role="dialog" aria-modal="true" aria-labelledby="modal-@pool.Id-title" tabindex="-1">
+        <div class="st-overlay-wrapper">
+          <button type="button" class="st-button close-button" aria-label="Close">&times;</button>
+          <div class="simple_form">
+            <h1 id="modal-@pool.Id-title">Pool #@pool.SourceValue</h1>
+            <div class="st-overlay-error" data-error></div>
+            <div data-slot>
+              <partial name="_PoolModalBody" model="pool" />
+            </div>
+          </div>
+        </div>
+      </div>
+    }
+  </div>
+</div>

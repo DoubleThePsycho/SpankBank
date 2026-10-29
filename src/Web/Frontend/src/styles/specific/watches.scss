@@ -1,5 +1,5 @@
 // SpankBank page: watched artists, pools and searches. Built from the shared site styles.
-#c-watches, #c-artists {
+#c-watches, #c-artists, #c-pools {
   .watches-header {
     display: flex;
     align-items: center;
@@ -67,7 +67,7 @@
   font-weight: bold;
 }
 
-#c-watches, #c-artists {
+#c-watches, #c-artists, #c-pools {
   .watch-origin { font-size: 0.8rem; color: themed("color-text-muted"); }
 
   .watch-suggestions {

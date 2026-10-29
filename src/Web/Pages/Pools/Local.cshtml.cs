@@ -3,15 +3,16 @@ using Microsoft.AspNetCore.Mvc;
 using SpankBank.Core.Models;
 using SpankBank.Data;
 using SpankBank.Data.Repositories;
+using SpankBank.Web.Pages.Watches;
 using SpankBank.Web.Services;
 
-namespace SpankBank.Web.Pages.Watches;
+namespace SpankBank.Web.Pages.Pools;
 
-public partial class PoolsModel : WatchPageModel
+public partial class LocalModel : WatchPageModel
 {
     private readonly SettingsRepository _settings;
 
-    public PoolsModel(WatchesRepository watches, SettingsRepository settings) : base(watches) => _settings = settings;
+    public LocalModel(WatchesRepository watches, SettingsRepository settings) : base(watches) => _settings = settings;
 
     protected override WatchedItemType ItemType => WatchedItemType.Pool;
     protected override string ModalBodyPartial => "_PoolModalBody";
