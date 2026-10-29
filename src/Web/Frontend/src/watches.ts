@@ -20,6 +20,18 @@ document.addEventListener("click", (event) => {
     return;
   }
 
+  // A button with data-toggle shows or hides the element it names (the folded search form).
+  const toggle = target.closest<HTMLElement>("[data-toggle]");
+  if (toggle) {
+    const panel = document.getElementById(toggle.dataset.toggle!);
+    if (panel) {
+      panel.hidden = !panel.hidden;
+      toggle.setAttribute("aria-expanded", String(!panel.hidden));
+      if (!panel.hidden) panel.querySelector<HTMLElement>("input[type=text]")?.focus();
+    }
+    return;
+  }
+
   // A row with data-href is a link to its own page (its Edit link is the only thing that opens the modal).
   const row = target.closest<HTMLElement>("tr[data-href]");
   if (row && !target.closest("a, button, input, form, .st-overlay")) {

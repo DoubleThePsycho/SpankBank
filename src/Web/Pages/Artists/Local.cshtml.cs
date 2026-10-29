@@ -2,15 +2,16 @@ using Microsoft.AspNetCore.Mvc;
 using SpankBank.Core.Models;
 using SpankBank.Data;
 using SpankBank.Data.Repositories;
+using SpankBank.Web.Pages.Watches;
 using SpankBank.Web.Services;
 
-namespace SpankBank.Web.Pages.Watches;
+namespace SpankBank.Web.Pages.Artists;
 
-public class ArtistsModel : WatchPageModel
+public class LocalModel : WatchPageModel
 {
     private readonly SettingsRepository _settings;
 
-    public ArtistsModel(WatchesRepository watches, SettingsRepository settings) : base(watches) => _settings = settings;
+    public LocalModel(WatchesRepository watches, SettingsRepository settings) : base(watches) => _settings = settings;
 
     protected override WatchedItemType ItemType => WatchedItemType.Artist;
     // Artists are managed on their own page (/artist/<name>); only the Enable/Disable link on this list posts here.

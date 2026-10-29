@@ -1,25 +1,32 @@
 @page "/artists/online"
-@model SpankBank.Web.Pages.Artists.IndexModel
+@model SpankBank.Web.Pages.Artists.OnlineModel
 @* Markup follows e621ng app/views/artists/index.html.erb (BSD-2, see THIRD-PARTY-NOTICES.md). *@
 @{
     ViewData["Title"] = "Online artists";
     var view = Model.View;
+}
+@section Scripts {
+  <script type="module" src="~/dist/watches.js" asp-append-version="true"></script>
 }
 @section SecondaryNav {
   <partial name="_AreaNav" model='"artists"' />
 }
 <div id="c-artists" class="container-fluid">
   <div id="a-index">
-    @* The search form is folded away until asked for; it opens by itself while a search is active. *@
-    <details class="search-dropdown" id="searchform" @(Model.SearchActive ? "open" : null)>
-      <summary class="st-button">Search</summary>
+    @* The search form is folded away until the Search button is pressed; it is open while a search is active. *@
+    <div class="watches-header">
+      <h1>Online artists</h1>
+      <button type="button" class="st-button search-toggle" data-toggle="searchform" aria-controls="searchform" aria-expanded="@(Model.SearchActive ? "true" : "false")">Search</button>
+    </div>
+
+    <div class="search-dropdown" id="searchform" hidden="@(!Model.SearchActive)">
       <form method="get" action="/artists/online" class="simple_form inline-form">
         <div class="input string"><label for="name">Name</label><input type="text" id="name" name="name" value="@Model.Name" data-autocomplete="artist-tag" autocomplete="off"><p class="hint">Use * for wildcard</p></div>
         <div class="input boolean"><label for="empty">Show empty?</label><input type="checkbox" id="empty" name="empty" value="1" checked="@Model.ShowEmpty"></div>
         <input type="hidden" name="sort" value="@view.Sort"><input type="hidden" name="dir" value="@(view.Descending ? "desc" : "asc")">
         <input type="submit" value="Search" class="st-button">
       </form>
-    </details>
+    </div>
 
     <div class="table-scroll">
     <table class="striped watches-table online-artists-table" data-server-sorted>

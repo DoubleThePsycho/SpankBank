@@ -5,14 +5,14 @@ using SpankBank.Web.Services;
 
 namespace SpankBank.Web.Pages.Artists;
 
-public class IndexModel : PageModel
+public class OnlineModel : PageModel
 {
     public const int PageSize = 50;
 
     private readonly CatalogBrowser _catalog;
     private readonly WatchesRepository _watches;
 
-    public IndexModel(CatalogBrowser catalog, WatchesRepository watches)
+    public OnlineModel(CatalogBrowser catalog, WatchesRepository watches)
     {
         _catalog = catalog;
         _watches = watches;

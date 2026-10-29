@@ -1,5 +1,5 @@
 // SpankBank page: watched artists, pools and searches. Built from the shared site styles.
-#c-watches {
+#c-watches, #c-artists {
   .watches-header {
     display: flex;
     align-items: center;
@@ -67,7 +67,7 @@
   font-weight: bold;
 }
 
-#c-watches {
+#c-watches, #c-artists {
   .watch-origin { font-size: 0.8rem; color: themed("color-text-muted"); }
 
   .watch-suggestions {
@@ -338,18 +338,13 @@ $count-red: #e0605e;
 // The "Watched" column of the online list: only as wide as its pill.
 .online-artists-table .col-status { min-width: 0; width: 1%; padding-left: 1rem; padding-right: 1rem; .status-pill { min-width: 3rem; } }
 
-// The folded search form of the online artists list (a dropdown like e621ng's).
+// The folded search form of the online artists list (a dropdown like e621ng's), opened by the header's Search button.
 .search-dropdown {
   margin-bottom: 0.75rem;
+  padding: 0.75rem;
+  background: themed("color-section");
+  @include st-radius;
 
-  summary {
-    display: inline-block;
-    cursor: pointer;
-    list-style: none;
-    &::-webkit-details-marker { display: none; }
-    &::after { content: " \25BE"; }
-  }
-  &[open] summary::after { content: " \25B4"; }
-
-  form { margin-top: 0.5rem; padding: 0.75rem; background: themed("color-section"); @include st-radius; }
+  &[hidden] { display: none; }
+  form { margin: 0; }
 }
