@@ -149,7 +149,8 @@ public sealed class DownloadService : BackgroundService
 
             _progress.FileStarted(postId, $"{post.Md5}.{post.Ext}");
             var outcome = await fetcher.FetchAsync(post, WorkerPaths.MediaDir, cancellationToken,
-                (done, total) => _progress.FileProgress(postId, done, total));
+                (done, total) => _progress.FileProgress(postId, done, total),
+                stage => _progress.FileStage(postId, stage));
 
             switch (outcome.Result)
             {

@@ -12,7 +12,7 @@ public sealed record RunSnapshot(string Title, IReadOnlyList<PhaseSnapshot> Phas
 
 public sealed record RecentFile(long PostId, string Md5, string Ext, string Status);
 
-public sealed record ActiveFile(long PostId, string Name, long Done, long? Total);
+public sealed record ActiveFile(long PostId, string Name, long Done, long? Total, string Stage = "");
 
 public sealed record DownloadSnapshot(
     bool Active, int Total, int Done, int Failed, double? FilesPerSecond, double? EtaSeconds,
@@ -161,6 +161,21 @@ public sealed class ProgressTracker
     public void FileStarted(long postId, string name)
     {
         lock (_lock) _current[postId] = new ActiveFile(postId, name, 0, null);
+    }
+
+    /// <summary>What a file is waiting for while it has no bytes yet ("Looking in the Wayback Machine").</summary>
+    public void FileStage(long postId, string stage)
+    {
+        lock (_lock)
+        {
+            if (_current.TryGetValue(postId, out var file)) _current[postId] = file with { Stage = stage };
+        }
+    }
+
+    /// <summary>Forget the "recently saved" strip, e.g. after posts were moved to the rubbish bin.</summary>
+    public void ForgetRecent()
+    {
+        lock (_lock) _recent.Clear();
     }
 
     public void FileProgress(long postId, long done, long? total)

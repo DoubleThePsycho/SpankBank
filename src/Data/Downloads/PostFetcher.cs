@@ -53,7 +53,7 @@ public sealed class PostFetcher : IDisposable
         _http.DefaultRequestHeaders.UserAgent.ParseAdd("SpankBank/0.1 (personal archiver)");
     }
 
-    public async Task<FetchOutcome> FetchAsync(CatalogPost post, string mediaRoot, CancellationToken cancellationToken, Action<long, long?>? onProgress = null)
+    public async Task<FetchOutcome> FetchAsync(CatalogPost post, string mediaRoot, CancellationToken cancellationToken, Action<long, long?>? onProgress = null, Action<string>? onStage = null)
     {
         if (post.Md5.Length != 32 || post.Ext.Length == 0)
             return new FetchOutcome(FetchResult.NotAvailable, "The catalog has no file for this post.");
@@ -63,6 +63,7 @@ public sealed class PostFetcher : IDisposable
             return new FetchOutcome(FetchResult.Downloaded, "Already on disk.");
 
         // Try the CDN even for posts the export marks deleted: they may have been restored since the export was made.
+        onStage?.Invoke("Downloading from e621");
         {
             var download = await DownloadAsync($"{StaticHost}/data/{post.Md5[..2]}/{post.Md5[2..4]}/{post.Md5}.{post.Ext}",
                 original, post.Md5, jpegOnly: false, StallTimeout, cancellationToken, onProgress: onProgress);
@@ -77,6 +78,7 @@ public sealed class PostFetcher : IDisposable
             }
         }
 
+        onStage?.Invoke("Not on e621; looking in the Wayback Machine");
         return await RecoverAsync(post, mediaRoot, original, cancellationToken, onProgress);
     }
 

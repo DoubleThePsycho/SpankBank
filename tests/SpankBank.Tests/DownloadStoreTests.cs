@@ -35,6 +35,18 @@ public class DownloadStoreTests : IDisposable
     }
 
     [Fact]
+    public void Posts_the_export_marks_deleted_come_after_the_others()
+    {
+        foreach (var id in new[] { 1, 2 })
+            _db.Execute(_db.Paths.ServerDatabasePath, $"INSERT INTO Posts (Id, CreatedAt, UpdatedAt, Md5, FileExt, IsDeleted) VALUES ({id}, '2026-01-01', '2026-01-01', '{new string('a', 32)}', 'png', 1);");
+
+        // The deleted ones wait while a normal post is pending, and are handed out once it is not.
+        Assert.Equal([3L], _store.NextPending(10, Now));
+        _store.MarkSaved(Post(3), LocalPostStatus.Downloaded);
+        Assert.Equal([1L, 2L], _store.NextPending(10, Now).Order().ToArray());
+    }
+
+    [Fact]
     public void A_post_waiting_out_a_retry_is_neither_next_nor_counted()
     {
         _store.RecordFailure(2, "boom", TimeSpan.FromHours(1));

@@ -2,7 +2,7 @@
 interface Phase { name: string; state: "pending" | "running" | "done" | "skipped" | "failed" }
 interface Step { detail: string; done: number; total: number | null; unit: string; perSecond: number | null; etaSeconds: number | null }
 interface Run { title: string; phases: Phase[]; step: Step | null; result: string | null; startedAt: string; finishedAt: string | null }
-interface ActiveFile { postId: number; name: string; done: number; total: number | null }
+interface ActiveFile { postId: number; name: string; done: number; total: number | null; stage: string }
 interface RecentFile { postId: number; md5: string; ext: string; status: string }
 interface Downloads {
   active: boolean; total: number; done: number; failed: number; filesPerSecond: number | null; etaSeconds: number | null;
@@ -92,7 +92,7 @@ function renderDownloads (d: Downloads): string {
 
   const current = d.current.map((f) => `<li><span class="name">${escapeHtml(f.name)}</span>
       ${f.total ? bar(f.done, f.total, true) : bar(0, null, true)}
-      <span class="size">${f.total ? `${bytes(f.done)} of ${bytes(f.total)}` : f.done ? bytes(f.done) : "waiting"}</span></li>`).join("");
+      <span class="size">${f.total ? `${bytes(f.done)} of ${bytes(f.total)}` : f.done ? bytes(f.done) : escapeHtml(f.stage || "waiting")}</span></li>`).join("");
 
   const recent = d.recent.map((f) => {
     const src = `/media/preview/${f.md5.slice(0, 2)}/${f.md5.slice(2, 4)}/${f.md5}.jpg`;

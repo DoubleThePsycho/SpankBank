@@ -13,12 +13,14 @@ public sealed class BinService : BackgroundService
 
     private readonly BinStore _bin;
     private readonly WorkerSignals _signals;
+    private readonly ProgressTracker _progress;
     private readonly ILogger<BinService> _logger;
 
-    public BinService(BinStore bin, WorkerSignals signals, ILogger<BinService> logger)
+    public BinService(BinStore bin, WorkerSignals signals, ProgressTracker progress, ILogger<BinService> logger)
     {
         _bin = bin;
         _signals = signals;
+        _progress = progress;
         _logger = logger;
     }
 
@@ -29,7 +31,11 @@ public sealed class BinService : BackgroundService
             try
             {
                 var changed = _bin.Process(WorkerPaths.MediaDir, DateTimeOffset.UtcNow);
-                if (changed > 0) _logger.LogInformation("Rubbish bin: {Count} post(s) handled.", changed);
+                if (changed > 0)
+                {
+                    _logger.LogInformation("Rubbish bin: {Count} post(s) handled.", changed);
+                    _progress.ForgetRecent(); // their previews are gone
+                }
                 await _signals.Bin.WaitAsync(ExpiryCheckInterval, stoppingToken);
             }
             catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)

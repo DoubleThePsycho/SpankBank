@@ -10,20 +10,31 @@ public sealed class DownloadStore
 
     public DownloadStore(DatabasePaths paths) => _paths = paths;
 
-    /// <summary>Matched posts of enabled watches that are neither on this device, blacklisted nor waiting out a retry delay.</summary>
+    /// <summary>
+    /// Matched posts of enabled watches that are neither on this device, blacklisted nor waiting out a retry delay.
+    /// Posts the export does not mark deleted come first: the others have to be looked for in the Wayback Machine, which
+    /// is slow and rate-limited, and must not hold up the files e621 serves.
+    /// </summary>
     public IReadOnlyList<long> NextPending(int limit, DateTimeOffset now)
     {
         using var connection = OpenAttached();
+        var ids = QueryPending(connection, limit, now, deletedToo: false);
+        return ids.Count > 0 ? ids : QueryPending(connection, limit, now, deletedToo: true);
+    }
 
+    private static List<long> QueryPending(SqliteConnection connection, int limit, DateTimeOffset now, bool deletedToo)
+    {
         using var cmd = connection.CreateCommand();
-        cmd.CommandText = """
+        cmd.CommandText = $"""
             SELECT DISTINCT m.PostId
             FROM WatchMatches m
             JOIN WatchedItems w ON w.Id = m.WatchedItemId AND w.Enabled = 1
+            {(deletedToo ? "" : "LEFT JOIN srv.Posts p ON p.Id = m.PostId")}
             WHERE NOT EXISTS (SELECT 1 FROM dev.Posts d WHERE d.Id = m.PostId AND d.SavedAt IS NOT NULL)
               AND NOT EXISTS (SELECT 1 FROM DownloadAttempts a WHERE a.PostId = m.PostId AND a.NextAttemptAt > $now)
               AND NOT EXISTS (SELECT 1 FROM BlockedPosts b WHERE b.PostId = m.PostId)
               AND NOT EXISTS (SELECT 1 FROM DeletedPosts x WHERE x.PostId = m.PostId)
+              {(deletedToo ? "" : "AND COALESCE(p.IsDeleted, 0) = 0")}
             LIMIT $limit;
             """;
         cmd.Parameters.AddWithValue("$now", now.ToString("o"));
@@ -242,6 +253,8 @@ public sealed class DownloadStore
         connection.Open();
         using var cmd = connection.CreateCommand();
         cmd.CommandText = $"ATTACH DATABASE '{_paths.DeviceDatabasePath.Replace("'", "''")}' AS dev;";
+        cmd.ExecuteNonQuery();
+        cmd.CommandText = $"ATTACH DATABASE '{_paths.ServerDatabasePath.Replace("'", "''")}' AS srv;";
         cmd.ExecuteNonQuery();
         return connection;
     }
