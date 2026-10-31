@@ -222,6 +222,10 @@ public sealed class ProgressTracker
             }
 
             double? rate = null, remaining = null;
+            // The rate is what finished in the last minute; samples are dropped when they age out, so a stall shows "no estimate"
+            // instead of an ever slower rate and an absurd time left.
+            var cutoff = DateTimeOffset.UtcNow - TimeSpan.FromSeconds(60);
+            while (_completions.Count > 0 && _completions.Peek() < cutoff) _completions.Dequeue();
             if (_downloadActive && _completions.Count >= 2)
             {
                 var window = (DateTimeOffset.UtcNow - _completions.Peek()).TotalSeconds;

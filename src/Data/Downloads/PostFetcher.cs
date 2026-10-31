@@ -41,7 +41,15 @@ public sealed class PostFetcher : IDisposable
 
     public PostFetcher()
     {
-        _http = new HttpClient { Timeout = Timeout.InfiniteTimeSpan };
+        // Idle keep-alive connections are dropped quickly: after a long idle spell a NAT or firewall may have forgotten them, and a
+        // request sent down such a connection waits (for an hour or more) instead of failing. Connecting has its own limit.
+        var handler = new SocketsHttpHandler
+        {
+            ConnectTimeout = TimeSpan.FromSeconds(30),
+            PooledConnectionIdleTimeout = TimeSpan.FromSeconds(30),
+            PooledConnectionLifetime = TimeSpan.FromMinutes(2),
+        };
+        _http = new HttpClient(handler) { Timeout = Timeout.InfiniteTimeSpan };
         _http.DefaultRequestHeaders.UserAgent.ParseAdd("SpankBank/0.1 (personal archiver)");
     }
 
@@ -169,7 +177,10 @@ public sealed class PostFetcher : IDisposable
         try
         {
             if (gate is not null) await gate.WaitAsync(cancellationToken);
-            using var response = await _http.SendAsync(new HttpRequestMessage(HttpMethod.Get, url), HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+            // The server has to start answering within the stall time; the body is guarded per read below.
+            using var headerTimeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            headerTimeout.CancelAfter(stall);
+            using var response = await _http.SendAsync(new HttpRequestMessage(HttpMethod.Get, url), HttpCompletionOption.ResponseHeadersRead, headerTimeout.Token);
             if (response.StatusCode is HttpStatusCode.NotFound or HttpStatusCode.Forbidden or HttpStatusCode.Gone)
                 return new DownloadResult(DownloadKind.NotFound, $"HTTP {(int)response.StatusCode}");
             if (!response.IsSuccessStatusCode)
@@ -213,7 +224,7 @@ public sealed class PostFetcher : IDisposable
         catch (Exception ex) when (ex is HttpRequestException or IOException or OperationCanceledException && !cancellationToken.IsCancellationRequested)
         {
             TryDelete(part);
-            return new DownloadResult(DownloadKind.Failed, ex is OperationCanceledException ? "The transfer stalled." : ex.Message);
+            return new DownloadResult(DownloadKind.Failed, ex is OperationCanceledException ? "The transfer stalled or the server did not answer in time." : ex.Message);
         }
     }
 

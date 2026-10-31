@@ -28,7 +28,9 @@ function duration (seconds: number): string {
   const minutes = Math.round(seconds / 60);
   if (minutes < 90) return `about ${minutes} minutes`;
   const hours = seconds / 3600;
-  return hours < 36 ? `about ${hours.toFixed(1)} hours` : `about ${Math.round(hours / 24)} days`;
+  if (hours < 36) return `about ${hours.toFixed(1)} hours`;
+  const days = Math.round(hours / 24);
+  return days > 60 ? "more than two months" : `about ${days} days`;
 }
 
 function amount (value: number, unit: string): string {
