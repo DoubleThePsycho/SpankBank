@@ -317,6 +317,19 @@ $count-red: #e0605e;
   .artist-side { margin-top: 0; @media (min-width: 75rem) { margin-top: 0; } }
 }
 
+// Post stats row on the artist page: the same icons and colours as the list's count columns.
+.post-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 1.5rem;
+  > span { white-space: nowrap; font-variant-numeric: tabular-nums; }
+  svg { vertical-align: middle; }
+  .stat-label { color: themed("color-text-muted"); }
+  .count-downloaded { color: $count-green; }
+  .count-restored { color: $count-yellow; }
+  .count-lost { color: $count-red; }
+}
+
 // The key column is only as wide as its text, left-aligned.
 .artist-info-table {
   width: 100%;

@@ -35,6 +35,8 @@ public class ShowModel : PageModel
     public IReadOnlyList<string> Characters { get; private set; } = [];
     public IReadOnlyList<PostListItem> RecentPosts { get; private set; } = [];
     public long DownloadedCount { get; private set; }
+    /// <summary>Downloaded / restored / lost counts of the artist's watch (the same numbers as /artists/local).</summary>
+    public WatchPostStats Stats { get; private set; } = WatchPostStats.None;
     /// <summary>Pools that were added for this artist (automatically or from a suggestion).</summary>
     public IReadOnlyList<WatchedPoolItem> WatchedPools { get; private set; } = [];
     /// <summary>Id and post count (catalog) of the artist's character tags, by tag name.</summary>
@@ -58,6 +60,7 @@ public class ShowModel : PageModel
             ShowAllSuggestions = Request.Query["all"] == "1";
             Suggestions = _watches.GetPoolSuggestions(ShowAllSuggestions, Watch.Id);
             WatchedPools = _watches.GetArtistPools(artist.Name);
+            Stats = _watches.GetPostStats(WatchedItemType.Artist, [Watch.Id]).GetValueOrDefault(Watch.Id, WatchPostStats.None);
             CharacterTags = _tags.GetTagInfo(Watch.ArtistTags.Where(t => t.Kind == ArtistTagKind.Character).Select(t => t.Tag).ToList())
                 .ToDictionary(t => t.Name);
         }
