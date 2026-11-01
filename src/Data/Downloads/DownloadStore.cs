@@ -12,29 +12,36 @@ public sealed class DownloadStore
 
     /// <summary>
     /// Matched posts of enabled watches that are neither on this device, blacklisted nor waiting out a retry delay.
-    /// Posts the export does not mark deleted come first: the others have to be looked for in the Wayback Machine, which
-    /// is slow and rate-limited, and must not hold up the files e621 serves.
+    /// Posts the export does not mark deleted come first. The others have to be looked for at their sources and in the
+    /// Wayback Machine, which is slow and rate-limited, so they only get a few places per batch and never hold up the files e621 serves.
     /// </summary>
     public IReadOnlyList<long> NextPending(int limit, DateTimeOffset now)
     {
         using var connection = OpenAttached();
-        var ids = QueryPending(connection, limit, now, deletedToo: false);
-        return ids.Count > 0 ? ids : QueryPending(connection, limit, now, deletedToo: true);
+        var reserved = limit >= 6 ? limit / 6 : 0;
+        var ids = QueryPending(connection, limit - reserved, now, PendingKind.NotDeleted);
+        // Room the normal posts did not fill goes to the deleted ones too.
+        ids.AddRange(QueryPending(connection, limit - ids.Count, now, PendingKind.Deleted));
+        return ids;
     }
 
-    private static List<long> QueryPending(SqliteConnection connection, int limit, DateTimeOffset now, bool deletedToo)
+    private enum PendingKind { NotDeleted, Deleted }
+
+    private static List<long> QueryPending(SqliteConnection connection, int limit, DateTimeOffset now, PendingKind kind)
     {
+        if (limit <= 0) return [];
+
         using var cmd = connection.CreateCommand();
         cmd.CommandText = $"""
             SELECT DISTINCT m.PostId
             FROM WatchMatches m
             JOIN WatchedItems w ON w.Id = m.WatchedItemId AND w.Enabled = 1
-            {(deletedToo ? "" : "LEFT JOIN srv.Posts p ON p.Id = m.PostId")}
+            LEFT JOIN srv.Posts p ON p.Id = m.PostId
             WHERE NOT EXISTS (SELECT 1 FROM dev.Posts d WHERE d.Id = m.PostId AND d.SavedAt IS NOT NULL)
               AND NOT EXISTS (SELECT 1 FROM DownloadAttempts a WHERE a.PostId = m.PostId AND a.NextAttemptAt > $now)
               AND NOT EXISTS (SELECT 1 FROM BlockedPosts b WHERE b.PostId = m.PostId)
               AND NOT EXISTS (SELECT 1 FROM DeletedPosts x WHERE x.PostId = m.PostId)
-              {(deletedToo ? "" : "AND COALESCE(p.IsDeleted, 0) = 0")}
+              AND COALESCE(p.IsDeleted, 0) {(kind == PendingKind.Deleted ? "= 1" : "= 0")}
             LIMIT $limit;
             """;
         cmd.Parameters.AddWithValue("$now", now.ToString("o"));
@@ -43,6 +50,45 @@ public sealed class DownloadStore
         var ids = new List<long>();
         while (reader.Read()) ids.Add(reader.GetInt64(0));
         return ids;
+    }
+
+    /// <summary>
+    /// Posts marked lost before sources were tried are looked at again when a source address exists for them (they would
+    /// otherwise wait out the 30-day retry).
+    /// </summary>
+    /// <returns>How many posts will be tried again.</returns>
+    public int RetryLostWithSources(DateTimeOffset now)
+    {
+        using var connection = OpenAttached();
+        var retry = new List<long>();
+        using (var cmd = connection.CreateCommand())
+        {
+            cmd.CommandText = """
+                SELECT a.PostId, p.Source
+                FROM DownloadAttempts a JOIN srv.Posts p ON p.Id = a.PostId
+                WHERE a.LastError LIKE 'Deleted on e621 and not found%' AND a.NextAttemptAt > $now AND p.Source IS NOT NULL;
+                """;
+            cmd.Parameters.AddWithValue("$now", now.ToString("o"));
+            using var reader = cmd.ExecuteReader();
+            while (reader.Read())
+            {
+                var source = reader.GetString(1);
+                if (SourceLinks.DirectFileUrls(source).Count > 0 || SourceLinks.InkbunnySubmissionIds(source).Count > 0) retry.Add(reader.GetInt64(0));
+            }
+        }
+
+        using var transaction = connection.BeginTransaction();
+        foreach (var id in retry)
+        {
+            using var update = connection.CreateCommand();
+            update.Transaction = transaction;
+            update.CommandText = "UPDATE DownloadAttempts SET NextAttemptAt = $now WHERE PostId = $id;";
+            update.Parameters.AddWithValue("$now", now.ToString("o"));
+            update.Parameters.AddWithValue("$id", id);
+            update.ExecuteNonQuery();
+        }
+        transaction.Commit();
+        return retry.Count;
     }
 
     public int CountPending(DateTimeOffset now)
@@ -69,7 +115,7 @@ public sealed class DownloadStore
         using var cmd = connection.CreateCommand();
         cmd.CommandText = """
             SELECT Id, Md5, FileExt, IsDeleted, Rating, Score, ImageWidth, ImageHeight, FileSize,
-                   CreatedAt, UpdatedAt, TagString, Description, Duration, ParentId
+                   CreatedAt, UpdatedAt, TagString, Description, Duration, ParentId, Source
             FROM Posts WHERE Id = $id;
             """;
         cmd.Parameters.AddWithValue("$id", id);
@@ -91,7 +137,8 @@ public sealed class DownloadStore
             reader.IsDBNull(11) ? "" : reader.GetString(11),
             reader.IsDBNull(12) ? null : reader.GetString(12),
             reader.IsDBNull(13) ? null : reader.GetDouble(13),
-            reader.IsDBNull(14) ? null : reader.GetInt64(14));
+            reader.IsDBNull(14) ? null : reader.GetInt64(14),
+            reader.IsDBNull(15) ? null : reader.GetString(15));
     }
 
     /// <summary>

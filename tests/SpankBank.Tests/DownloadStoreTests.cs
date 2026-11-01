@@ -35,15 +35,32 @@ public class DownloadStoreTests : IDisposable
     }
 
     [Fact]
-    public void Posts_the_export_marks_deleted_come_after_the_others()
+    public void Posts_the_export_marks_deleted_come_after_the_others_and_never_crowd_them_out()
     {
         foreach (var id in new[] { 1, 2 })
             _db.Execute(_db.Paths.ServerDatabasePath, $"INSERT INTO Posts (Id, CreatedAt, UpdatedAt, Md5, FileExt, IsDeleted) VALUES ({id}, '2026-01-01', '2026-01-01', '{new string('a', 32)}', 'png', 1);");
 
-        // The deleted ones wait while a normal post is pending, and are handed out once it is not.
-        Assert.Equal([3L], _store.NextPending(10, Now));
-        _store.MarkSaved(Post(3), LocalPostStatus.Downloaded);
-        Assert.Equal([1L, 2L], _store.NextPending(10, Now).Order().ToArray());
+        // Room left over goes to the deleted ones, after the normal post.
+        Assert.Equal([3L, 1L, 2L], _store.NextPending(10, Now).Take(1).Concat(_store.NextPending(10, Now).Skip(1).Order()).ToArray());
+
+        // In a small batch the normal posts keep every place; deleted ones only get their few reserved places in big batches.
+        Assert.Equal([3L], _store.NextPending(2, Now).Where(id => id == 3).ToArray());
+        Assert.Equal(2, _store.NextPending(2, Now).Count);
+    }
+
+    [Fact]
+    public void Lost_posts_with_a_source_to_try_are_queued_again_but_others_stay_lost()
+    {
+        foreach (var (id, source) in new[] { (1, "https://inkbunny.net/s/5"), (2, "https://www.furaffinity.net/view/9/"), (3, "https://inkbunny.net/files/full/1/1.png") })
+            _db.Execute(_db.Paths.ServerDatabasePath, $"INSERT INTO Posts (Id, CreatedAt, UpdatedAt, Md5, FileExt, IsDeleted, Source) VALUES ({id}, '2026-01-01', '2026-01-01', '{new string('a', 32)}', 'png', 1, '{source}');");
+        foreach (var id in new[] { 1, 2, 3 }) _store.RecordFailure(id, "Deleted on e621 and not found at its sources or in the Wayback Machine.", TimeSpan.FromDays(30));
+
+        Assert.Equal(2, _store.RetryLostWithSources(DateTimeOffset.UtcNow));
+
+        var next = _store.NextPending(10, DateTimeOffset.UtcNow.AddSeconds(1));
+        Assert.Contains(1L, next);
+        Assert.Contains(3L, next);
+        Assert.DoesNotContain(2L, next);
     }
 
     [Fact]

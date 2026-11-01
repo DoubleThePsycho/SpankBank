@@ -38,7 +38,13 @@ public sealed class DownloadService : BackgroundService
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         Directory.CreateDirectory(WorkerPaths.MediaDir);
-        using var fetcher = new PostFetcher();
+        using var fetcher = new PostFetcher { Notice = message => _logger.LogWarning("{Message}", message) };
+        if (_settings.Get(WorkerSettingsKeys.SourcesRetried) != "true")
+        {
+            var again = _store.RetryLostWithSources(DateTimeOffset.UtcNow);
+            _settings.Set(WorkerSettingsKeys.SourcesRetried, "true");
+            _logger.LogInformation("{Count:N0} post(s) marked lost have a source to try and will be looked at again.", again);
+        }
         var inSession = false;
         var savedThisSession = 0;
 

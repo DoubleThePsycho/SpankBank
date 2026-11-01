@@ -22,6 +22,8 @@ public static class WorkerSettingsKeys
     public const string LastRunCompletedAt = "Worker.LastRunCompletedAt";
     public const string LastRunResult = "Worker.LastRunResult";
 
+    /// <summary>"true" once the posts that were lost before sources were tried have been queued for another look.</summary>
+    public const string SourcesRetried = "Download.SourcesRetried";
     /// <summary>"false" pauses the downloader (default: on).</summary>
     public const string DownloadEnabled = "Download.Enabled";
     /// <summary>Most files fetched per UTC day (default 2000), so a new watch cannot hammer e621 in one go.</summary>

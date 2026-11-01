@@ -5,7 +5,7 @@ namespace SpankBank.Data.Repositories;
 
 /// <summary>Downloaded / restored / lost post counts of one watch (see <see cref="WatchesRepository.GetPostStats"/>).</summary>
 /// <param name="Downloaded">Originals fetched from e621.</param>
-/// <param name="Restored">Recovered from the Wayback Machine (the original, or only e621's sample).</param>
+/// <param name="Restored">Recovered from a source site (Inkbunny...) or the Wayback Machine (the original, or only e621's sample).</param>
 /// <param name="Lost">Deleted on e621 and not found anywhere, so they cannot be had.</param>
 /// <param name="Pending">Still to be fetched: not tried yet or waiting out a retry (not blacklisted, binned or lost).</param>
 public sealed record WatchPostStats(int Downloaded, int Restored, int Lost, int Pending = 0)

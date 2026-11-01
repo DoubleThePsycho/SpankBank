@@ -16,4 +16,5 @@ public sealed record CatalogPost(
     string TagString,
     string? Description,
     double? Duration,
-    long? ParentId);
+    long? ParentId,
+    string? Source = null);

@@ -26,7 +26,7 @@ public sealed record FetchOutcome(FetchResult Result, string Detail, DateTimeOff
 /// Gets a post's file onto disk. Active posts come from e621's CDN. Deleted posts (or ones the CDN no longer has)
 /// are looked for in the Wayback Machine: first e621's own file for that md5 (verified), then its sample.
 /// </summary>
-public sealed class PostFetcher : IDisposable
+public sealed partial class PostFetcher : IDisposable
 {
     private const string StaticHost = "https://static1.e621.net";
     private static readonly TimeSpan StallTimeout = TimeSpan.FromSeconds(60);
@@ -78,7 +78,11 @@ public sealed class PostFetcher : IDisposable
             }
         }
 
-        onStage?.Invoke("Not on e621; looking in the Wayback Machine");
+        onStage?.Invoke("Not on e621; trying its sources");
+        if (await RecoverFromSourcesAsync(post, original, cancellationToken, onProgress) is { } fromSource)
+            return fromSource;
+
+        onStage?.Invoke("Not at its sources; looking in the Wayback Machine");
         return await RecoverAsync(post, mediaRoot, original, cancellationToken, onProgress);
     }
 
@@ -90,9 +94,12 @@ public sealed class PostFetcher : IDisposable
             return Deferred();
 
         var path = $"data/{post.Md5[..2]}/{post.Md5[2..4]}/{post.Md5}.{post.Ext}";
-        foreach (var host in new[] { "static1.e621.net", "e621.net" })
+        // e621's own addresses, then the file addresses its source list gives (the archive may have kept those).
+        var addresses = new[] { $"static1.e621.net/{path}", $"e621.net/{path}" }
+            .Concat(SourceLinks.DirectFileUrls(post.Source).Take(3).Select(SourceLinks.WithoutScheme));
+        foreach (var address in addresses)
         {
-            var snapshots = await SnapshotsAsync($"{host}/{path}", 6, cancellationToken);
+            var snapshots = await SnapshotsAsync(address, 6, cancellationToken);
             if (snapshots is null)
                 return Deferred();
 
@@ -116,7 +123,7 @@ public sealed class PostFetcher : IDisposable
                 return new FetchOutcome(FetchResult.SampleOnly, $"Only the sample was recovered from the Wayback Machine ({snapshot.Timestamp[..8]}).");
         }
 
-        return new FetchOutcome(FetchResult.NotAvailable, "Deleted on e621 and not found in the Wayback Machine.");
+        return new FetchOutcome(FetchResult.NotAvailable, "Deleted on e621 and not found at its sources or in the Wayback Machine.");
     }
 
     private FetchOutcome Deferred()
