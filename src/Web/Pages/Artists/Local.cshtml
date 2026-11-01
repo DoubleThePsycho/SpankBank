@@ -59,7 +59,7 @@
           <tr class="group-headers">
             <th colspan="3" class="group-blank"></th>
             <th colspan="3" class="group-label sep">Characters</th>
-            <th colspan="4" class="group-label sep">Posts</th>
+            <th colspan="5" class="group-label sep">Posts</th>
             <th class="group-blank sep"></th>
           </tr>
           <tr class="column-headers">
@@ -73,6 +73,7 @@
             <th class="col-count count-downloaded" aria-sort="@view.AriaSort("downloaded")"><a href="@view.SortUrl("downloaded")" title="Downloaded from e621"><svg-icon name="download" width="16" height="16" /><span class="sr-only">Downloaded</span><span class="sort-mark">@(view.Mark("downloaded"))</span></a></th>
             <th class="col-count count-restored" aria-sort="@view.AriaSort("restored")"><a href="@view.SortUrl("restored")" title="Restored from the Wayback Machine"><svg-icon name="history" width="16" height="16" /><span class="sr-only">Restored</span><span class="sort-mark">@(view.Mark("restored"))</span></a></th>
             <th class="col-count count-lost" aria-sort="@view.AriaSort("lost")"><a href="@view.SortUrl("lost")" title="Deleted on e621 and not recoverable"><svg-icon name="skull" width="16" height="16" /><span class="sr-only">Lost</span><span class="sort-mark">@(view.Mark("lost"))</span></a></th>
+            <th class="col-count count-pending" aria-sort="@view.AriaSort("pending")"><a href="@view.SortUrl("pending")" title="Still to be fetched: not tried yet or waiting for a retry"><svg-icon name="hourglass" width="16" height="16" /><span class="sr-only">Pending</span><span class="sort-mark">@(view.Mark("pending"))</span></a></th>
             <th class="col-status sep">Status</th>
           </tr>
         </thead>
@@ -91,6 +92,7 @@
               <td class="col-count count-downloaded">@item.Stats.Downloaded.ToString("N0")</td>
               <td class="col-count count-restored">@item.Stats.Restored.ToString("N0")</td>
               <td class="col-count count-lost">@item.Stats.Lost.ToString("N0")</td>
+              <td class="col-count count-pending">@item.Stats.Pending.ToString("N0")</td>
               <td class="col-status sep watch-row-actions">
                 <form method="post" asp-page-handler="Toggle" data-pill-toggle>
                   <input type="hidden" name="id" value="@artist.Id"><input type="hidden" name="enabled" value="@((!artist.Enabled).ToString().ToLowerInvariant())"><input type="hidden" name="returnUrl" value="@view.Current">

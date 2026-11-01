@@ -38,10 +38,22 @@ public class WatchListTests : IDisposable
         Match(a, 1, 2, 3, 4, 5, 6, 7);
         Failed(5, "Deleted on e621 and not found in the Wayback Machine.");
         Failed(6, "The catalog has no file for this post.");
-        Failed(7, "HTTP 503"); // a transient failure is not "lost"
+        Failed(7, "HTTP 503"); // a transient failure is not "lost": it is still pending
 
         var stats = _watches.GetPostStats(WatchedItemType.Artist)[a];
-        Assert.Equal(new WatchPostStats(Downloaded: 2, Restored: 2, Lost: 2), stats);
+        Assert.Equal(new WatchPostStats(Downloaded: 2, Restored: 2, Lost: 2, Pending: 1), stats);
+    }
+
+    [Fact]
+    public void Pending_leaves_out_blacklisted_binned_and_untouched_counts_as_pending()
+    {
+        var a = Artist("alpha");
+        Match(a, 1, 2, 3, 4);
+        App("INSERT INTO BlockedPosts (PostId) VALUES (2);");
+        App("INSERT INTO DeletedPosts (PostId, DeletedAt, State, Reason) VALUES (3, '2026-01-01', 1, 'user');");
+
+        // 1 and 4 were never tried; 2 is blacklisted and 3 is in the bin.
+        Assert.Equal(2, _watches.GetPostStats(WatchedItemType.Artist)[a].Pending);
     }
 
     [Fact]

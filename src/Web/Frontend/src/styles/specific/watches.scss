@@ -216,6 +216,7 @@
 $count-green: #5cb85c;
 $count-yellow: #e6c040;
 $count-red: #e0605e;
+$count-orange: #e8924a;
 
 .watches-table {
   &[data-server-sorted] {
@@ -270,10 +271,11 @@ $count-red: #e0605e;
   .count-downloaded { color: $count-green; }
   .count-restored { color: $count-yellow; }
   .count-lost { color: $count-red; }
+  .count-pending { color: $count-orange; }
   .count-found { color: #9aa5b1; }
   .count-enabled { color: #4db6e5; }
   .count-custom { color: #c792ea; }
-  th.count-db a, th.count-downloaded a, th.count-restored a, th.count-lost a, th.count-found a, th.count-enabled a, th.count-custom a { color: inherit; }
+  th.count-db a, th.count-downloaded a, th.count-restored a, th.count-lost a, th.count-pending a, th.count-found a, th.count-enabled a, th.count-custom a { color: inherit; }
 
   .watch-row-actions form { display: inline; margin: 0; }
 }
@@ -328,6 +330,7 @@ $count-red: #e0605e;
   .count-downloaded { color: $count-green; }
   .count-restored { color: $count-yellow; }
   .count-lost { color: $count-red; }
+  .count-pending { color: $count-orange; }
 }
 
 // The key column is only as wide as its text, left-aligned.

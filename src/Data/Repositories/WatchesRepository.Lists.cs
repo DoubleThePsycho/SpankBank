@@ -7,9 +7,10 @@ namespace SpankBank.Data.Repositories;
 /// <param name="Downloaded">Originals fetched from e621.</param>
 /// <param name="Restored">Recovered from the Wayback Machine (the original, or only e621's sample).</param>
 /// <param name="Lost">Deleted on e621 and not found anywhere, so they cannot be had.</param>
-public sealed record WatchPostStats(int Downloaded, int Restored, int Lost)
+/// <param name="Pending">Still to be fetched: not tried yet or waiting out a retry (not blacklisted, binned or lost).</param>
+public sealed record WatchPostStats(int Downloaded, int Restored, int Lost, int Pending = 0)
 {
-    public static readonly WatchPostStats None = new(0, 0, 0);
+    public static readonly WatchPostStats None = new(0, 0, 0, 0);
     public int Local => Downloaded + Restored;
 }
 
@@ -53,18 +54,21 @@ public sealed partial class WatchesRepository
             SELECT m.WatchedItemId,
                    COALESCE(SUM(d.Status = 1), 0),
                    COALESCE(SUM(d.Status IN (2, 3)), 0),
-                   COALESCE(SUM(d.Id IS NULL AND x.PostId IS NOT NULL), 0)
+                   COALESCE(SUM(d.Id IS NULL AND x.PostId IS NOT NULL), 0),
+                   COALESCE(SUM(d.Id IS NULL AND x.PostId IS NULL AND b.PostId IS NULL AND g.PostId IS NULL), 0)
             FROM WatchMatches m
             JOIN WatchedItems w ON w.Id = m.WatchedItemId AND w.ItemType = $type{idFilter}
             LEFT JOIN dev.Posts d ON d.Id = m.PostId AND d.SavedAt IS NOT NULL
             LEFT JOIN DownloadAttempts x ON x.PostId = m.PostId AND {LostCondition}
+            LEFT JOIN BlockedPosts b ON b.PostId = m.PostId
+            LEFT JOIN DeletedPosts g ON g.PostId = m.PostId
             GROUP BY m.WatchedItemId;
             """;
         cmd.Parameters.AddWithValue("$type", (int)type);
         var stats = new Dictionary<long, WatchPostStats>();
         using var reader = cmd.ExecuteReader();
         while (reader.Read())
-            stats[reader.GetInt64(0)] = new WatchPostStats(reader.GetInt32(1), reader.GetInt32(2), reader.GetInt32(3));
+            stats[reader.GetInt64(0)] = new WatchPostStats(reader.GetInt32(1), reader.GetInt32(2), reader.GetInt32(3), reader.GetInt32(4));
         return stats;
     }
 
@@ -91,6 +95,7 @@ public sealed partial class WatchesRepository
             "downloaded" => i => i.Stats.Downloaded,
             "restored" => i => i.Stats.Restored,
             "lost" => i => i.Stats.Lost,
+            "pending" => i => i.Stats.Pending,
             _ => i => i.Entry.SourceValue.ToLowerInvariant(),
         };
         var ordered = descending ? items.OrderByDescending(key) : items.OrderBy(key);

@@ -31,6 +31,7 @@
                 <span class="count-downloaded" title="Downloaded from e621"><svg-icon name="download" width="16" height="16" /> @Model.Stats.Downloaded.ToString("N0") <span class="stat-label">downloaded</span></span>
                 <span class="count-restored" title="Restored from the Wayback Machine"><svg-icon name="history" width="16" height="16" /> @Model.Stats.Restored.ToString("N0") <span class="stat-label">restored</span></span>
                 <span class="count-lost" title="Deleted on e621 and not recoverable"><svg-icon name="skull" width="16" height="16" /> @Model.Stats.Lost.ToString("N0") <span class="stat-label">lost</span></span>
+                <span class="count-pending" title="Still to be fetched: not tried yet or waiting for a retry"><svg-icon name="hourglass" width="16" height="16" /> @Model.Stats.Pending.ToString("N0") <span class="stat-label">pending</span></span>
               </span>
             </td>
           </tr>
