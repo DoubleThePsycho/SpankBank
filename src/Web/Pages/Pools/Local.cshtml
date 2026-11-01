@@ -93,18 +93,7 @@
 
     @foreach (var pool in Model.Pools.Items.Select(i => i.Entry))
     {
-      <div class="st-overlay hidden" id="modal-@pool.Id" role="dialog" aria-modal="true" aria-labelledby="modal-@pool.Id-title" tabindex="-1">
-        <div class="st-overlay-wrapper">
-          <button type="button" class="st-button close-button" aria-label="Close">&times;</button>
-          <div class="simple_form">
-            <h1 id="modal-@pool.Id-title">Pool #@pool.SourceValue</h1>
-            <div class="st-overlay-error" data-error></div>
-            <div data-slot>
-              <partial name="_PoolModalBody" model="pool" />
-            </div>
-          </div>
-        </div>
-      </div>
+      <partial name="_PoolModal" model="pool" />
     }
   </div>
 </div>

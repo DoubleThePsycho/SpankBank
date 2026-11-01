@@ -1,0 +1,14 @@
+@model SpankBank.Data.Repositories.WatchEntry
+@* The edit dialog of a watched pool, opened from the local pools list and from the pool's own page. Its forms post to /pools/local. *@
+<div class="st-overlay hidden" id="modal-@Model.Id" role="dialog" aria-modal="true" aria-labelledby="modal-@Model.Id-title" tabindex="-1">
+  <div class="st-overlay-wrapper">
+    <button type="button" class="st-button close-button" aria-label="Close">&times;</button>
+    <div class="simple_form">
+      <h1 id="modal-@Model.Id-title">Pool #@Model.SourceValue</h1>
+      <div class="st-overlay-error" data-error></div>
+      <div data-slot>
+        <partial name="_PoolModalBody" model="Model" />
+      </div>
+    </div>
+  </div>
+</div>

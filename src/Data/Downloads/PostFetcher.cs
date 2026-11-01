@@ -122,6 +122,12 @@ public sealed class PostFetcher : IDisposable
     private FetchOutcome Deferred()
         => new(FetchResult.Deferred, "The Wayback Machine is limiting requests; trying again later.", _waybackBlockedUntil > DateTimeOffset.UtcNow ? _waybackBlockedUntil : DateTimeOffset.UtcNow.AddMinutes(1));
 
+    private void BackOffWayback()
+    {
+        _waybackBackoff = TimeSpan.FromSeconds(Math.Min(_waybackBackoff.TotalSeconds * 2, 900));
+        _waybackBlockedUntil = DateTimeOffset.UtcNow + _waybackBackoff;
+    }
+
     private void WaybackSaysSlowDown(HttpResponseMessage response)
     {
         var retryAfter = response.Headers.RetryAfter?.Delta;
@@ -161,6 +167,8 @@ public sealed class PostFetcher : IDisposable
         }
         catch (Exception ex) when (ex is HttpRequestException or JsonException or OperationCanceledException && !cancellationToken.IsCancellationRequested)
         {
+            // Not answering at all (refused, timed out) usually means this address is being kept out: back off, don't hammer it.
+            if (ex is not JsonException) BackOffWayback();
             return null;
         }
     }

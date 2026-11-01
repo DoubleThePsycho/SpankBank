@@ -5,6 +5,9 @@
     var pool = Model.Pool;
     ViewData["Title"] = "Pool - " + pool.Name.Replace('_', ' ');
 }
+@section Scripts {
+  <script type="module" src="~/dist/watches.js" asp-append-version="true"></script>
+}
 @section SecondaryNav {
   <partial name="_AreaNav" model='"pools"' />
 }
@@ -27,7 +30,7 @@
       @if (!pool.IsActive) { <text>This pool is inactive.</text> }
       @if (Model.Watch is { } watch)
       {
-        <text>Watching: @(watch.Enabled ? "enabled" : "disabled"). <a href="/pools/local">Manage</a></text>
+        <text>Watching: @(watch.Enabled ? "enabled" : "disabled"). <a href="#" data-open-modal="modal-@watch.Id">Manage</a></text>
       }
       else
       {
@@ -51,5 +54,10 @@
     </div>
 
     <partial name="_Paginator" model="new SpankBank.Web.Services.PagerModel(Model.PageNumber, Model.LastPage, Model.PageUrl)" />
+
+    @if (Model.Watch is { } managed)
+    {
+      <partial name="_PoolModal" model="managed" />
+    }
   </div>
 </div>
