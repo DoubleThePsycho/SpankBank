@@ -64,6 +64,19 @@ public class DownloadStoreTests : IDisposable
     }
 
     [Fact]
+    public void A_prioritised_watch_goes_first_even_for_deleted_posts()
+    {
+        var other = new WatchesRepository(_db.Paths.AppDatabasePath, _db.Paths.ServerDatabasePath).Add(WatchedItemType.Artist, "urgent", "urgent")!.Value;
+        _db.Execute(_db.Paths.AppDatabasePath, $"INSERT INTO WatchMatches (WatchedItemId, PostId) VALUES ({other}, 9);");
+        _db.Execute(_db.Paths.ServerDatabasePath, $"INSERT INTO Posts (Id, CreatedAt, UpdatedAt, Md5, FileExt, IsDeleted) VALUES (9, '2026-01-01', '2026-01-01', '{new string('a', 32)}', 'png', 1);");
+        Assert.DoesNotContain(9L, _store.NextPending(3, Now));
+
+        new WatchesRepository(_db.Paths.AppDatabasePath, _db.Paths.ServerDatabasePath).SetPriority(other, true);
+
+        Assert.Equal(9L, _store.NextPending(3, Now)[0]);
+    }
+
+    [Fact]
     public void A_post_waiting_out_a_retry_is_neither_next_nor_counted()
     {
         _store.RecordFailure(2, "boom", TimeSpan.FromHours(1));

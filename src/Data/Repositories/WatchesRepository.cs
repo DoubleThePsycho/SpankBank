@@ -35,7 +35,8 @@ public sealed record WatchEntry(
     int SuggestedPools = 0,
     bool IgnoreBlacklist = false,
     string Whitelist = "",
-    string Blacklist = "")
+    string Blacklist = "",
+    bool Priority = false)
 {
     /// <summary>"1,234" once the worker has matched this watch, "pending" until then.</summary>
     public string MatchText => Matched ? MatchCount.ToString("N0") : "pending";
@@ -63,16 +64,16 @@ public sealed partial class WatchesRepository
         using var connection = new SqliteConnection(_appConnectionString);
         connection.Open();
 
-        var entries = new List<(long Id, string Source, string Display, bool Enabled, string? LocalName, int Count, bool Matched, string? Error, string? Origin, bool IgnoreBlacklist, string Whitelist, string Blacklist)>();
+        var entries = new List<(long Id, string Source, string Display, bool Enabled, string? LocalName, int Count, bool Matched, string? Error, string? Origin, bool IgnoreBlacklist, string Whitelist, string Blacklist, bool Priority)>();
         using (var cmd = connection.CreateCommand())
         {
-            cmd.CommandText = "SELECT Id, SourceValue, DisplayName, Enabled, LocalName, MatchCount, LastCheckedAt IS NOT NULL, ErrorMessage, Origin, IgnoreBlacklist, Whitelist, Blacklist FROM WatchedItems WHERE ItemType = $type ORDER BY SourceValue COLLATE NOCASE;";
+            cmd.CommandText = "SELECT Id, SourceValue, DisplayName, Enabled, LocalName, MatchCount, LastCheckedAt IS NOT NULL, ErrorMessage, Origin, IgnoreBlacklist, Whitelist, Blacklist, Priority FROM WatchedItems WHERE ItemType = $type ORDER BY SourceValue COLLATE NOCASE;";
             cmd.Parameters.AddWithValue("$type", (int)type);
             using var reader = cmd.ExecuteReader();
             while (reader.Read())
                 entries.Add((reader.GetInt64(0), reader.GetString(1), reader.GetString(2), reader.GetInt32(3) != 0, reader.IsDBNull(4) ? null : reader.GetString(4),
                     reader.GetInt32(5), reader.GetInt32(6) != 0, reader.IsDBNull(7) ? null : reader.GetString(7),
-                    reader.IsDBNull(8) ? null : reader.GetString(8), reader.GetInt32(9) != 0, reader.GetString(10), reader.GetString(11)));
+                    reader.IsDBNull(8) ? null : reader.GetString(8), reader.GetInt32(9) != 0, reader.GetString(10), reader.GetString(11), reader.GetInt32(12) != 0));
         }
 
         var tagsByItem = new Dictionary<long, List<WatchedArtistTag>>();
@@ -110,7 +111,7 @@ public sealed partial class WatchesRepository
                     : e.Display;
                 return new WatchEntry(e.Id, type, e.Source, display, e.Enabled,
                     tagsByItem.TryGetValue(e.Id, out var tags) ? tags : [], e.LocalName, pool, e.Count, e.Matched, e.Error,
-                    e.Origin, suggested.GetValueOrDefault(e.Id), e.IgnoreBlacklist, e.Whitelist, e.Blacklist);
+                    e.Origin, suggested.GetValueOrDefault(e.Id), e.IgnoreBlacklist, e.Whitelist, e.Blacklist, e.Priority);
             })
             .ToList();
     }
@@ -353,6 +354,9 @@ public sealed partial class WatchesRepository
         cmd.CommandText = "INSERT INTO Settings (Key, Value) VALUES ('Blacklist.Dirty', 'true') ON CONFLICT(Key) DO UPDATE SET Value = 'true';";
         cmd.ExecuteNonQuery();
     }
+
+    /// <summary>A prioritised watch's pending posts are downloaded before everything else's.</summary>
+    public void SetPriority(long id, bool priority) => Execute("UPDATE WatchedItems SET Priority = $v WHERE Id = $id;", id, priority ? 1 : 0);
 
     public void SetEnabled(long id, bool enabled)
     {
