@@ -68,3 +68,5 @@ SOFTWARE.
 ## Ruffle
 
 The Flash emulator Ruffle (https://ruffle.rs, `@ruffle-rs/ruffle`) is served unmodified from `/dist/ruffle`, with its licenses (MIT or Apache-2.0) next to it.
+
+The Ruffle exporter binary in the worker image is built unmodified from Ruffle's source (tag v0.7.1, MIT or Apache-2.0; licence at `/usr/share/doc/ruffle-exporter/LICENSE.md` in the image).

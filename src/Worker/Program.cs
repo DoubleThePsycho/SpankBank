@@ -28,6 +28,7 @@ builder.Services.AddHostedService<DailyScheduler>();
 builder.Services.AddSingleton(new SpankBank.Data.RubbishBin.BinStore(paths));
 builder.Services.AddHostedService<DownloadService>();
 builder.Services.AddHostedService<BinService>();
+builder.Services.AddHostedService<FlashPreviewService>();
 builder.Services.AddHostedService<CommandServer>();
 
 await builder.Build().RunAsync();

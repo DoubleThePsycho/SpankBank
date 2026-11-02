@@ -17,3 +17,6 @@ media/
 
 # browser snapshots of e621 used as design reference
 *.mhtml
+
+# local notes
+TODO.md
