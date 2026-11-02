@@ -110,6 +110,7 @@ public sealed class WatchMatcher
         public int[][] Required = [];     // each term: any of these tag indexes
         public int[][] Excluded = [];     // each term: none of these tag indexes
         public int[]? AnyOf;              // when set: at least one of these tag indexes
+        public int[][] AnyGroups = [];    // a search's ~tag groups: every group needs one of its tag indexes
         public PostSearchQuery Query = PostSearchQuery.Parse("");
         public bool NeedsAnyTag;          // false for a search of column filters / exclusions only
         public string? Error;
@@ -202,7 +203,7 @@ public sealed class WatchMatcher
                     var watch = new ScanWatch(id) { Query = query, Error = problem };
                     watch.Required = query.Required.Select(Expand).ToArray();
                     watch.Excluded = query.Excluded.Select(Expand).ToArray();
-                    watch.AnyOf = query.AnyOf.Count > 0 ? query.AnyOf.SelectMany(Expand).Distinct().ToArray() : null;
+                    watch.AnyGroups = query.AnyOfGroups.Select(group => group.SelectMany(Expand).Distinct().ToArray()).ToArray();
                     // A query that failed to parse matches nothing rather than everything.
                     if (problem is null) watches.Add(watch); else MarkFailed(id, problem);
                     break;
@@ -334,6 +335,8 @@ public sealed class WatchMatcher
             if (!AnyPresent(term, present)) return false;
         foreach (var term in watch.Excluded)
             if (AnyPresent(term, present)) return false;
+        foreach (var group in watch.AnyGroups)
+            if (!AnyPresent(group, present)) return false;
 
         return watch.Query.MatchesRow(row);
     }

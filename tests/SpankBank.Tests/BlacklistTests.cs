@@ -18,6 +18,20 @@ public class BlacklistRulesTests
     [Fact] public void All_required_tags_must_be_present() { Assert.True(Matches("a b", "b a c")); Assert.False(Matches("a b", "a c")); }
     [Fact] public void Excluded_tags_veto_the_entry() { Assert.True(Matches("gore -comic", "gore")); Assert.False(Matches("gore -comic", "gore comic")); }
     [Fact] public void Optional_tags_need_one() { Assert.True(Matches("~a ~b", "b")); Assert.False(Matches("~a ~b", "c")); }
+    [Fact] public void Each_parenthesised_group_needs_one_of_its_own_tags()
+    {
+        const string entry = "( ~a ~b ) ( ~c ~d )";
+        Assert.True(Matches(entry, "a d"));
+        Assert.True(Matches(entry, "b c"));
+        Assert.False(Matches(entry, "a b")); // the second group has nothing
+        Assert.False(Matches(entry, "c d")); // the first group has nothing
+    }
+    [Fact] public void Loose_optional_tags_next_to_a_group_form_one_more_group() { Assert.True(Matches("( ~a ~b ) ~c ~d", "a d")); Assert.False(Matches("( ~a ~b ) ~c ~d", "a b")); }
+    [Theory]
+    [InlineData("( ~a ~b")]
+    [InlineData("~a ~b )")]
+    [InlineData("( ( ~a ) )")]
+    public void Unbalanced_parentheses_are_an_error(string entry) => Assert.NotNull(BlacklistRules.Validate(entry));
     [Fact] public void Wildcards_match_any_tag() { Assert.True(Matches("*_(artist)", "x_(artist) y")); Assert.False(Matches("*_(artist)", "x y")); }
     [Fact] public void Metatags_filter_by_column() { Assert.True(Matches("rating:e", "a", Row(rating: 2))); Assert.False(Matches("rating:e", "a", Row(rating: 0))); }
     [Fact] public void Deleted_posts_match_unless_the_entry_says_otherwise() { Assert.True(Matches("gore", "gore", Row(deleted: true))); Assert.False(Matches("gore status:active", "gore", Row(deleted: true))); }

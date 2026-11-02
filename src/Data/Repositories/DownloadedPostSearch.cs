@@ -80,8 +80,8 @@ public sealed class DownloadedPostSearch
 
         foreach (var tag in query.Required) where.Append(" AND ").Append(TagCondition(tag, P));
         foreach (var tag in query.Excluded) where.Append(" AND NOT ").Append(TagCondition(tag, P));
-        if (query.AnyOf.Count > 0)
-            where.Append(" AND (").Append(string.Join(" OR ", query.AnyOf.Select(tag => TagCondition(tag, P)))).Append(')');
+        foreach (var group in query.AnyOfGroups)
+            where.Append(" AND (").Append(string.Join(" OR ", group.Select(tag => TagCondition(tag, P)))).Append(')');
 
         foreach (var term in query.Terms)
         {

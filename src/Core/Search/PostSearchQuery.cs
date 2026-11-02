@@ -39,7 +39,13 @@ public sealed class PostSearchQuery
 {
     public IReadOnlyList<string> Required { get; private init; } = [];
     public IReadOnlyList<string> Excluded { get; private init; } = [];
+    /// <summary>Every ~tag, flattened (see <see cref="AnyOfGroups"/> for how they combine).</summary>
     public IReadOnlyList<string> AnyOf { get; private init; } = [];
+    /// <summary>
+    /// The ~tags as OR groups: those written inside <c>( ~a ~b )</c> form a group each, and all the loose ones one more.
+    /// A post must have at least one tag of every group.
+    /// </summary>
+    public IReadOnlyList<IReadOnlyList<string>> AnyOfGroups { get; private init; } = [];
     public IReadOnlyList<Func<PostMatchRow, bool>> Filters { get; private init; } = [];
     public PostStatusMode Status { get; private init; } = PostStatusMode.Active;
     public bool StatusSpecified { get; private init; }
@@ -73,6 +79,9 @@ public sealed class PostSearchQuery
         var required = new List<string>();
         var excluded = new List<string>();
         var anyOf = new List<string>();
+        var groups = new List<IReadOnlyList<string>>();
+        var loose = new List<string>();
+        List<string>? open = null;
         var filters = new List<Func<PostMatchRow, bool>>();
         var status = PostStatusMode.Active;
         var statusSpecified = false;
@@ -85,6 +94,20 @@ public sealed class PostSearchQuery
         foreach (var raw in (text ?? "").Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries))
         {
             var token = raw.ToLowerInvariant();
+            if (token == "(")
+            {
+                if (open is not null) error ??= "Parentheses cannot be nested.";
+                open = [];
+                continue;
+            }
+            if (token == ")")
+            {
+                if (open is null) error ??= "A closing parenthesis has no opening one.";
+                else if (open.Count > 0) groups.Add(open);
+                open = null;
+                continue;
+            }
+
             var negated = token.StartsWith('-');
             var optional = token.StartsWith('~');
             if (negated || optional) token = token[1..];
@@ -93,7 +116,12 @@ public sealed class PostSearchQuery
             var colon = token.IndexOf(':');
             if (colon <= 0)
             {
-                (negated ? excluded : optional ? anyOf : required).Add(token);
+                if (optional)
+                {
+                    anyOf.Add(token);
+                    (open ?? loose).Add(token);
+                }
+                else (negated ? excluded : required).Add(token);
                 continue;
             }
 
@@ -135,11 +163,15 @@ public sealed class PostSearchQuery
             terms.Add(new MetaTerm(name, value, negated));
         }
 
+        if (open is not null) error ??= "A parenthesis is not closed.";
+        if (loose.Count > 0) groups.Add(loose);
+
         return new PostSearchQuery
         {
             Required = required,
             Excluded = excluded,
             AnyOf = anyOf,
+            AnyOfGroups = groups,
             Filters = filters,
             Status = status,
             StatusSpecified = statusSpecified,

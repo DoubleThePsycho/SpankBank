@@ -9,7 +9,7 @@ namespace SpankBank.Data.Blacklist;
 /// </summary>
 public sealed class BlacklistRules
 {
-    private sealed record Rule(PostSearchQuery Query, Func<HashSet<string>, string, bool>[] Required, Func<HashSet<string>, string, bool>[] Excluded, Func<HashSet<string>, string, bool>[] AnyOf);
+    private sealed record Rule(PostSearchQuery Query, Func<HashSet<string>, string, bool>[] Required, Func<HashSet<string>, string, bool>[] Excluded, Func<HashSet<string>, string, bool>[][] AnyOfGroups);
 
     private readonly List<Rule> _rules;
 
@@ -35,7 +35,7 @@ public sealed class BlacklistRules
             if (Validate(line) is not null) continue;
             var query = ParseLine(line);
             rules.Add(new Rule(query,
-                query.Required.Select(Matcher).ToArray(), query.Excluded.Select(Matcher).ToArray(), query.AnyOf.Select(Matcher).ToArray()));
+                query.Required.Select(Matcher).ToArray(), query.Excluded.Select(Matcher).ToArray(), query.AnyOfGroups.Select(group => group.Select(Matcher).ToArray()).ToArray()));
         }
         return new BlacklistRules(rules);
     }
@@ -51,7 +51,7 @@ public sealed class BlacklistRules
             if (!rule.Query.MatchesRow(row)) continue;
             if (!rule.Required.All(m => m(tags, ""))) continue;
             if (rule.Excluded.Any(m => m(tags, ""))) continue;
-            if (rule.AnyOf.Length > 0 && !rule.AnyOf.Any(m => m(tags, ""))) continue;
+            if (!rule.AnyOfGroups.All(group => group.Any(m => m(tags, "")))) continue;
             return true;
         }
         return false;
