@@ -18,16 +18,14 @@ public sealed class DownloadStore
     public IReadOnlyList<long> NextPending(int limit, DateTimeOffset now)
     {
         using var connection = OpenAttached();
-        // Prioritised watches first (the user asked for them to go ahead of the rest), deleted posts included.
-        var ids = QueryPending(connection, limit, now, PendingKind.Priority);
         var reserved = limit >= 6 ? limit / 6 : 0;
-        ids.AddRange(QueryPending(connection, limit - reserved - ids.Count, now, PendingKind.NotDeleted));
+        var ids = QueryPending(connection, limit - reserved, now, PendingKind.NotDeleted);
         // Room the normal posts did not fill goes to the deleted ones too.
         ids.AddRange(QueryPending(connection, limit - ids.Count, now, PendingKind.Deleted));
         return ids;
     }
 
-    private enum PendingKind { Priority, NotDeleted, Deleted }
+    private enum PendingKind { NotDeleted, Deleted }
 
     private static List<long> QueryPending(SqliteConnection connection, int limit, DateTimeOffset now, PendingKind kind)
     {
@@ -37,13 +35,13 @@ public sealed class DownloadStore
         cmd.CommandText = $"""
             SELECT DISTINCT m.PostId
             FROM WatchMatches m
-            JOIN WatchedItems w ON w.Id = m.WatchedItemId AND w.Enabled = 1{(kind == PendingKind.Priority ? " AND w.Priority = 1" : "")}
+            JOIN WatchedItems w ON w.Id = m.WatchedItemId AND w.Enabled = 1
             LEFT JOIN srv.Posts p ON p.Id = m.PostId
             WHERE NOT EXISTS (SELECT 1 FROM dev.Posts d WHERE d.Id = m.PostId AND d.SavedAt IS NOT NULL)
               AND NOT EXISTS (SELECT 1 FROM DownloadAttempts a WHERE a.PostId = m.PostId AND a.NextAttemptAt > $now)
               AND NOT EXISTS (SELECT 1 FROM BlockedPosts b WHERE b.PostId = m.PostId)
               AND NOT EXISTS (SELECT 1 FROM DeletedPosts x WHERE x.PostId = m.PostId)
-              {kind switch { PendingKind.Deleted => "AND COALESCE(p.IsDeleted, 0) = 1", PendingKind.NotDeleted => "AND COALESCE(p.IsDeleted, 0) = 0", _ => "" }}
+              AND COALESCE(p.IsDeleted, 0) {(kind == PendingKind.Deleted ? "= 1" : "= 0")}
             LIMIT $limit;
             """;
         cmd.Parameters.AddWithValue("$now", now.ToString("o"));

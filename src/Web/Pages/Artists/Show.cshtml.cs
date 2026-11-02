@@ -114,15 +114,6 @@ public class ShowModel : PageModel
         return RedirectToPage(null, null, new { name }, "pools");
     }
 
-    /// <summary>Puts the artist's pending posts at the front of the download queue, or back in line.</summary>
-    public async Task<IActionResult> OnPostPriorityAsync(string name, long id, bool priority)
-    {
-        _watches.SetPriority(id, priority);
-        await _worker.NotifyAsync("downloads");
-        Message = priority ? "Their pending posts are downloaded before everything else." : "Back to the normal download order.";
-        return Back(name);
-    }
-
     public IActionResult OnPostRescan(string name, long id)
     {
         _watches.RefreshArtist(id, name);

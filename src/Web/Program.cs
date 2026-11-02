@@ -65,7 +65,12 @@ app.UseStaticFiles();
 
 // Downloaded files, read-only. The folder exists once the compose volume is mounted.
 if (Directory.Exists(WebPaths.MediaDir))
-    app.UseStaticFiles(new StaticFileOptions { FileProvider = new PhysicalFileProvider(WebPaths.MediaDir), RequestPath = "/media" });
+{
+    // .swf is not in ASP.NET's list of known types, and unknown types are not served.
+    var mediaTypes = new Microsoft.AspNetCore.StaticFiles.FileExtensionContentTypeProvider();
+    mediaTypes.Mappings[".swf"] = "application/x-shockwave-flash";
+    app.UseStaticFiles(new StaticFileOptions { FileProvider = new PhysicalFileProvider(WebPaths.MediaDir), RequestPath = "/media", ContentTypeProvider = mediaTypes });
+}
 app.MapRazorPages();
 
 // Favorites. PUT/DELETE with no body: a cross-site page cannot send them without a CORS preflight.

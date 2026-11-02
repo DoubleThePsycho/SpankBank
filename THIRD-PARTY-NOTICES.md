@@ -64,3 +64,7 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
+
+## Ruffle
+
+The Flash emulator Ruffle (https://ruffle.rs, `@ruffle-rs/ruffle`) is served unmodified from `/dist/ruffle`, with its licenses (MIT or Apache-2.0) next to it.

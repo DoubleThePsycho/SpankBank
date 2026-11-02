@@ -8,6 +8,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@ruffle-rs/ruffle": "0.7.1",
     "jquery": "3.7.1"
   },
   "devDependencies": {

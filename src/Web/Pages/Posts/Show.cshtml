@@ -16,6 +16,10 @@
 }
 @section Scripts {
   <script type="module" src="~/dist/posts.js" asp-append-version="true"></script>
+  @if (Model.MediaKind == "flash")
+  {
+    <script type="module" src="~/dist/flash.js" asp-append-version="true"></script>
+  }
 }
 
 <div id="c-posts"><div id="a-show">
@@ -167,6 +171,9 @@
               break;
             case "video":
               <video id="image" class="fit-window" controls loop preload="metadata" src="@Model.MediaUrl" width="@post.Width" height="@post.Height"></video>
+              break;
+            case "flash":
+              <div id="flash-player" class="flash-player" data-swf="@Model.MediaUrl" data-width="@post.Width" data-height="@post.Height"><p>Loading the Flash player… <a href="@Model.MediaUrl">Download the file</a></p></div>
               break;
             default:
               @if (Model.MediaUrl is not null)

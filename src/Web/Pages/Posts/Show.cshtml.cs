@@ -98,7 +98,7 @@ public class ShowModel : PageModel
         if (System.IO.File.Exists(original))
         {
             MediaUrl = MediaPaths.OriginalUrl(md5, Post.FileExt);
-            MediaKind = isVideo ? "video" : isImage ? "image" : "other";
+            MediaKind = isVideo ? "video" : isImage ? "image" : Post.FileExt == "swf" ? "flash" : "other";
             if (isImage && System.IO.File.Exists(sample)) SampleUrl = MediaPaths.SampleUrl(md5);
         }
         else if (System.IO.File.Exists(sample))

@@ -24,6 +24,15 @@ body.resp div#page div.st-overlay.hidden { display: none; }
   img#image, video#image { height: auto; }
 }
 
+// The Flash player (Ruffle) takes the whole column, up to the window's height (flash.ts sets the size); without these the
+// container shrinks to Ruffle's default 550x400.
+#image-container:has(#flash-player) { width: 100%; max-width: none; min-width: 0; }
+#flash-player {
+  width: 100%;
+  min-width: 0;
+  ruffle-player { height: auto; max-width: 100%; }
+}
+
 // The post page puts the search buttons on the same row as the "Tags" label, like the posts list does.
 @include window-larger-than(50rem) {
   #a-show .post-display > .search .search-controls {

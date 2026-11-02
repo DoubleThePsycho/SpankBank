@@ -75,10 +75,6 @@
             <input type="hidden" name="id" value="@w.Id"><input type="hidden" name="enabled" value="@((!w.Enabled).ToString().ToLowerInvariant())">
             <button type="submit" class="st-button@(w.Enabled ? "" : " primary")">@(w.Enabled ? "Disable" : "Enable")</button>
           </form>
-          <form method="post" asp-page-handler="Priority" asp-route-name="@artist.Name" title="Download this artist's pending posts before everyone else's">
-            <input type="hidden" name="id" value="@w.Id"><input type="hidden" name="priority" value="@((!w.Priority).ToString().ToLowerInvariant())">
-            <button type="submit" class="st-button">@(w.Priority ? "Normal download order" : "Download first")</button>
-          </form>
           <form method="post" asp-page-handler="Rescan" asp-route-name="@artist.Name">
             <input type="hidden" name="id" value="@w.Id">
             <button type="submit" class="st-button" title="Look for new aliases and characters in the catalog">Rescan</button>
