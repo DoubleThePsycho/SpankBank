@@ -53,7 +53,7 @@ public class DownloadStoreTests : IDisposable
     {
         foreach (var (id, source) in new[] { (1, "https://inkbunny.net/s/5"), (2, "https://www.furaffinity.net/view/9/"), (3, "https://inkbunny.net/files/full/1/1.png") })
             _db.Execute(_db.Paths.ServerDatabasePath, $"INSERT INTO Posts (Id, CreatedAt, UpdatedAt, Md5, FileExt, IsDeleted, Source) VALUES ({id}, '2026-01-01', '2026-01-01', '{new string('a', 32)}', 'png', 1, '{source}');");
-        foreach (var id in new[] { 1, 2, 3 }) _store.RecordFailure(id, "Deleted on e621 and not found at its sources or in the Wayback Machine.", TimeSpan.FromDays(30));
+        foreach (var id in new[] { 1, 2, 3 }) _store.RecordFailure(id, "Deleted on e6ai and not found at its sources or in the Wayback Machine.", TimeSpan.FromDays(30));
 
         Assert.Equal(2, _store.RetryLostWithSources(DateTimeOffset.UtcNow));
 
@@ -61,6 +61,16 @@ public class DownloadStoreTests : IDisposable
         Assert.Contains(1L, next);
         Assert.Contains(3L, next);
         Assert.DoesNotContain(2L, next);
+    }
+
+    [Fact]
+    public void Deleted_posts_are_left_out_while_the_archive_is_off_limits()
+    {
+        foreach (var id in new[] { 1, 2 })
+            _db.Execute(_db.Paths.ServerDatabasePath, $"INSERT INTO Posts (Id, CreatedAt, UpdatedAt, Md5, FileExt, IsDeleted) VALUES ({id}, '2026-01-01', '2026-01-01', '{new string('a', 32)}', 'png', 1);");
+
+        Assert.Equal([3L], _store.NextPending(10, Now, includeDeleted: false));
+        Assert.Equal(3, _store.NextPending(10, Now).Count);
     }
 
     [Fact]

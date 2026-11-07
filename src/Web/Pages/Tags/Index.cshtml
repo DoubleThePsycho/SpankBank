@@ -46,11 +46,11 @@
               }
               else
               {
-                <a href="https://e621.net/wiki_pages/show_or_new?title=@Uri.EscapeDataString(tag.Name)" rel="nofollow noopener">?</a>
+                <a href="@(SiteConfig.Url("wiki_pages/show_or_new?title=" + Uri.EscapeDataString(tag.Name)))" rel="nofollow noopener">?</a>
               }
               <a href="/posts?tags=@Uri.EscapeDataString(tag.Name)">@tag.Name</a>
             </td>
-            <td><a href="https://e621.net/posts?tags=@Uri.EscapeDataString(tag.Name)" rel="nofollow noopener">online</a></td>
+            <td><a href="@(SiteConfig.Url("posts?tags=" + Uri.EscapeDataString(tag.Name)))" rel="nofollow noopener">online</a></td>
           </tr>
         }
         @if (Model.Result.Rows.Count == 0)

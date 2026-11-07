@@ -55,7 +55,7 @@
           @foreach (var tag in tags)
           {
             <li class="tag-list-item tag-@cssName" data-name="@tag.Name" data-category="@cssName" data-count="@tag.PostCount">
-              <a class="tag-list-wiki" rel="nofollow" href="https://e621.net/wiki_pages/show_or_new?title=@Uri.EscapeDataString(tag.Name)">?</a>
+              <a class="tag-list-wiki" rel="nofollow" href="@(SiteConfig.Url("wiki_pages/show_or_new?title=" + Uri.EscapeDataString(tag.Name)))">?</a>
               @if (!string.IsNullOrWhiteSpace(Model.Tags))
               {
                 <a rel="nofollow" href="@Model.TagUrl(tag.Name)" class="tag-list-inc">+</a>

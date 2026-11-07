@@ -13,7 +13,7 @@
     <section class="box-section">
       <h2>Updates</h2>
       <div class="input">
-        <label for="dailyRunTime">Update from e621 every day at (UTC)</label>
+        <label for="dailyRunTime">Update from @SpankBank.Core.SiteConfig.Name every day at (UTC)</label>
         <input type="time" id="dailyRunTime" name="dailyRunTime" value="@Model.DailyRunTimeUtc" required>
         <p class="hint">Downloads the new export files, imports them and re-matches your watches.</p>
       </div>
@@ -29,6 +29,11 @@
         <label for="dailyLimit">Most files per day (0 = no limit)</label>
         <input type="number" id="dailyLimit" name="dailyLimit" min="0" max="100000" value="@Model.DailyLimit" required>
         <p class="hint">With a limit, a new watch with thousands of posts is spread over several days (the day ends at 00:00 UTC). 0 downloads everything as fast as it can.</p>
+      </div>
+      <div class="input">
+        <label for="parallelism">Parallel downloads</label>
+        <input type="number" id="parallelism" name="parallelism" min="1" max="64" value="@Model.Parallelism" required>
+        <p class="hint">How many files are fetched at the same time (1-64). More is faster when each connection is slow, but is harder on @SpankBank.Core.SiteConfig.Name's servers. Takes effect from the next batch.</p>
       </div>
     </section>
 

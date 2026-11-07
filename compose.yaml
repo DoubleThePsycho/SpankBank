@@ -13,6 +13,11 @@ services:
     env_file:
       - path: .env
         required: false
+    environment: &site
+      # Which e621ng site this install archives; the worker and the web app need the same values (set them in .env).
+      SITE_HOST: ${SITE_HOST:-e621.net}
+      STATIC_HOST: ${STATIC_HOST:-}
+      SITE_NAME: ${SITE_NAME:-}
     volumes:
       # Host folder : fixed container path. Repoint the left side to move the data.
       - ./data/db:/data/db
@@ -25,6 +30,7 @@ services:
     pull_policy: never
     restart: unless-stopped
     user: "1000:1000"
+    environment: *site
     # Public access goes through Ingressi (Caddy, behind Authentik) as spankbank-web-1:8080 over the spankbank_default network.
     # Direct access only on the host's Tailscale address (no login: the tailnet is the gate). Never publish on 0.0.0.0.
     ports:

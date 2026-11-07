@@ -19,7 +19,7 @@
     <table class="striped artist-info-table">
       <tbody>
         <tr><th>Other names:</th><td>@(artist.OtherNames.Count == 0 ? "-" : string.Join(", ", artist.OtherNames))</td></tr>
-        <tr><th>Posts online:</th><td>@artist.PostCount.ToString("N0") (<a href="https://e621.net/posts?tags=@Uri.EscapeDataString(artist.Name)" rel="nofollow noopener">view</a>, <a href="https://e621.net/artists/show_or_new?name=@Uri.EscapeDataString(artist.Name)" rel="nofollow noopener">artist page</a>)</td></tr>
+        <tr><th>Posts online:</th><td>@artist.PostCount.ToString("N0") (<a href="@(SiteConfig.Url("posts?tags=" + Uri.EscapeDataString(artist.Name)))" rel="nofollow noopener">view</a>, <a href="@(SiteConfig.Url("artists/show_or_new?name=" + Uri.EscapeDataString(artist.Name)))" rel="nofollow noopener">artist page</a>)</td></tr>
         <tr><th>Posts local:</th><td>@Model.DownloadedCount.ToString("N0") @if (Model.DownloadedCount > 0) { <text>(<a href="/posts?tags=@Uri.EscapeDataString(artist.Name)">view</a>)</text> }</td></tr>
         @if (Model.Watch is { } statsWatch)
         {
@@ -27,10 +27,10 @@
             <th>Post stats:</th>
             <td>
               <span class="post-stats">
-                <span class="count-db" title="Posts in the e621 exports"><svg-icon name="database" width="16" height="16" /> @(statsWatch.Matched ? statsWatch.MatchCount.ToString("N0") : "-") <span class="stat-label">in the exports</span></span>
-                <span class="count-downloaded" title="Downloaded from e621"><svg-icon name="download" width="16" height="16" /> @Model.Stats.Downloaded.ToString("N0") <span class="stat-label">downloaded</span></span>
+                <span class="count-db" title="Posts in the @SiteConfig.Name exports"><svg-icon name="database" width="16" height="16" /> @(statsWatch.Matched ? statsWatch.MatchCount.ToString("N0") : "-") <span class="stat-label">in the exports</span></span>
+                <span class="count-downloaded" title="Downloaded from @SiteConfig.Name"><svg-icon name="download" width="16" height="16" /> @Model.Stats.Downloaded.ToString("N0") <span class="stat-label">downloaded</span></span>
                 <span class="count-restored" title="Restored from a source site or the Wayback Machine"><svg-icon name="history" width="16" height="16" /> @Model.Stats.Restored.ToString("N0") <span class="stat-label">restored</span></span>
-                <span class="count-lost" title="Deleted on e621 and not recoverable"><svg-icon name="skull" width="16" height="16" /> @Model.Stats.Lost.ToString("N0") <span class="stat-label">lost</span></span>
+                <span class="count-lost" title="Deleted on @SiteConfig.Name and not recoverable"><svg-icon name="skull" width="16" height="16" /> @Model.Stats.Lost.ToString("N0") <span class="stat-label">lost</span></span>
                 <span class="count-pending" title="Still to be fetched: not tried yet or waiting for a retry"><svg-icon name="hourglass" width="16" height="16" /> @Model.Stats.Pending.ToString("N0") <span class="stat-label">pending</span></span>
               </span>
             </td>

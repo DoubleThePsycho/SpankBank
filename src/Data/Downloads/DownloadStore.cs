@@ -15,13 +15,14 @@ public sealed class DownloadStore
     /// Posts the export does not mark deleted come first. The others have to be looked for at their sources and in the
     /// Wayback Machine, which is slow and rate-limited, so they only get a few places per batch and never hold up the files e621 serves.
     /// </summary>
-    public IReadOnlyList<long> NextPending(int limit, DateTimeOffset now)
+    /// <param name="includeDeleted">False while the Wayback Machine is off limits: deleted posts can only come from there (or their sources).</param>
+    public IReadOnlyList<long> NextPending(int limit, DateTimeOffset now, bool includeDeleted = true)
     {
         using var connection = OpenAttached();
         var reserved = limit >= 6 ? limit / 6 : 0;
         var ids = QueryPending(connection, limit - reserved, now, PendingKind.NotDeleted);
         // Room the normal posts did not fill goes to the deleted ones too.
-        ids.AddRange(QueryPending(connection, limit - ids.Count, now, PendingKind.Deleted));
+        if (includeDeleted) ids.AddRange(QueryPending(connection, limit - ids.Count, now, PendingKind.Deleted));
         return ids;
     }
 
@@ -66,7 +67,7 @@ public sealed class DownloadStore
             cmd.CommandText = """
                 SELECT a.PostId, p.Source
                 FROM DownloadAttempts a JOIN srv.Posts p ON p.Id = a.PostId
-                WHERE a.LastError LIKE 'Deleted on e621 and not found%' AND a.NextAttemptAt > $now AND p.Source IS NOT NULL;
+                WHERE a.LastError LIKE 'Deleted on % and not found%' AND a.NextAttemptAt > $now AND p.Source IS NOT NULL;
                 """;
             cmd.Parameters.AddWithValue("$now", now.ToString("o"));
             using var reader = cmd.ExecuteReader();

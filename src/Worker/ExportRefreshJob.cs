@@ -1,3 +1,4 @@
+using SpankBank.Core;
 using Microsoft.Data.Sqlite;
 using SpankBank.Data;
 using SpankBank.Data.Import;
@@ -10,7 +11,7 @@ namespace SpankBank.Worker;
 /// <summary>Downloads the latest e621 CSV exports, imports tags, aliases, pools and posts, then re-matches the watches.</summary>
 public sealed class ExportRefreshJob
 {
-    private const string PhaseDownload = "Download the e621 exports";
+    private static string PhaseDownload => $"Download the {SiteConfig.Name} exports";
     private const string PhaseTags = "Import tags";
     private const string PhaseAliases = "Import tag aliases";
     private const string PhasePools = "Import pools";
@@ -42,7 +43,7 @@ public sealed class ExportRefreshJob
     /// <returns>Whether the refresh succeeded and a short summary; throws only on cancellation.</returns>
     public async Task<RefreshOutcome> RunAsync(CancellationToken cancellationToken)
     {
-        _progress.BeginRun("Updating from e621", PhaseDownload, PhaseTags, PhaseAliases, PhasePools, PhasePosts, PhaseMatch);
+        _progress.BeginRun($"Updating from {SiteConfig.Name}", PhaseDownload, PhaseTags, PhaseAliases, PhasePools, PhasePosts, PhaseMatch);
         var result = await RunPhasesAsync(cancellationToken);
         _progress.EndRun(result.Text);
         return result;

@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Http.Headers;
 using System.Security.Cryptography;
 using System.Text.Json;
+using SpankBank.Core;
 
 namespace SpankBank.Data.Import;
 
@@ -91,7 +92,7 @@ public enum ExportDownloadStatus
 
 public sealed class E621ExportDownloadService
 {
-    private static readonly Uri ExportIndexUri = new("https://e621.net/db_exports.json");
+    private static Uri ExportIndexUri => new(SiteConfig.Url("db_exports.json"));
     public static readonly IReadOnlyList<string> ImportableExportTypes = ["tags", "tag_aliases", "pools", "posts"];
     private static readonly string[] ExportTypes =
     [
@@ -129,7 +130,7 @@ public sealed class E621ExportDownloadService
             Directory.CreateDirectory(exportFolderPath);
 
             progress?.Report(new ExportDownloadProgress(
-                "Checking E621 export index...",
+                $"Checking {SiteConfig.Name} export index...",
                 null,
                 0,
                 null,
@@ -348,8 +349,10 @@ public sealed class E621ExportDownloadService
     private async Task<IReadOnlyDictionary<string, ExportIndexFile>> GetLatestExportIndexAsync(
         CancellationToken cancellationToken)
     {
-        var indexJson = await _httpClient.GetStringAsync(ExportIndexUri, cancellationToken);
-        return ParseLatestExports(indexJson);
+        using var response = await _httpClient.GetAsync(ExportIndexUri, cancellationToken);
+        EnsureOnSite(response);
+        response.EnsureSuccessStatusCode();
+        return ParseLatestExports(await response.Content.ReadAsStringAsync(cancellationToken));
     }
 
     // e621 publishes one undated file per export (e.g. posts.csv.gz) and lists its update time in
@@ -365,13 +368,18 @@ public sealed class E621ExportDownloadService
             if (type is null || !ExportTypes.Contains(type))
                 continue;
 
+            // The index must point at this site: a site that closed and redirects elsewhere must not feed another site's data in.
+            var url = new Uri(entry.GetProperty("url").GetString()!);
+            if (!SiteConfig.IsSiteHost(url.Host))
+                throw new InvalidOperationException($"The export index points {type} at {url.Host}, not {SiteConfig.Host}; refusing to import it.");
+
             var updatedAt = entry.GetProperty("updated_at").GetDateTimeOffset().UtcDateTime;
             var date = DateOnly.FromDateTime(updatedAt);
             files[type] = new ExportIndexFile(
                 Type: type,
                 FileName: $"{type}-{date:yyyy-MM-dd}.csv.gz",
                 Date: date,
-                DownloadUri: new Uri(entry.GetProperty("url").GetString()!),
+                DownloadUri: url,
                 Sha256: entry.TryGetProperty("checksum", out var checksum) ? checksum.GetString() : null);
         }
 
@@ -468,6 +476,7 @@ public sealed class E621ExportDownloadService
             request.Headers.Range = new RangeHeaderValue(resumeFrom, null);
 
         using var response = await _httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+        EnsureOnSite(response);
 
         if (response.StatusCode == HttpStatusCode.RequestedRangeNotSatisfiable)
         {
@@ -535,7 +544,7 @@ public sealed class E621ExportDownloadService
         {
             using var request = new HttpRequestMessage(HttpMethod.Head, downloadUri);
             using var response = await _httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
-            if (!response.IsSuccessStatusCode)
+            if (!response.IsSuccessStatusCode || !SiteConfig.IsSiteHost(response.RequestMessage?.RequestUri?.Host ?? ""))
                 return null;
 
             return response.Content.Headers.ContentLength;
@@ -544,6 +553,13 @@ public sealed class E621ExportDownloadService
         {
             return null;
         }
+    }
+
+    /// <summary>Throws when a request for the site ended on another host (the site now redirects elsewhere): never read that answer.</summary>
+    private static void EnsureOnSite(HttpResponseMessage response)
+    {
+        if (response.RequestMessage?.RequestUri is { } final && !SiteConfig.IsSiteHost(final.Host))
+            throw new InvalidOperationException($"{SiteConfig.Host} redirected to {final.Host}; ignoring it.");
     }
 
     public static string FormatSize(long bytes)

@@ -26,8 +26,10 @@ public static class WorkerSettingsKeys
     public const string SourcesRetried = "Download.SourcesRetried";
     /// <summary>"false" pauses the downloader (default: on).</summary>
     public const string DownloadEnabled = "Download.Enabled";
-    /// <summary>Most files fetched per UTC day (default 2000), so a new watch cannot hammer e621 in one go.</summary>
+    /// <summary>Most files fetched per UTC day (default 2000), so a new watch cannot hammer the site in one go.</summary>
     public const string DownloadMaxPerDay = "Download.MaxPerDay";
+    /// <summary>Files fetched at the same time (1-64, default 3); read before every batch, so a change applies without a restart.</summary>
+    public const string DownloadParallelism = "Download.Parallelism";
 
     /// <summary>"false" turns off adding an artist's pools automatically (default: on).</summary>
     public const string PoolsAutoAddEnabled = "Pools.AutoAddEnabled";

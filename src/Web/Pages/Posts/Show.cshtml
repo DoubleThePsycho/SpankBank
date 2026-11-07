@@ -51,7 +51,7 @@
             @foreach (var tag in tags)
             {
               <li class="tag-list-item tag-@cssName" data-name="@tag.Name" data-category="@cssName" data-count="@tag.PostCount">
-                <a class="tag-list-wiki" rel="nofollow" href="https://e621.net/wiki_pages/show_or_new?title=@Uri.EscapeDataString(tag.Name)">?</a>
+                <a class="tag-list-wiki" rel="nofollow" href="@(SiteConfig.Url("wiki_pages/show_or_new?title=" + Uri.EscapeDataString(tag.Name)))">?</a>
                 @if (Model.Query is not null)
                 {
                   @* Reached from a search: + and – add the tag to it (or exclude it) without typing. *@
@@ -142,7 +142,7 @@
         <ul class="post-sidebar-info">
           <li>Posted: <span title="@post.CreatedAt.ToString("u")">@post.CreatedAt.ToString("yyyy-MM-dd")</span></li>
           <li>Saved: <span title="@post.SavedAt.ToString("u")">@post.SavedAt.ToString("yyyy-MM-dd")</span></li>
-          <li><a href="https://e621.net/posts/@post.Id" rel="nofollow noopener">View on e621</a></li>
+          <li><a href="@(SiteConfig.Url("posts/" + post.Id))" rel="nofollow noopener">View on @SiteConfig.Name</a></li>
         </ul>
       </section>
     </div>
@@ -156,11 +156,11 @@
 
         @if (post.Status == LocalPostStatus.Recovered)
         {
-          <div class="notice notice-info">e621 has deleted this post. The original was recovered from the Wayback Machine.</div>
+          <div class="notice notice-info">@SiteConfig.Name has deleted this post. The original was recovered from the Wayback Machine.</div>
         }
         else if (post.Status == LocalPostStatus.SampleOnly || Model.ShowingSample)
         {
-          <div class="notice notice-info">e621 has deleted this post. Only its downsized sample could be recovered.</div>
+          <div class="notice notice-info">@SiteConfig.Name has deleted this post. Only its downsized sample could be recovered.</div>
         }
 
         <section id="image-container" class="blacklistable" data-post-id="@post.Id" data-is-favorited="@(Model.IsFavorite ? "true" : "false")">
@@ -237,8 +237,8 @@
           @if (post.ParentId is { } parentId)
           {
             <div class="notice notice-child">
-              Parent: <a href="@(Model.ParentIsLocal ? $"/posts/{parentId}" : $"https://e621.net/posts/{parentId}")">post #@parentId</a>
-              (<a href="https://e621.net/wiki_pages/e621:post_relationships" rel="nofollow noopener">learn more</a>)
+              Parent: <a href="@(Model.ParentIsLocal ? $"/posts/{parentId}" : SiteConfig.Url($"posts/{parentId}"))">post #@parentId</a>
+              (<a href="@(SiteConfig.Url($"wiki_pages/{SiteConfig.Name}:post_relationships"))" rel="nofollow noopener">learn more</a>)
               @if (Model.ParentPreview.Count > 0) { <a href="#" id="has-parent-relationship-preview-link" data-hotkey="postrel">show »</a> }
               <div id="has-parent-relationship-preview" style="display: none;">
                 @foreach (var related in Model.ParentPreview) { <partial name="_PostThumbnail" model="related" /> }
@@ -249,7 +249,7 @@
           {
             <div class="notice notice-parent">
               Children: <a href="/posts?tags=parent:@post.Id">@(Model.ChildIds.Count == 1 ? "1 child" : $"{Model.ChildIds.Count} children")</a>
-              (<a href="https://e621.net/wiki_pages/e621:post_relationships" rel="nofollow noopener">learn more</a>)
+              (<a href="@(SiteConfig.Url($"wiki_pages/{SiteConfig.Name}:post_relationships"))" rel="nofollow noopener">learn more</a>)
               <a href="#" id="has-children-relationship-preview-link" data-hotkey="postrel">show »</a>
               <div id="has-children-relationship-preview" style="display: none;">
                 @foreach (var related in Model.ChildPreview) { <partial name="_PostThumbnail" model="related" /> }

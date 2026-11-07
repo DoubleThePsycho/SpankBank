@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
+using SpankBank.Core;
 using SpankBank.Core.Models;
 using SpankBank.Data.Downloads;
 using SpankBank.Data.Repositories;
@@ -94,7 +95,7 @@ public class GalleryModel : PageModel
         var watched = _watches.WatchedSources(WatchedItemType.Pool);
         Cards = result.Rows.Select(r => new Card(
             r.Id, r.Name.Replace('_', ' '), r.Category, r.PostCount,
-            covers.TryGetValue(r.Id, out var md5) ? $"https://static1.e621.net/data/preview/{md5[..2]}/{md5[2..4]}/{md5}.jpg" : null,
+            covers.TryGetValue(r.Id, out var md5) ? SiteConfig.StaticUrl($"data/preview/{md5[..2]}/{md5[2..4]}/{md5}.jpg") : null,
             $"{r.PostCount:N0} posts{(watched.Contains(r.Id.ToString()) ? " · local" : "")}")).ToList();
     }
 

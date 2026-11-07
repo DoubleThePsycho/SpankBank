@@ -38,7 +38,7 @@
         @if (Model.ShowArtist) { await Head("artist", "Artist"); }
         @{
             await Head("type", "Type");
-            await Head("pages", "In the export", "col-count count-db sep", "database", "Pages in the e621 export");
+            await Head("pages", "In the export", "col-count count-db sep", "database", $"Pages in the {SiteConfig.Name} export");
             await Head("local", "Local", "col-count count-downloaded", "download", "Pages on this device");
             await Head("status", "Status", "col-status sep");
         }

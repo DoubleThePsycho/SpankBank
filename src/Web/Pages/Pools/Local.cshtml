@@ -55,7 +55,7 @@
             @foreach (var suggestion in Model.Suggestions)
             {
               <tr>
-                <td><a href="https://e621.net/pools/@suggestion.PoolId" rel="nofollow noopener">@suggestion.PoolName</a></td>
+                <td><a href="@(SiteConfig.Url("pools/" + suggestion.PoolId))" rel="nofollow noopener">@suggestion.PoolName</a></td>
                 <td>@suggestion.Category</td>
                 <td>@suggestion.Artist</td>
                 <td>@suggestion.ArtistPosts of @suggestion.PoolPosts (@suggestion.SharePercent.ToString("0")%)@(suggestion.IsRoot ? "" : " · part of a larger pool")</td>

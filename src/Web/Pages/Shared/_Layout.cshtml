@@ -6,7 +6,7 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <title>@(ViewData["Title"] ?? "SpankBank")</title>
+  <title>@(ViewData["Title"] is string pageTitle ? $"{pageTitle} - {SiteConfig.Name}" : $"SpankBank ({SiteConfig.Name} archive)")</title>
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="theme-color" content="#00549e">
   <meta name="blacklisted-tags" content="[]">
@@ -88,7 +88,7 @@
     <div class="footer-grid">
       <span class="footer-left"></span>
       <span class="footer-right">
-        <span class="footer-running">Running SpankBank</span>
+        <span class="footer-running">SpankBank (@SiteConfig.Name archive)</span>
       </span>
     </div>
   </footer>

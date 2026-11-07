@@ -17,7 +17,7 @@
 
     <h2>
       @(pool.Category == "series" ? "Series" : "Collection"):
-      <a href="https://e621.net/pools/@pool.Id" class="pool-category-@pool.Category" rel="nofollow noopener">@pool.Name.Replace('_', ' ')</a>
+      <a href="@(SiteConfig.Url("pools/" + pool.Id))" class="pool-category-@pool.Category" rel="nofollow noopener">@pool.Name.Replace('_', ' ')</a>
     </h2>
 
     @if (!string.IsNullOrWhiteSpace(pool.Description))

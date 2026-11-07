@@ -1,6 +1,7 @@
 using System.Net;
 using System.Security.Cryptography;
 using System.Text.Json;
+using SpankBank.Core;
 
 namespace SpankBank.Data.Downloads;
 
@@ -28,16 +29,22 @@ public sealed record FetchOutcome(FetchResult Result, string Detail, DateTimeOff
 /// </summary>
 public sealed partial class PostFetcher : IDisposable
 {
-    private const string StaticHost = "https://static1.e621.net";
+    private static string StaticHost => $"https://{SiteConfig.StaticHost}";
     private static readonly TimeSpan StallTimeout = TimeSpan.FromSeconds(60);
     private static readonly TimeSpan WaybackStallTimeout = TimeSpan.FromSeconds(120);
 
     private readonly HttpClient _http;
     private readonly RateGate _wayback = new(TimeSpan.FromSeconds(1));
+    // The snapshot index (CDX) allows about 15 lookups a minute per address; going over gets the address firewalled for an hour or more.
+    private readonly RateGate _waybackSearch = new(TimeSpan.FromSeconds(5));
+    private static readonly TimeSpan MaxWaybackBackoff = TimeSpan.FromHours(1);
 
     // The Internet Archive answers 429 when it is asked too much; stay away from it for a while (1 minute, doubling to 15).
     private DateTimeOffset _waybackBlockedUntil = DateTimeOffset.MinValue;
     private TimeSpan _waybackBackoff = TimeSpan.FromMinutes(1);
+
+    /// <summary>Until when the Wayback Machine is left alone; the downloader holds back deleted posts until then.</summary>
+    public DateTimeOffset WaybackBlockedUntil => _waybackBlockedUntil;
 
     public PostFetcher()
     {
@@ -63,7 +70,7 @@ public sealed partial class PostFetcher : IDisposable
             return new FetchOutcome(FetchResult.Downloaded, "Already on disk.");
 
         // Try the CDN even for posts the export marks deleted: they may have been restored since the export was made.
-        onStage?.Invoke("Downloading from e621");
+        onStage?.Invoke($"Downloading from {SiteConfig.Name}");
         {
             var download = await DownloadAsync($"{StaticHost}/data/{post.Md5[..2]}/{post.Md5[2..4]}/{post.Md5}.{post.Ext}",
                 original, post.Md5, jpegOnly: false, StallTimeout, cancellationToken, onProgress: onProgress);
@@ -71,14 +78,14 @@ public sealed partial class PostFetcher : IDisposable
             {
                 case DownloadKind.Ok:
                     await TryDownloadPreviewAsync(post, mediaRoot, cancellationToken);
-                    return new FetchOutcome(FetchResult.Downloaded, "Downloaded from e621.");
+                    return new FetchOutcome(FetchResult.Downloaded, $"Downloaded from {SiteConfig.Name}.");
                 case DownloadKind.Failed:
                     return new FetchOutcome(FetchResult.Failed, download.Detail);
                 // NotFound: deleted since the export was made; look in the archive.
             }
         }
 
-        onStage?.Invoke("Not on e621; trying its sources");
+        onStage?.Invoke($"Not on {SiteConfig.Name}; trying its sources");
         if (await RecoverFromSourcesAsync(post, original, cancellationToken, onProgress) is { } fromSource)
             return fromSource;
 
@@ -95,7 +102,7 @@ public sealed partial class PostFetcher : IDisposable
 
         var path = $"data/{post.Md5[..2]}/{post.Md5[2..4]}/{post.Md5}.{post.Ext}";
         // e621's own addresses, then the file addresses its source list gives (the archive may have kept those).
-        var addresses = new[] { $"static1.e621.net/{path}", $"e621.net/{path}" }
+        var addresses = new[] { $"{SiteConfig.StaticHost}/{path}", $"{SiteConfig.Host}/{path}" }
             .Concat(SourceLinks.DirectFileUrls(post.Source).Take(3).Select(SourceLinks.WithoutScheme));
         foreach (var address in addresses)
         {
@@ -111,7 +118,7 @@ public sealed partial class PostFetcher : IDisposable
             }
         }
 
-        var samples = await SnapshotsAsync($"static1.e621.net/data/sample/{post.Md5[..2]}/{post.Md5[2..4]}/{post.Md5}.jpg", 4, cancellationToken);
+        var samples = await SnapshotsAsync($"{SiteConfig.StaticHost}/data/sample/{post.Md5[..2]}/{post.Md5[2..4]}/{post.Md5}.jpg", 4, cancellationToken);
         if (samples is null)
             return Deferred();
 
@@ -123,7 +130,7 @@ public sealed partial class PostFetcher : IDisposable
                 return new FetchOutcome(FetchResult.SampleOnly, $"Only the sample was recovered from the Wayback Machine ({snapshot.Timestamp[..8]}).");
         }
 
-        return new FetchOutcome(FetchResult.NotAvailable, "Deleted on e621 and not found at its sources or in the Wayback Machine.");
+        return new FetchOutcome(FetchResult.NotAvailable, $"Deleted on {SiteConfig.Name} and not found at its sources or in the Wayback Machine.");
     }
 
     private FetchOutcome Deferred()
@@ -131,7 +138,7 @@ public sealed partial class PostFetcher : IDisposable
 
     private void BackOffWayback()
     {
-        _waybackBackoff = TimeSpan.FromSeconds(Math.Min(_waybackBackoff.TotalSeconds * 2, 900));
+        _waybackBackoff = TimeSpan.FromSeconds(Math.Min(_waybackBackoff.TotalSeconds * 2, MaxWaybackBackoff.TotalSeconds));
         _waybackBlockedUntil = DateTimeOffset.UtcNow + _waybackBackoff;
     }
 
@@ -139,8 +146,8 @@ public sealed partial class PostFetcher : IDisposable
     {
         var retryAfter = response.Headers.RetryAfter?.Delta;
         _waybackBackoff = retryAfter is { } delta && delta > TimeSpan.Zero
-            ? TimeSpan.FromSeconds(Math.Min(delta.TotalSeconds, 900))
-            : TimeSpan.FromSeconds(Math.Min(_waybackBackoff.TotalSeconds * 2, 900));
+            ? TimeSpan.FromSeconds(Math.Min(delta.TotalSeconds, MaxWaybackBackoff.TotalSeconds))
+            : TimeSpan.FromSeconds(Math.Min(_waybackBackoff.TotalSeconds * 2, MaxWaybackBackoff.TotalSeconds));
         _waybackBlockedUntil = DateTimeOffset.UtcNow + _waybackBackoff;
     }
 
@@ -155,7 +162,9 @@ public sealed partial class PostFetcher : IDisposable
             + $"&limit=-{limit}&url={Uri.EscapeDataString(address)}";
         try
         {
-            await _wayback.WaitAsync(cancellationToken);
+            await _waybackSearch.WaitAsync(cancellationToken);
+            // Another lookup may have been refused while this one waited its turn.
+            if (DateTimeOffset.UtcNow < _waybackBlockedUntil) return null;
             using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
             cts.CancelAfter(TimeSpan.FromSeconds(60));
             using var response = await _http.GetAsync(url, cts.Token);
@@ -198,6 +207,10 @@ public sealed partial class PostFetcher : IDisposable
             using var headerTimeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
             headerTimeout.CancelAfter(stall);
             using var response = await _http.SendAsync(new HttpRequestMessage(HttpMethod.Get, url), HttpCompletionOption.ResponseHeadersRead, headerTimeout.Token);
+            // If the site closes it may redirect elsewhere: a request for the site that ends anywhere else is refused (and retried
+            // later), never taken as an answer, so another site's 404s or files cannot mark posts lost or fill the media folder.
+            if (SiteConfig.IsSiteHost(new Uri(url).Host) && response.RequestMessage?.RequestUri is { } final && !SiteConfig.IsSiteHost(final.Host))
+                return new DownloadResult(DownloadKind.Failed, $"{SiteConfig.Name} redirected to {final.Host}; ignored.");
             if (response.StatusCode is HttpStatusCode.NotFound or HttpStatusCode.Forbidden or HttpStatusCode.Gone)
                 return new DownloadResult(DownloadKind.NotFound, $"HTTP {(int)response.StatusCode}");
             if (!response.IsSuccessStatusCode)

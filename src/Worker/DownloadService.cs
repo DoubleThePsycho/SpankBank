@@ -1,3 +1,4 @@
+using SpankBank.Core;
 using SpankBank.Core.Models;
 using SpankBank.Data;
 using SpankBank.Data.Blacklist;
@@ -13,7 +14,8 @@ namespace SpankBank.Worker;
 /// </summary>
 public sealed class DownloadService : BackgroundService
 {
-    private const int Parallelism = 3;
+    public const int DefaultParallelism = 3;
+    public const int MaxParallelism = 64;
     private const int DefaultMaxPerDay = 2000;
     // Retry delays expire with time and the daily limit resets at midnight; a signal wakes the loop for everything else.
     private static readonly TimeSpan RetryCheckInterval = TimeSpan.FromMinutes(15);
@@ -64,7 +66,10 @@ public sealed class DownloadService : BackgroundService
                 var maxPerDay = int.TryParse(_settings.Get(WorkerSettingsKeys.DownloadMaxPerDay), out var configured) ? configured : DefaultMaxPerDay;
                 // 0 means no daily limit.
                 var room = maxPerDay <= 0 ? int.MaxValue : maxPerDay - _store.SavedToday();
-                var batch = room > 0 ? _store.NextPending(Math.Min(24, room), DateTimeOffset.UtcNow) : [];
+                var parallelism = ReadParallelism();
+                // While the Wayback Machine is backing us off, deleted posts would only be deferred one after another: leave them.
+                var waybackOpen = fetcher.WaybackBlockedUntil <= DateTimeOffset.UtcNow;
+                var batch = room > 0 ? _store.NextPending(Math.Min(Math.Max(24, parallelism * 8), room), DateTimeOffset.UtcNow, includeDeleted: waybackOpen) : [];
 
                 if (batch.Count == 0)
                 {
@@ -72,10 +77,15 @@ public sealed class DownloadService : BackgroundService
                     if (inSession)
                         _logger.LogInformation("Downloads idle: {Saved:N0} file(s) saved this session{Limit}.",
                             savedThisSession, limitReached ? "; the daily limit is reached" : "");
-                    EndSession(ref inSession, limitReached ? $"Today's limit of {maxPerDay:N0} files is reached." : "Nothing is waiting to be downloaded.");
+                    var blockedUntil = fetcher.WaybackBlockedUntil;
+                    EndSession(ref inSession, limitReached ? $"Today's limit of {maxPerDay:N0} files is reached."
+                        : !waybackOpen ? $"Deleted posts wait for the Wayback Machine, which asked us to back off until {blockedUntil:HH:mm} UTC."
+                        : "Nothing is waiting to be downloaded.");
                     savedThisSession = 0;
 
-                    var delay = limitReached ? NextUtcMidnight() - DateTimeOffset.UtcNow + TimeSpan.FromSeconds(5) : RetryCheckInterval;
+                    var delay = limitReached ? NextUtcMidnight() - DateTimeOffset.UtcNow + TimeSpan.FromSeconds(5)
+                        : !waybackOpen ? blockedUntil - DateTimeOffset.UtcNow + TimeSpan.FromSeconds(5)
+                        : RetryCheckInterval;
                     await WaitAsync(delay, stoppingToken);
                     continue;
                 }
@@ -87,7 +97,7 @@ public sealed class DownloadService : BackgroundService
                 }
 
                 await Parallel.ForEachAsync(batch,
-                    new ParallelOptions { MaxDegreeOfParallelism = Parallelism, CancellationToken = stoppingToken },
+                    new ParallelOptions { MaxDegreeOfParallelism = parallelism, CancellationToken = stoppingToken },
                     async (id, token) =>
                     {
                         if (await ProcessAsync(id, fetcher, token)) Interlocked.Increment(ref savedThisSession);
@@ -117,6 +127,10 @@ public sealed class DownloadService : BackgroundService
         _settings.Replace(WorkerSettingsKeys.BlacklistDirty, "running", "false");
         _logger.LogInformation("Blacklist applied: {Count:N0} post(s) blocked.", count);
     }
+
+    /// <summary>The "parallel downloads" setting, kept within 1-64 (default 3).</summary>
+    private int ReadParallelism()
+        => int.TryParse(_settings.Get(WorkerSettingsKeys.DownloadParallelism), out var value) ? Math.Clamp(value, 1, MaxParallelism) : DefaultParallelism;
 
     private void EndSession(ref bool inSession, string reason)
     {

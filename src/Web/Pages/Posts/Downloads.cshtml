@@ -37,7 +37,7 @@
         @foreach (var problem in Model.Problems)
         {
           <tr>
-            <td><a href="https://e621.net/posts/@problem.PostId" rel="nofollow noopener">#@problem.PostId</a></td>
+            <td><a href="@(SiteConfig.Url("posts/" + problem.PostId))" rel="nofollow noopener">#@problem.PostId</a></td>
             <td>@problem.Error</td>
             <td>@problem.Attempts</td>
             <td title="@problem.LastAttemptAt.ToString("u")">@problem.LastAttemptAt.ToString("yyyy-MM-dd HH:mm")</td>
