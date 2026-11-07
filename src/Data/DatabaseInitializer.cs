@@ -348,6 +348,9 @@ public static class DatabaseInitializer
                 PRIMARY KEY (WatchedItemId, PostId)
             ) WITHOUT ROWID;
             """);
+        // Lookups by post (strays, stats, "who matches this post"). Without it the stray count looped over every enabled watch for
+        // every local post: 100 seconds with 260,000 local posts and 4,000 watches.
+        Execute(connection, "CREATE INDEX IF NOT EXISTS IX_WatchMatches_PostId ON WatchMatches (PostId, WatchedItemId);");
         Execute(connection, "CREATE INDEX IF NOT EXISTS IX_WatchedItems_ItemType ON WatchedItems (ItemType);");
         Execute(connection, "CREATE INDEX IF NOT EXISTS IX_WatchedItems_Enabled ON WatchedItems (Enabled);");
 

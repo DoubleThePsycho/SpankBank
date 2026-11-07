@@ -32,6 +32,16 @@ public class StrayPostsTests : IDisposable
         try { Directory.Delete(_media, recursive: true); } catch (IOException) { }
     }
 
+    [Fact]
+    public void Matches_can_be_looked_up_by_post_so_the_stray_count_does_not_scan_every_watch()
+    {
+        using var connection = new Microsoft.Data.Sqlite.SqliteConnection($"Data Source={_db.Paths.AppDatabasePath}");
+        connection.Open();
+        using var cmd = connection.CreateCommand();
+        cmd.CommandText = "SELECT 1 FROM sqlite_master WHERE type = 'index' AND name = 'IX_WatchMatches_PostId';";
+        Assert.NotNull(cmd.ExecuteScalar());
+    }
+
     private long[] Listed(string query) => new DownloadedPostSearch(_db.Paths).Search(query, 1, 50).Items.Select(i => i.Id).Order().ToArray();
 
     [Fact] public void Posts_nothing_keeps_are_strays() => Assert.Equal(3, _strays.Count());
