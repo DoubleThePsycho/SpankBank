@@ -25,4 +25,8 @@
     <ProjectReference Include="..\Core\SpankBank.Core.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <InternalsVisibleTo Include="SpankBank.Tests" />
+  </ItemGroup>
+
 </Project>

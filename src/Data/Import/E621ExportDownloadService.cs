@@ -358,7 +358,7 @@ public sealed class E621ExportDownloadService
     // e621 publishes one undated file per export (e.g. posts.csv.gz) and lists its update time in
     // /db_exports.json. Local files are named <type>-<yyyy-MM-dd>.csv.gz so the detector, import
     // history and cleanup can tell one day's export from the next.
-    private static IReadOnlyDictionary<string, ExportIndexFile> ParseLatestExports(string indexJson)
+    internal static IReadOnlyDictionary<string, ExportIndexFile> ParseLatestExports(string indexJson)
     {
         var files = new Dictionary<string, ExportIndexFile>();
         using var document = JsonDocument.Parse(indexJson);
@@ -375,12 +375,18 @@ public sealed class E621ExportDownloadService
 
             var updatedAt = entry.GetProperty("updated_at").GetDateTimeOffset().UtcDateTime;
             var date = DateOnly.FromDateTime(updatedAt);
+            var sha256 = entry.TryGetProperty("checksum", out var checksum) ? checksum.GetString() : null;
+            // The export files have fixed names and Cloudflare keeps them cached for a month, so the plain address can serve an
+            // older export than the index describes (a checksum mismatch, retried forever). A query naming this export's checksum
+            // (or time) is a cache miss and fetches the current file.
+            var version = Uri.EscapeDataString(sha256 ?? updatedAt.Ticks.ToString(System.Globalization.CultureInfo.InvariantCulture));
+            url = new UriBuilder(url) { Query = string.IsNullOrEmpty(url.Query) ? $"v={version}" : $"{url.Query.TrimStart('?')}&v={version}" }.Uri;
             files[type] = new ExportIndexFile(
                 Type: type,
                 FileName: $"{type}-{date:yyyy-MM-dd}.csv.gz",
                 Date: date,
                 DownloadUri: url,
-                Sha256: entry.TryGetProperty("checksum", out var checksum) ? checksum.GetString() : null);
+                Sha256: sha256);
         }
 
         return files;
@@ -574,7 +580,7 @@ public sealed class E621ExportDownloadService
         return $"{bytes} B";
     }
 
-    private sealed record ExportIndexFile(
+    internal sealed record ExportIndexFile(
         string Type,
         string FileName,
         DateOnly Date,
