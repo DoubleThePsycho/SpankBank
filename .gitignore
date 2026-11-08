@@ -2,9 +2,14 @@ bin/
 obj/
 .vs/
 CLAUDE.local.md
+
+# AI-assistant notes and settings (local only)
+CLAUDE.md
+.claude/
 *.user
 
 # web / docker
+compose.yaml
 node_modules/
 src/Web/wwwroot/dist/
 .env

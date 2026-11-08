@@ -1,0 +1,71 @@
+# Example Docker Compose file for SpankBank. Copy it to compose.yaml (or keep the name and pass -f), copy example.env to
+# .env next to it, then see README.md ("Quick start"). Everything marked ${...} can be set in .env.
+#
+#   docker build -f docker/ruffle-exporter.Dockerfile -t spankbank-ruffle-exporter:0.7.1 .   # once, about 30 minutes
+#   docker compose build
+#   docker compose up -d
+#
+# Two services share the data folders:
+#   worker  imports the e621 exports, matches your watches, downloads the files, makes Flash previews, empties the bin.
+#           It is the only writer of imports and downloads and is never published; the web app wakes it over the compose
+#           network (http://worker:8081).
+#   web     the browsable site. It only writes small things (watches, favorites, settings, queue rows).
+services:
+  worker:
+    image: spankbank-worker:latest
+    build:
+      context: .
+      dockerfile: docker/worker.Dockerfile
+    # Built from this checkout; there is no registry to pull from.
+    pull_policy: never
+    restart: unless-stopped
+    # The folders below must be writable by this user. Change it in .env if yours is not 1000.
+    user: "${SPANKBANK_UID:-1000}:${SPANKBANK_GID:-1000}"
+    # INKBUNNY_USERNAME / INKBUNNY_PASSWORD are read from here (see example.env).
+    env_file:
+      - path: .env
+        required: false
+    environment: &site
+      # Which e621ng site this install archives; the worker and the web app need the same values.
+      SITE_HOST: ${SITE_HOST:-e621.net}
+      STATIC_HOST: ${STATIC_HOST:-}
+      SITE_NAME: ${SITE_NAME:-}
+    volumes:
+      # Host folder : fixed container path. Point the left side wherever you like (see example.env).
+      # The databases want fast storage (SSD/NVMe): SQLite does many small random reads.
+      - ${SPANKBANK_DB_DIR:-./data/db}:/data/db
+      - ${SPANKBANK_IMPORTS_DIR:-./data/imports}:/data/imports
+      # Downloaded files, laid out like e621: <md5[0:2]>/<md5[2:4]>/<md5>.<ext>, plus preview/ and sample/.
+      # This one can live on a big, slow disk.
+      - ${SPANKBANK_MEDIA_DIR:-./data/media}:/data/media
+
+  web:
+    image: spankbank-web:latest
+    build:
+      context: .
+      dockerfile: docker/web.Dockerfile
+    pull_policy: never
+    restart: unless-stopped
+    user: "${SPANKBANK_UID:-1000}:${SPANKBANK_GID:-1000}"
+    environment: *site
+    # SpankBank has no login. By default it is reachable from this machine only; to use it from other devices put the
+    # address of a private interface (LAN or VPN) in SPANKBANK_WEB_BIND, or put a reverse proxy with authentication
+    # in front. Never publish it on 0.0.0.0 on a machine that is reachable from the internet.
+    ports:
+      - "${SPANKBANK_WEB_BIND:-127.0.0.1}:${SPANKBANK_WEB_PORT:-8621}:8080"
+    volumes:
+      # Read-write: SQLite in WAL mode needs write access even to read, and the pages write watches and settings.
+      - ${SPANKBANK_DB_DIR:-./data/db}:/data/db
+      # The Data Protection key ring (antiforgery tokens); it must survive redeploys.
+      - ${SPANKBANK_KEYS_DIR:-./data/keys}:/data/keys
+      # Read-only: the web app only shows the files.
+      - ${SPANKBANK_MEDIA_DIR:-./data/media}:/data/media:ro
+
+  # Not a running service: it only builds the helper image that worker.Dockerfile copies Ruffle's headless exporter
+  # from (Flash thumbnails). Build it once with:  docker compose --profile tools build ruffle-exporter
+  ruffle-exporter:
+    profiles: ["tools"]
+    image: spankbank-ruffle-exporter:0.7.1
+    build:
+      context: .
+      dockerfile: docker/ruffle-exporter.Dockerfile
