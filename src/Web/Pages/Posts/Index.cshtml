@@ -1,6 +1,7 @@
 @page "/posts"
 @model SpankBank.Web.Pages.Posts.IndexModel
 @inject SpankBank.Data.Repositories.SettingsRepository Settings
+@using SpankBank.Web.Services
 @* Markup ported from e621ng app/views/posts/index.html.erb and its partials (BSD-2, see THIRD-PARTY-NOTICES.md). *@
 @{
     ViewData["Title"] = Model.IsFavorites ? "Favorites" : "Posts";
@@ -48,24 +49,18 @@
     </section>
 
     <section id="tag-box">
+      @if (Model.SidebarGroups.Count > 0)
+      {
+        <div class="tag-list-columns" aria-hidden="true"><span></span><span>Local</span><span>Online</span></div>
+      }
       @foreach (var (cssName, header, tags) in Model.SidebarGroups)
       {
         <h5 class="tag-list-header @cssName-tag-list-header" data-category="@cssName">@header</h5>
         <ul class="tag-list @cssName-tag-list">
           @foreach (var tag in tags)
           {
-            <li class="tag-list-item tag-@cssName" data-name="@tag.Name" data-category="@cssName" data-count="@tag.PostCount">
-              <a class="tag-list-wiki" rel="nofollow" href="@(SiteConfig.Url("wiki_pages/show_or_new?title=" + Uri.EscapeDataString(tag.Name)))">?</a>
-              @if (!string.IsNullOrWhiteSpace(Model.Tags))
-              {
-                <a rel="nofollow" href="@Model.TagUrl(tag.Name)" class="tag-list-inc">+</a>
-                <a rel="nofollow" href="@Model.TagUrl("-" + tag.Name)" class="tag-list-exl">–</a>
-              }
-              <a rel="nofollow tag" class="tag-list-search" href="@Model.BasePath?tags=@Uri.EscapeDataString(tag.Name)">
-                <span class="tag-list-name">@tag.Name.Replace('_', ' ')</span>
-                <span data-count="@tag.PostCount" class="tag-list-count">@ShowModel.CountLabel(tag.PostCount)</span>
-              </a>
-            </li>
+            @await Html.PartialAsync("_TagListRow", new TagListRowModel(cssName, tag, Model.LocalCount(tag.Name), Model.BasePath + "?tags=" + Uri.EscapeDataString(tag.Name),
+                !string.IsNullOrWhiteSpace(Model.Tags) ? Model.TagUrl(tag.Name) : null, !string.IsNullOrWhiteSpace(Model.Tags) ? Model.TagUrl("-" + tag.Name) : null))
           }
         </ul>
       }
@@ -109,7 +104,7 @@
           @if (Model.CurrentFolder is { } here)
           {
             <article class="thumbnail favorite-go-up-card" data-drop-target="go-up" data-destination-folder-id="@here.ParentId">
-              <a href="@(here.ParentId is { } up ? $"/favorites?folder_id={up}" : "/favorites")" class="thm-link favorite-go-up-card-link" aria-label="Go up one folder level"><svg-icon name="corner_up_left" /></a>
+              <a href="@(here.ParentId is { } up ? $"/posts/favorites?folder_id={up}" : "/posts/favorites")" class="thm-link favorite-go-up-card-link" aria-label="Go up one folder level"><svg-icon name="corner_up_left" /></a>
               <div class="thm-desc favorite-go-up-card-desc"><span class="thm-desc-a favorite-go-up-card-name"><span class="favorite-go-up-card-name-text">Go Up</span></span></div>
             </article>
           }
@@ -120,7 +115,7 @@
           @foreach (var folder in Model.ChildFolders)
           {
             <article class="thumbnail favorite-folder-card" data-drop-target="folder" data-folder-drag-source="true" data-folder-id="@folder.Id" data-folder-name="@folder.Name">
-              <a href="/favorites?folder_id=@folder.Id" class="thm-link favorite-folder-card-link" aria-label="Open folder @folder.Name">
+              <a href="/posts/favorites?folder_id=@folder.Id" class="thm-link favorite-folder-card-link" aria-label="Open folder @folder.Name">
                 <svg-icon name="folder" class="folder-icon-closed" /><svg-icon name="folder_open" class="folder-icon-open" />
               </a>
               <div class="thm-desc favorite-folder-card-desc">

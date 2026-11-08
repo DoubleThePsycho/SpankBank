@@ -13,9 +13,11 @@ public class IndexModel : PageModel
 
     private readonly DownloadedPostSearch _search;
     private readonly TagsRepository _tags;
+    private readonly LocalTagCounts _localCounts;
 
-    public IndexModel(DownloadedPostSearch search, TagsRepository tags, FavoriteFolders folders, CatalogBrowser catalog)
+    public IndexModel(DownloadedPostSearch search, TagsRepository tags, FavoriteFolders folders, CatalogBrowser catalog, LocalTagCounts localCounts)
     {
+        _localCounts = localCounts;
         _catalog = catalog;
         _folders = folders;
         _search = search;
@@ -28,9 +30,9 @@ public class IndexModel : PageModel
     // Read from the query string by hand: Razor Pages reserves the route value "page", so model binding cannot use it.
     public int PageNumber { get; private set; } = 1;
 
-    /// <summary>True on /favorites: the same listing, narrowed to favorites and newest-favorited first.</summary>
-    public bool IsFavorites => Request.Path.StartsWithSegments("/favorites");
-    public string BasePath => IsFavorites ? "/favorites" : "/posts";
+    /// <summary>True on /posts/favorites: the same listing, narrowed to favorites and newest-favorited first.</summary>
+    public bool IsFavorites => Request.Path.StartsWithSegments("/posts/favorites");
+    public string BasePath => IsFavorites ? "/posts/favorites" : "/posts";
 
     private readonly FavoriteFolders _folders;
     private readonly CatalogBrowser _catalog;
@@ -41,7 +43,7 @@ public class IndexModel : PageModel
     /// <summary>What post links carry as ?q=, so a post page can build on this search. Nothing for the plain listing.</summary>
     public string? PostQuery => string.IsNullOrWhiteSpace(Tags) ? null : (IsFavorites ? "fav:true " : "") + Tags.Trim();
 
-    /// <summary>The folder being browsed on /favorites; null at the top level. Folders only show while not searching.</summary>
+    /// <summary>The folder being browsed on /posts/favorites; null at the top level. Folders only show while not searching.</summary>
     public FavoriteFolder? CurrentFolder { get; private set; }
     public bool FolderView => IsFavorites && string.IsNullOrWhiteSpace(Tags);
     public IReadOnlyList<FavoriteFolder> ChildFolders { get; private set; } = [];
@@ -85,7 +87,7 @@ public class IndexModel : PageModel
             Artist = _catalog.GetArtist(single.ToLowerInvariant());
     }
 
-    // What is searched: on /favorites the typed tags plus "fav:true", and "order:favorited" unless the user chose an order.
+    // What is searched: on /posts/favorites the typed tags plus "fav:true", and "order:favorited" unless the user chose an order.
     private string? SearchText()
     {
         if (!IsFavorites) return Tags;
@@ -93,6 +95,11 @@ public class IndexModel : PageModel
         var text = "fav:true " + Tags;
         return text.Contains("order:", StringComparison.OrdinalIgnoreCase) ? text : text + " order:favorited";
     }
+
+    private IReadOnlyDictionary<string, int> _localCountsOfSidebar = new Dictionary<string, int>();
+
+    /// <summary>How many posts on this device carry the tag (the sidebar's "local" column).</summary>
+    public int LocalCount(string tag) => _localCountsOfSidebar.GetValueOrDefault(tag);
 
     private void BuildSidebar()
     {
@@ -108,6 +115,8 @@ public class IndexModel : PageModel
             .ThenBy(t => t.Name, StringComparer.Ordinal)
             .Take(SidebarTagLimit)
             .ToList();
+
+        _localCountsOfSidebar = _localCounts.Get(top.Select(t => t.Name));
 
         // Grouped under headers like the post page; inside a group the most common tag comes first.
         SidebarGroups = TagCategories.SidebarOrder

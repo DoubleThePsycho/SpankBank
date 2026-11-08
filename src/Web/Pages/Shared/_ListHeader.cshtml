@@ -1,0 +1,13 @@
+@model SpankBank.Web.Services.ListHeaderModel
+@* The same header on every list page (artists, pools, galleries, tags): title on the left, [Add ...] [Search] on the right.
+   The Search button folds the page's #searchform open; the form is open while a search is active. *@
+<div class="watches-header">
+  <h1>@Model.Title</h1>
+  <div class="header-actions">
+    @if (Model.AddText is not null)
+    {
+      <button type="button" class="st-button" data-open-modal="@Model.AddModal">@Model.AddText</button>
+    }
+    <button type="button" class="st-button search-toggle" data-toggle="searchform" aria-controls="searchform" aria-expanded="@(Model.SearchActive ? "true" : "false")">Search</button>
+  </div>
+</div>

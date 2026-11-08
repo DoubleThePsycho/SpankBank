@@ -14,9 +14,12 @@ public class ShowModel : PageModel
     private readonly TagsRepository _tags;
     private readonly DownloadedPostSearch _search;
     private readonly FavoritesRepository _favorites;
+    private readonly LocalTagCounts _localCounts;
+    private IReadOnlyDictionary<string, int> _localCountsOfPost = new Dictionary<string, int>();
 
-    public ShowModel(DownloadedPostsRepository downloaded, PostsRepository catalog, TagsRepository tags, DownloadedPostSearch search, FavoritesRepository favorites)
+    public ShowModel(DownloadedPostsRepository downloaded, PostsRepository catalog, TagsRepository tags, DownloadedPostSearch search, FavoritesRepository favorites, LocalTagCounts localCounts)
     {
+        _localCounts = localCounts;
         _favorites = favorites;
         _search = search;
         _downloaded = downloaded;
@@ -67,10 +70,14 @@ public class ShowModel : PageModel
         return Page();
     }
 
+    /// <summary>How many posts on this device carry the tag (the sidebar's "local" column).</summary>
+    public int LocalCount(string tag) => _localCountsOfPost.GetValueOrDefault(tag);
+
     private void BuildTagGroups()
     {
         var names = Post.TagString.Split(' ', StringSplitOptions.RemoveEmptyEntries);
         var known = _tags.GetTagInfo(names).ToDictionary(t => t.Name);
+        _localCountsOfPost = _localCounts.Get(names);
 
         var groups = new List<(string, string, IReadOnlyList<TagInfo>)>();
         foreach (var (category, cssName, header) in TagCategories.SidebarOrder)

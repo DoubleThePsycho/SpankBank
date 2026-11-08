@@ -40,6 +40,9 @@ public class GalleryModel : PageModel
     public string? Status { get; private set; }
     public string Order { get; private set; } = "updated";
 
+    /// <summary>The folded search form is open while a search is active.</summary>
+    public bool SearchActive => !string.IsNullOrWhiteSpace(Name) || (!IsLocal && (!string.IsNullOrWhiteSpace(Description) || Category is not null || Status is not null || Order != "updated"));
+
     public IActionResult OnGet(string scope)
     {
         if (scope is not (Routes.Local or Routes.Online)) return NotFound();
@@ -53,7 +56,10 @@ public class GalleryModel : PageModel
 
     private void LoadLocal()
     {
-        var pools = _watches.GetAll(WatchedItemType.Pool).OrderBy(w => w.DisplayName, StringComparer.CurrentCultureIgnoreCase).ToList();
+        Name = Request.Query["name"].ToString().Trim();
+        var pools = _watches.GetAll(WatchedItemType.Pool)
+            .Where(w => NameFilter.Matches(Name, w.DisplayName) || w.SourceValue == Name)
+            .OrderBy(w => w.DisplayName, StringComparer.CurrentCultureIgnoreCase).ToList();
         Total = pools.Count;
         PageNumber = Math.Min(PageNumber, Math.Max(1, (int)((Total + PageSize - 1) / PageSize)));
 
@@ -101,6 +107,6 @@ public class GalleryModel : PageModel
 
     public string PageUrl(int page)
         => IsLocal
-            ? $"/pools/local/gallery?page={page}"
+            ? $"/pools/local/gallery?page={page}" + (string.IsNullOrEmpty(Name) ? "" : "&name=" + Uri.EscapeDataString(Name))
             : $"/pools/online/gallery?page={page}&name={Uri.EscapeDataString(Name ?? "")}&description={Uri.EscapeDataString(Description ?? "")}&category={Category}&status={Status}&order={Order}";
 }

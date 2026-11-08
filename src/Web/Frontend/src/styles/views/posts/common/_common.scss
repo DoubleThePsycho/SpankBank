@@ -3,3 +3,5 @@
 @include window-larger-than(50rem) {
   @import "tag_list.desktop";
 }
+
+@import "tag_list_local";

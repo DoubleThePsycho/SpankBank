@@ -3,3 +3,19 @@
   &::before { content: "("; }
   &::after { content: ")"; }
 }
+
+// SpankBank: tags show "local online" as two right-aligned columns instead of one count.
+.ui-autocomplete-dropdown > li .ui-autocomplete-counts {
+  float: right;
+  display: flex;
+  margin-left: 0.5rem;
+  font-variant-numeric: tabular-nums;
+
+  .ui-autocomplete-local,
+  .ui-autocomplete-online {
+    min-width: 3.25rem;
+    text-align: right;
+  }
+  .ui-autocomplete-online { color: themed("color-text-muted"); }
+  .ui-autocomplete-local.none { opacity: 0.45; }
+}

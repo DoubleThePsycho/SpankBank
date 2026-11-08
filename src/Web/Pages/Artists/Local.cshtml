@@ -13,9 +13,22 @@
 }
 <div id="c-artists" class="container-fluid">
   <div id="a-index">
-    <div class="watches-header">
-      <h1>Local artists</h1>
-      <button type="button" class="st-button" data-open-modal="modal-add">Add artists</button>
+    <partial name="_ListHeader" model='new SpankBank.Web.Services.ListHeaderModel("Local artists", Model.SearchActive, "Add artists")' />
+
+    <div class="search-dropdown" id="searchform" hidden="@(!Model.SearchActive)">
+      <form method="get" action="/artists/local" class="simple_form inline-form">
+        <div class="input string"><label for="name">Name</label><input type="text" id="name" name="name" value="@Model.Name" autocomplete="off"><p class="hint">Use * for wildcard; aliases match too</p></div>
+        <div class="input select">
+          <label for="status">Status</label>
+          <select id="status" name="status">
+            <option value="">Any</option>
+            <option value="enabled" selected="@(Model.Status == "enabled")">Enabled</option>
+            <option value="disabled" selected="@(Model.Status == "disabled")">Disabled</option>
+          </select>
+        </div>
+        <input type="hidden" name="sort" value="@view.Sort"><input type="hidden" name="dir" value="@(view.Descending ? "desc" : "asc")">
+        <input type="submit" value="Search" class="st-button">
+      </form>
     </div>
 
     @if (Model.Message is not null) { <div class="notice notice-info">@Model.Message</div> }
@@ -49,7 +62,7 @@
 
     @if (Model.Artists.Total == 0)
     {
-      <p>No artists watched.</p>
+      <p>@(Model.SearchActive ? "No watched artists match." : "No artists watched.")</p>
     }
     else
     {

@@ -2,6 +2,7 @@
 @model SpankBank.Web.Pages.Posts.ShowModel
 @inject SpankBank.Data.Repositories.SettingsRepository Settings
 @using SpankBank.Core.Models
+@using SpankBank.Web.Services
 @* Markup follows e621ng app/views/posts/show.html.erb and its sidebar partials (BSD-2, see THIRD-PARTY-NOTICES.md). *@
 @{
     var post = Model.Post;
@@ -44,25 +45,18 @@
       </section>
 
       <section id="tag-list">
+        @if (Model.TagGroups.Count > 0)
+        {
+          <div class="tag-list-columns" aria-hidden="true"><span></span><span>Local</span><span>Online</span></div>
+        }
         @foreach (var (cssName, header, tags) in Model.TagGroups)
         {
           <h5 class="tag-list-header @cssName-tag-list-header" data-category="@cssName">@header</h5>
           <ul class="tag-list @cssName-tag-list">
             @foreach (var tag in tags)
             {
-              <li class="tag-list-item tag-@cssName" data-name="@tag.Name" data-category="@cssName" data-count="@tag.PostCount">
-                <a class="tag-list-wiki" rel="nofollow" href="@(SiteConfig.Url("wiki_pages/show_or_new?title=" + Uri.EscapeDataString(tag.Name)))">?</a>
-                @if (Model.Query is not null)
-                {
-                  @* Reached from a search: + and – add the tag to it (or exclude it) without typing. *@
-                  <a rel="nofollow" href="@Model.SearchUrl(tag.Name)" class="tag-list-inc">+</a>
-                  <a rel="nofollow" href="@Model.SearchUrl("-" + tag.Name)" class="tag-list-exl">–</a>
-                }
-                <a rel="nofollow tag" class="tag-list-search" href="/posts?tags=@Uri.EscapeDataString(tag.Name)">
-                  <span class="tag-list-name">@tag.Name.Replace('_', ' ')</span>
-                  <span data-count="@tag.PostCount" class="tag-list-count">@ShowModel.CountLabel(tag.PostCount)</span>
-                </a>
-              </li>
+              @await Html.PartialAsync("_TagListRow", new TagListRowModel(cssName, tag, Model.LocalCount(tag.Name), "/posts?tags=" + Uri.EscapeDataString(tag.Name),
+                  Model.Query is not null ? Model.SearchUrl(tag.Name) : null, Model.Query is not null ? Model.SearchUrl("-" + tag.Name) : null))
             }
           </ul>
         }
@@ -115,7 +109,7 @@
           <div class="post-sidebar-break"></div>
 
           <div class="post-sidebar-label">Rating</div>
-          <div class="post-sidebar-value"><span class="selectable" id="sidebar-rating">@ratingName</span></div>
+          <div class="post-sidebar-value"><span class="selectable rating-@ratingLetter" id="sidebar-rating">@ratingName</span></div>
 
           <div class="post-sidebar-label">Score</div>
           <div class="post-sidebar-value"><span class="selectable" id="sidebar-score">@post.Score</span></div>
@@ -128,7 +122,7 @@
 
           <div class="post-sidebar-break"></div>
 
-          <div class="post-sidebar-label">Local file</div>
+          <div class="post-sidebar-label">File</div>
           <div class="post-sidebar-value">
             @(post.Status switch
             {

@@ -1,5 +1,5 @@
 // SpankBank page: watched artists, pools and searches. Built from the shared site styles.
-#c-watches, #c-artists, #c-pools {
+#c-watches, #c-artists, #c-pools, #c-tags {
   .watches-header {
     display: flex;
     align-items: center;
@@ -7,6 +7,9 @@
     margin-bottom: 0.75rem;
 
     h1 { margin: 0; }
+
+    // [Add ...] [Search]: the same pair of buttons, in the same place, on every list page.
+    .header-actions { display: flex; gap: 0.5rem; align-items: center; }
   }
 
   .watches-table tbody tr[data-open-modal] {
@@ -356,3 +359,6 @@ $count-orange: #e8924a;
   &[hidden] { display: none; }
   form { margin: 0; }
 }
+
+// The tag list: counts hug their numbers on the right, the name takes the rest.
+#c-tags table .col-num { width: 1%; white-space: nowrap; text-align: right; padding-left: 1.25rem; }

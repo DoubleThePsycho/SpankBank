@@ -14,10 +14,7 @@
 <div id="c-artists" class="container-fluid">
   <div id="a-index">
     @* The search form is folded away until the Search button is pressed; it is open while a search is active. *@
-    <div class="watches-header">
-      <h1>Online artists</h1>
-      <button type="button" class="st-button search-toggle" data-toggle="searchform" aria-controls="searchform" aria-expanded="@(Model.SearchActive ? "true" : "false")">Search</button>
-    </div>
+    <partial name="_ListHeader" model='new SpankBank.Web.Services.ListHeaderModel("Online artists", Model.SearchActive)' />
 
     <div class="search-dropdown" id="searchform" hidden="@(!Model.SearchActive)">
       <form method="get" action="/artists/online" class="simple_form inline-form">

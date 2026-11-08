@@ -7,13 +7,17 @@
 @section SecondaryNav {
   <partial name="_AreaNav" model='"pools"' />
 }
+@section Scripts {
+  <script type="module" src="~/dist/watches.js" asp-append-version="true"></script>
+}
 <div id="c-pools" class="container-fluid">
   <div id="a-gallery">
-    @if (!Model.IsLocal)
-    {
-      <div class="section" id="searchform">
-        <form method="get" action="/pools/online/gallery" class="simple_form inline-form">
-          <div class="input string"><label for="name">Name</label><input type="text" id="name" name="name" value="@Model.Name"></div>
+    <partial name="_ListHeader" model='new SpankBank.Web.Services.ListHeaderModel(Model.IsLocal ? "Local pool gallery" : "Online pool gallery", Model.SearchActive)' />
+    <div class="search-dropdown" id="searchform" hidden="@(!Model.SearchActive)">
+      <form method="get" action="/pools/@Model.Scope/gallery" class="simple_form inline-form">
+        <div class="input string"><label for="name">Name</label><input type="text" id="name" name="name" value="@Model.Name"></div>
+        @if (!Model.IsLocal)
+        {
           <div class="input string"><label for="description">Description</label><input type="text" id="description" name="description" value="@Model.Description"></div>
           <div class="input select">
             <label for="status">Status</label>
@@ -40,12 +44,10 @@
               <option value="count" selected="@(Model.Order == "count")">Post count</option>
             </select>
           </div>
-          <input type="submit" value="Search" class="st-button">
-        </form>
-      </div>
-    }
-
-    <h2>@(Model.IsLocal ? "Local pools" : "Online pools")</h2>
+        }
+        <input type="submit" value="Search" class="st-button">
+      </form>
+    </div>
 
     <section class="posts-container pool-gallery">
       @foreach (var card in Model.Cards)

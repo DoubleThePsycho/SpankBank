@@ -1,4 +1,5 @@
 using Microsoft.Data.Sqlite;
+using SpankBank.Core;
 using SpankBank.Core.Models;
 
 namespace SpankBank.Data.Repositories;
@@ -73,9 +74,15 @@ public sealed partial class WatchesRepository
     }
 
     /// <param name="sort">id, name, aliases, found, enabled, custom, total, downloaded, restored or lost (default name).</param>
-    public WatchPage<ArtistListItem> GetArtistPage(string? sort, bool descending, int page, int pageSize)
+    /// <param name="name">Only artists whose name or one of whose aliases matches (see <see cref="NameFilter"/>).</param>
+    /// <param name="enabled">Only enabled (true) or disabled (false) artists.</param>
+    public WatchPage<ArtistListItem> GetArtistPage(string? sort, bool descending, int page, int pageSize, string? name = null, bool? enabled = null)
     {
-        var all = GetAll(WatchedItemType.Artist);
+        var all = GetAll(WatchedItemType.Artist)
+            .Where(e => enabled is null || e.Enabled == enabled)
+            .Where(e => NameFilter.IsEmpty(name) || NameFilter.Matches(name, e.SourceValue) || NameFilter.Matches(name, e.DisplayName)
+                        || e.ArtistTags.Any(t => t.Kind == ArtistTagKind.Alias && NameFilter.Matches(name, t.Tag)))
+            .ToList();
         var stats = GetPostStats(WatchedItemType.Artist);
         var items = all.Select(e =>
         {
@@ -108,7 +115,9 @@ public sealed partial class WatchesRepository
 
     /// <param name="sort">id (default), name, artist, type, pages, local or status.</param>
     /// <param name="includeDisabled">Disabled pool watches are left out of the list unless asked for.</param>
-    public WatchPage<WatchedPoolItem> GetPoolPage(string? sort, bool descending, int page, int pageSize, bool includeDisabled)
+    /// <param name="name">Only pools whose name matches (see <see cref="NameFilter"/>); a pool id matches too.</param>
+    /// <param name="artist">Only pools added for an artist whose name matches.</param>
+    public WatchPage<WatchedPoolItem> GetPoolPage(string? sort, bool descending, int page, int pageSize, bool includeDisabled, string? name = null, string? artist = null)
     {
         page = Math.Max(1, page);
         pageSize = Math.Max(1, pageSize);
@@ -124,12 +133,16 @@ public sealed partial class WatchesRepository
             _ => $"CAST(w.SourceValue AS INTEGER) {direction}",
         };
         var where = includeDisabled ? "w.ItemType = 0" : "w.ItemType = 0 AND w.Enabled = 1";
+        const string poolName = "lower(replace(COALESCE(NULLIF(w.LocalName, ''), p.Name, w.DisplayName), '_', ' '))";
+        if (!NameFilter.IsEmpty(name)) where += $" AND ({poolName} LIKE $name ESCAPE '\\' OR w.SourceValue = $nameExact)";
+        if (!NameFilter.IsEmpty(artist)) where += " AND lower(replace(COALESCE(w.Origin, ''), '_', ' ')) LIKE $artist ESCAPE '\\'";
 
         using var connection = OpenWithDevice(attachServer: true);
         int total;
         using (var count = connection.CreateCommand())
         {
-            count.CommandText = $"SELECT COUNT(*) FROM WatchedItems w WHERE {where};";
+            count.CommandText = $"SELECT COUNT(*) FROM WatchedItems w LEFT JOIN srv.Pools p ON p.Id = CAST(w.SourceValue AS INTEGER) WHERE {where};";
+            AddPoolFilters(count, name, artist);
             total = Convert.ToInt32(count.ExecuteScalar());
         }
 
@@ -146,6 +159,7 @@ public sealed partial class WatchesRepository
                 """;
             cmd.Parameters.AddWithValue("$limit", pageSize);
             cmd.Parameters.AddWithValue("$offset", (page - 1) * pageSize);
+            AddPoolFilters(cmd, name, artist);
             using var reader = cmd.ExecuteReader();
             while (reader.Read())
             {
@@ -163,6 +177,16 @@ public sealed partial class WatchesRepository
         var stats = GetPostStats(WatchedItemType.Pool, entries.Select(e => e.Id).ToList());
         var items = entries.Select(e => new WatchedPoolItem(e, e.Pool?.PostCount ?? 0, stats.GetValueOrDefault(e.Id, WatchPostStats.None))).ToList();
         return new WatchPage<WatchedPoolItem>(items, total, page, pageSize);
+    }
+
+    private static void AddPoolFilters(SqliteCommand cmd, string? name, string? artist)
+    {
+        if (!NameFilter.IsEmpty(name))
+        {
+            cmd.Parameters.AddWithValue("$name", NameFilter.ToLike(name!));
+            cmd.Parameters.AddWithValue("$nameExact", name!.Trim());
+        }
+        if (!NameFilter.IsEmpty(artist)) cmd.Parameters.AddWithValue("$artist", NameFilter.ToLike(artist!));
     }
 
     public int CountDisabledPools()

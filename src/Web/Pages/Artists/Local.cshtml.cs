@@ -25,10 +25,19 @@ public class LocalModel : WatchPageModel
 
     public void OnGet(string? sort = null, string? dir = null) => Load(int.TryParse(Request.Query["page"], out var page) ? page : 1, sort, dir);
 
+    // The folded search form: name (or alias) and enabled/disabled.
+    public string? Name { get; private set; }
+    public string? Status { get; private set; }
+    public bool SearchActive => !string.IsNullOrWhiteSpace(Name) || Status is not null;
+
     private void Load(int page, string? sort, string? dir)
     {
-        View = new ListView("/artists/local", sort, dir, page, defaultSort: "name", defaultDescending: false);
-        Artists = Watches.GetArtistPage(View.Sort, View.Descending, View.Page, ListView.PageSize(_settings.Get(WorkerSettingsKeys.ListPageSize)));
+        Name = Request.Query["name"].ToString().Trim();
+        Status = Request.Query["status"].ToString() is "enabled" or "disabled" ? Request.Query["status"].ToString() : null;
+        var extra = (string.IsNullOrEmpty(Name) ? "" : "&name=" + Uri.EscapeDataString(Name)) + (Status is null ? "" : "&status=" + Status);
+        View = new ListView("/artists/local", sort, dir, page, defaultSort: "name", defaultDescending: false, extraQuery: extra);
+        Artists = Watches.GetArtistPage(View.Sort, View.Descending, View.Page, ListView.PageSize(_settings.Get(WorkerSettingsKeys.ListPageSize)),
+            Name, Status is null ? null : Status == "enabled");
     }
 
     /// <summary>

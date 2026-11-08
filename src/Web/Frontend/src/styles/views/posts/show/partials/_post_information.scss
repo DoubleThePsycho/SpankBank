@@ -23,6 +23,11 @@
     }
   }
 
+  // The rating is read at a glance: green, yellow, red like the rating colours elsewhere.
+  .rating-s { color: themed("color-rating-safe"); }
+  .rating-q { color: themed("color-rating-questionable"); }
+  .rating-e { color: themed("color-rating-explicit"); }
+
   .post-sidebar-break {
     grid-column: 1 / -1;
     margin: 0.5rem 0;

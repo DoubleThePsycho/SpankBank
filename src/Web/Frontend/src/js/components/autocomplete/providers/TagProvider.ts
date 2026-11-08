@@ -50,6 +50,7 @@ export default class TagProvider extends Provider<TagItem> {
 
         id: tag.id,
         post_count: tag.post_count,
+        local_count: tag.local_count,
 
         category: tag.category,
         antecedent: tag.antecedent_name,
@@ -65,6 +66,7 @@ interface TagAPIResponse {
   id: number;
   name: string;
   post_count: number;
+  local_count: number;
   category: number;
   antecedent_name: string | null;
 }

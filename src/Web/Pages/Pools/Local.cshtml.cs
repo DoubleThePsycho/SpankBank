@@ -24,12 +24,20 @@ public partial class LocalModel : WatchPageModel
     public IReadOnlyList<PoolSuggestion> Suggestions { get; private set; } = [];
     public bool ShowAll { get; private set; }
 
+    // The folded search form: pool name (or id) and the artist a pool was added for.
+    public string? Name { get; private set; }
+    public string? Artist { get; private set; }
+    public bool SearchActive => !string.IsNullOrWhiteSpace(Name) || !string.IsNullOrWhiteSpace(Artist);
+
     public void OnGet(string? sort = null, string? dir = null, string? show = null)
     {
         ShowAll = Request.Query["all"] == "1";
         ShowDisabled = show == "disabled";
-        View = new ListView("/pools/local", sort, dir, int.TryParse(Request.Query["page"], out var page) ? page : 1, defaultSort: "id", defaultDescending: true, extraQuery: ShowDisabled ? "&show=disabled" : "");
-        Pools = Watches.GetPoolPage(View.Sort, View.Descending, View.Page, ListView.PageSize(_settings.Get(WorkerSettingsKeys.ListPageSize)), ShowDisabled);
+        Name = Request.Query["name"].ToString().Trim();
+        Artist = Request.Query["artist"].ToString().Trim();
+        var extra = (ShowDisabled ? "&show=disabled" : "") + (string.IsNullOrEmpty(Name) ? "" : "&name=" + Uri.EscapeDataString(Name)) + (string.IsNullOrEmpty(Artist) ? "" : "&artist=" + Uri.EscapeDataString(Artist));
+        View = new ListView("/pools/local", sort, dir, int.TryParse(Request.Query["page"], out var page) ? page : 1, defaultSort: "id", defaultDescending: true, extraQuery: extra);
+        Pools = Watches.GetPoolPage(View.Sort, View.Descending, View.Page, ListView.PageSize(_settings.Get(WorkerSettingsKeys.ListPageSize)), ShowDisabled, Name, Artist);
         DisabledCount = Watches.CountDisabledPools();
         Suggestions = Watches.GetPoolSuggestions(ShowAll);
     }

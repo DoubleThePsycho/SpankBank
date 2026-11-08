@@ -12,9 +12,16 @@
 }
 <div id="c-pools" class="container-fluid">
   <div id="a-index">
-    <div class="watches-header">
-      <h1>Local pools</h1>
-      <button type="button" class="st-button" data-open-modal="modal-add">Add pool</button>
+    <partial name="_ListHeader" model='new SpankBank.Web.Services.ListHeaderModel("Local pools", Model.SearchActive, "Add pool")' />
+
+    <div class="search-dropdown" id="searchform" hidden="@(!Model.SearchActive)">
+      <form method="get" action="/pools/local" class="simple_form inline-form">
+        <div class="input string"><label for="name">Name</label><input type="text" id="name" name="name" value="@Model.Name" autocomplete="off"><p class="hint">Use * for wildcard; a pool id works too</p></div>
+        <div class="input string"><label for="artist">Artist</label><input type="text" id="artist" name="artist" value="@Model.Artist" autocomplete="off"><p class="hint">The artist a pool was added for</p></div>
+        @if (Model.ShowDisabled) { <input type="hidden" name="show" value="disabled"> }
+        <input type="hidden" name="sort" value="@view.Sort"><input type="hidden" name="dir" value="@(view.Descending ? "desc" : "asc")">
+        <input type="submit" value="Search" class="st-button">
+      </form>
     </div>
 
     @if (Model.Message is not null) { <div class="notice notice-info">@Model.Message</div> }
@@ -22,7 +29,7 @@
 
     @if (Model.Pools.Total == 0)
     {
-      <p>Nothing watched.</p>
+      <p>@(Model.SearchActive ? "No watched pools match." : "Nothing watched.")</p>
     }
     else
     {

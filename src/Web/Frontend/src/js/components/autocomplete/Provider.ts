@@ -32,8 +32,10 @@ export default abstract class Provider<T extends AutocompleteItem = Autocomplete
     link.appendChild(document.createTextNode(item.label || item.name));
     li.appendChild(link);
 
-    // Append post count
-    if (item.post_count !== undefined)
+    // Append the counts: tags show local and online side by side (SpankBank), everything else the one count.
+    if (item.local_count !== undefined && item.post_count !== undefined)
+      link.appendChild(RenderUtilities.createCountsSpan(item.local_count, item.post_count));
+    else if (item.post_count !== undefined)
       link.appendChild(RenderUtilities.createCountSpan(item.post_count));
 
     return li;
@@ -92,6 +94,25 @@ class RenderUtilities {
     countSpan.className = "ui-autocomplete-count";
     countSpan.textContent = RenderUtilities.formatCount(count);
     return countSpan;
+  }
+
+  /** Local and online counts as two right-aligned columns; the exact numbers are in the tooltips. */
+  public static createCountsSpan (local: number, online: number) {
+    const wrapper = document.createElement("span");
+    wrapper.className = "ui-autocomplete-counts";
+
+    const localSpan = document.createElement("span");
+    localSpan.className = "ui-autocomplete-local" + (local === 0 ? " none" : "");
+    localSpan.textContent = RenderUtilities.formatCount(local);
+    localSpan.title = `${local.toLocaleString("en-US")} local posts`;
+
+    const onlineSpan = document.createElement("span");
+    onlineSpan.className = "ui-autocomplete-online";
+    onlineSpan.textContent = RenderUtilities.formatCount(online);
+    onlineSpan.title = `${online.toLocaleString("en-US")} posts online`;
+
+    wrapper.append(localSpan, onlineSpan);
+    return wrapper;
   }
 
   public static formatCount (count: number) {

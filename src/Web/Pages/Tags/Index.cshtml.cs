@@ -8,8 +8,17 @@ public class IndexModel : PageModel
     public const int PageSize = 75;
 
     private readonly CatalogBrowser _catalog;
+    private readonly LocalTagCounts _localCounts;
+    private IReadOnlyDictionary<string, int> _local = new Dictionary<string, int>();
 
-    public IndexModel(CatalogBrowser catalog) => _catalog = catalog;
+    public IndexModel(CatalogBrowser catalog, LocalTagCounts localCounts)
+    {
+        _catalog = catalog;
+        _localCounts = localCounts;
+    }
+
+    /// <summary>How many posts on this device carry the tag.</summary>
+    public int LocalCount(string tag) => _local.GetValueOrDefault(tag);
 
     // e621's categories in the order its search form lists them.
     public static readonly (int Id, string Name)[] Categories =
@@ -19,6 +28,9 @@ public class IndexModel : PageModel
     public int? Category { get; private set; }
     public string Order { get; private set; } = "count";
     public bool ShowEmpty { get; private set; }
+
+    /// <summary>The folded search form is open while a search is active.</summary>
+    public bool SearchActive => !string.IsNullOrWhiteSpace(Name) || Category is not null || Order != "count" || ShowEmpty;
     public int PageNumber { get; private set; } = 1;
     public int LastPage { get; private set; } = 1;
     public Page<TagRow> Result { get; private set; } = new([], 0);
@@ -39,6 +51,7 @@ public class IndexModel : PageModel
             PageNumber = LastPage;
             Result = _catalog.SearchTags(Name, Category, Order, hideEmpty: !ShowEmpty, PageNumber, PageSize);
         }
+        _local = _localCounts.Get(Result.Rows.Select(r => r.Name));
     }
 
     public string PageUrl(int page)

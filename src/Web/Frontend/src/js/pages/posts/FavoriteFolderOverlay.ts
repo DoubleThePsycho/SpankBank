@@ -113,7 +113,7 @@ export default class FavoriteFolderOverlay {
 
 $(() => {
   const trigger = document.getElementById("favorite-folder-new-trigger");
-  if (!trigger) return; // not the folder view of /favorites
+  if (!trigger) return; // not the folder view of /posts/favorites
 
   const overlay = new FavoriteFolderOverlay();
   trigger.addEventListener("click", (event) => {

@@ -1,0 +1,18 @@
+@model SpankBank.Web.Services.TagListRowModel
+@* One row of the tag sidebar (post listing and post page): name, local count, online count. Counts are compact, the title has the exact number. *@
+@{
+    var tag = Model.Tag;
+}
+<li class="tag-list-item tag-@Model.CssName" data-name="@tag.Name" data-category="@Model.CssName" data-count="@tag.PostCount" data-local-count="@Model.Local">
+  <a class="tag-list-wiki" rel="nofollow" href="@(SiteConfig.Url("wiki_pages/show_or_new?title=" + Uri.EscapeDataString(tag.Name)))">?</a>
+  @if (Model.IncludeUrl is not null)
+  {
+    <a rel="nofollow" href="@Model.IncludeUrl" class="tag-list-inc">+</a>
+    <a rel="nofollow" href="@Model.ExcludeUrl" class="tag-list-exl">–</a>
+  }
+  <a rel="nofollow tag" class="tag-list-search" href="@Model.SearchUrl">
+    <span class="tag-list-name">@tag.Name.Replace('_', ' ')</span>
+    <span class="tag-list-count tag-list-count-local@(Model.Local == 0 ? " none" : "")" title="@Model.Local.ToString("N0") local posts">@SpankBank.Web.Pages.Posts.ShowModel.CountLabel(Model.Local)</span>
+    <span class="tag-list-count tag-list-count-online" title="@tag.PostCount.ToString("N0") posts online">@SpankBank.Web.Pages.Posts.ShowModel.CountLabel(tag.PostCount)</span>
+  </a>
+</li>

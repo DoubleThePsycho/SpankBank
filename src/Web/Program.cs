@@ -16,7 +16,7 @@ Directory.CreateDirectory(WebPaths.KeysDir);
 builder.Services.AddDataProtection()
     .PersistKeysToFileSystem(new DirectoryInfo(WebPaths.KeysDir))
     .SetApplicationName("SpankBank");
-builder.Services.AddRazorPages(options => options.Conventions.AddPageRoute("/Posts/Index", "/favorites")) // the listing, narrowed to favorites
+builder.Services.AddRazorPages(options => options.Conventions.AddPageRoute("/Posts/Index", "/posts/favorites")) // the listing, narrowed to favorites
     .AddMvcOptions(options => options.Filters.Add<WatchChangeNotifier>());
 builder.Services.AddHttpClient<WorkerClient>(client =>
 {
@@ -27,6 +27,7 @@ builder.Services.AddHttpClient<WorkerClient>(client =>
 builder.Services.AddSingleton(paths);
 builder.Services.AddSingleton(new PostsRepository(paths.ServerDatabasePath));
 builder.Services.AddSingleton(new DownloadedPostSearch(paths));
+builder.Services.AddSingleton(new LocalTagCounts(paths));
 builder.Services.AddSingleton(new CatalogBrowser(paths.ServerDatabasePath));
 builder.Services.AddSingleton(new DownloadedPostsRepository(paths.DeviceDatabasePath));
 builder.Services.AddSingleton(new TagsRepository(paths.ServerDatabasePath));
@@ -122,6 +123,9 @@ app.MapPost("/favorite_folders/{id:long}/move", (long id, FolderRequest body, Fa
 app.MapDelete("/favorite_folders/{id:long}", (long id, FavoriteFolders folders) => Folder(() => new { parent_id = folders.Delete(id) }));
 app.MapPost("/favorites/{id:long}/move", (long id, FolderRequest body, FavoriteFolders folders) => Folder(() => { folders.MovePost(id, body.FolderId); return new { id, folder_id = body.FolderId }; }));
 
+// The favorites listing used to live at /favorites (PUT/DELETE /favorites/<id> still toggle one).
+app.MapGet("/favorites", (HttpContext http) => Results.Redirect("/posts/favorites" + http.Request.QueryString, permanent: true));
+
 // The watch pages used to live under /watches.
 app.MapGet("/watches", () => Results.Redirect("/artists/local", permanent: true));
 app.MapGet("/watches/artists", () => Results.Redirect("/artists/local", permanent: true));
@@ -129,15 +133,18 @@ app.MapGet("/watches/pools", () => Results.Redirect("/pools/local", permanent: t
 app.MapGet("/watches/searches", () => Results.Redirect("/searches", permanent: true));
 
 // e621ng-compatible tag autocomplete (js/components/autocomplete/providers/TagProvider.ts).
-app.MapGet("/tags/autocomplete.json", (HttpContext http, TagsRepository tags) =>
+app.MapGet("/tags/autocomplete.json", (HttpContext http, TagsRepository tags, LocalTagCounts localCounts) =>
 {
     var term = http.Request.Query["search[name_matches]"].ToString();
     int? category = int.TryParse(http.Request.Query["search[category]"], out var c) ? c : null;
-    return Results.Json(tags.Autocomplete(term, category).Select(t => new
+    var found = tags.Autocomplete(term, category);
+    var local = localCounts.Get(found.Select(t => t.Name));
+    return Results.Json(found.Select(t => new
     {
         id = t.Id,
         name = t.Name,
         post_count = t.PostCount,
+        local_count = local.GetValueOrDefault(t.Name),
         category = t.Category,
         antecedent_name = t.AntecedentName,
     }));
@@ -152,6 +159,9 @@ app.MapGet("/status/progress", async (WorkerClient worker) =>
     await worker.GetProgressJsonAsync() is { } json
         ? Results.Content(json, "application/json")
         : Results.Json(new { online = false }));
+
+// Count the local tags now, in the background, so the first page that shows them does not wait.
+_ = Task.Run(() => app.Services.GetRequiredService<LocalTagCounts>().Warm());
 
 app.Run();
 

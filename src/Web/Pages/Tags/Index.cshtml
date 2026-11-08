@@ -4,9 +4,14 @@
 @{
     ViewData["Title"] = "Tags";
 }
+@section Scripts {
+  <script type="module" src="~/dist/watches.js" asp-append-version="true"></script>
+}
 <div id="c-tags" class="container-fluid">
   <div id="a-index">
-    <div class="section" id="searchform">
+    <partial name="_ListHeader" model='new SpankBank.Web.Services.ListHeaderModel("Tags", Model.SearchActive)' />
+
+    <div class="search-dropdown" id="searchform" hidden="@(!Model.SearchActive)">
       <form method="get" action="/tags" class="simple_form inline-form">
         <div class="input string"><label for="name">Name</label><input type="text" id="name" name="name" value="@Model.Name" data-autocomplete="tag" autocomplete="off"><p class="hint">Use * for wildcard</p></div>
         <div class="input select">
@@ -33,12 +38,13 @@
     </div>
 
     <table class="striped">
-      <thead><tr><th>Count</th><th>Name</th><th></th></tr></thead>
+      <thead><tr><th class="col-num">Local</th><th class="col-num">Online</th><th>Name</th><th></th></tr></thead>
       <tbody>
         @foreach (var tag in Model.Result.Rows)
         {
           <tr>
-            <td>@tag.PostCount.ToString("N0")</td>
+            <td class="col-num">@Model.LocalCount(tag.Name).ToString("N0")</td>
+            <td class="col-num">@tag.PostCount.ToString("N0")</td>
             <td class="category-@tag.Category">
               @if (tag.Category == 1)
               {
@@ -55,7 +61,7 @@
         }
         @if (Model.Result.Rows.Count == 0)
         {
-          <tr><td colspan="3">No tags match.</td></tr>
+          <tr><td colspan="4">No tags match.</td></tr>
         }
       </tbody>
     </table>

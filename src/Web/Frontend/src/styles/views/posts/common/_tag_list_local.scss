@@ -1,0 +1,39 @@
+// SpankBank: a tag row is a small table, "name  local  online", instead of "name 1.2k".
+// Imported after the upstream tag list styles (and, on desktop, after their desktop overrides) so it wins.
+$tag-count-column: 3.1rem;
+
+.tag-list-columns {
+  display: flex;
+  margin: 0 0 0.25rem;
+  font-size: 0.7rem;
+  line-height: 1rem;
+  color: themed("color-text-muted");
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  user-select: none;
+
+  & > span:first-child { flex: 1 1 auto; }
+  & > span:not(:first-child) { flex: 0 0 $tag-count-column; text-align: right; }
+}
+
+ul.tag-list .tag-list-search {
+  display: flex;
+  flex: 1 1 auto;
+  min-width: 0;
+  align-items: baseline;
+
+  .tag-list-name {
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+
+  .tag-list-count {
+    flex: 0 0 $tag-count-column;
+    display: block;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+    padding-right: 0;
+  }
+  .tag-list-count-local.none { opacity: 0.45; }
+}

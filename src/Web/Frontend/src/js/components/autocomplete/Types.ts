@@ -12,6 +12,7 @@ export interface AutocompleteItem {
 
   id?: number; // users, pools, wikis
   post_count?: number; // tags, artists, pools
+  local_count?: number; // tags: posts on this device with the tag (SpankBank)
   category?: number | string; // tags, pools, wiki
   antecedent?: string | null; // tags
   level?: string; // users
@@ -20,6 +21,7 @@ export interface AutocompleteItem {
 export interface TagItem extends AutocompleteItem {
   category: number; // API returns the category ID
   post_count: number;
+  local_count: number;
   antecedent: string | null;
 }
 
