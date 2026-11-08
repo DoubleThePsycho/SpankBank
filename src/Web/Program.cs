@@ -54,6 +54,14 @@ var removedMarkerPools = watchesRepository.RemovePoolsOfNonArtists();
 if (removedMarkerPools > 0)
     app.Logger.LogWarning("Removed {Count} pool watches that were added for marker tags treated as artists.", removedMarkerPools);
 
+// A browser request that ends in an error status without a page of its own (an unknown address, a missing post) gets the
+// error page inside the normal layout, so the menu still works. Files, scripts and JSON calls keep their plain status.
+app.UseWhen(
+    context => (HttpMethods.IsGet(context.Request.Method) || HttpMethods.IsHead(context.Request.Method))
+        && context.Request.Headers.Accept.ToString().Contains("text/html", StringComparison.OrdinalIgnoreCase)
+        && !context.Request.Path.StartsWithSegments("/media") && !context.Request.Path.StartsWithSegments("/dist"),
+    branch => branch.UseStatusCodePagesWithReExecute("/error", "?code={0}"));
+
 // The rubbish bin lives in <media>/.bin; nothing below a dot folder is served.
 app.Use(async (context, next) =>
 {
@@ -72,6 +80,8 @@ if (Directory.Exists(WebPaths.MediaDir))
     mediaTypes.Mappings[".swf"] = "application/x-shockwave-flash";
     app.UseStaticFiles(new StaticFileOptions { FileProvider = new PhysicalFileProvider(WebPaths.MediaDir), RequestPath = "/media", ContentTypeProvider = mediaTypes });
 }
+// Routing starts here, after the error-page middleware above: re-executing a request for the error page must route it again.
+app.UseRouting();
 app.MapRazorPages();
 
 // Favorites. PUT/DELETE with no body: a cross-site page cannot send them without a CORS preflight.

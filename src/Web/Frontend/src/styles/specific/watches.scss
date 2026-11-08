@@ -363,7 +363,6 @@ $count-orange: #e8924a;
 // The tag list: name on the left, then the local and online counts and the link, each only as wide as it needs.
 #c-tags table {
   width: 100%;
-  max-width: 52rem;
 
   td:first-child { white-space: nowrap; } // names such as digital_media_(artwork) stay on one line
 
