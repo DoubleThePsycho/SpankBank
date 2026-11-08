@@ -8,7 +8,7 @@
   <meta charset="utf-8">
   <title>@(ViewData["Title"] is string pageTitle ? $"{pageTitle} - {SiteConfig.Name}" : $"SpankBank ({SiteConfig.Name} archive)")</title>
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <meta name="theme-color" content="#00549e">
+  <meta name="theme-color" content="@SiteLook.ThemeColor">
   <meta name="blacklisted-tags" content="[]">
   <meta name="blacklist-users" content="false">
   @* Read by the autocomplete (js/components/autocomplete/Constants.ts). Subset of e621ng's TagQuery lists. *@
@@ -19,12 +19,12 @@
   <script type="module" src="~/dist/application.js" asp-append-version="true"></script>
   @await RenderSectionAsync("Head", required: false)
 </head>
-<body lang="en" class="resp @(ViewData["BodyClass"])" data-user-id="" data-user-name="Anonymous" data-user-level="0" data-user-level-string="Member" data-user-is-anonymous="false">
+<body lang="en" data-site="@SiteLook.Site" class="resp @(ViewData["BodyClass"])" data-user-id="" data-user-name="Anonymous" data-user-level="0" data-user-level-string="Member" data-user-is-anonymous="false">
   <script>
     (function () {
       try {
         const values = {
-          "th-main": localStorage.getItem("theme") || "hexagon",
+          "th-main": localStorage.getItem("theme") || "@SiteLook.DefaultTheme",
           "th-extra": localStorage.getItem("theme-extra") || "hexagon",
           "th-stickyheader": localStorage.getItem("theme-sheader") || false,
           "th-palette": localStorage.getItem("theme-palette") || "default",
