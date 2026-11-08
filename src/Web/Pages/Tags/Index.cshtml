@@ -4,6 +4,9 @@
 @{
     ViewData["Title"] = "Tags";
 }
+@section SecondaryNav {
+  <partial name="_AreaNav" model='"tags"' />
+}
 @section Scripts {
   <script type="module" src="~/dist/watches.js" asp-append-version="true"></script>
 }
@@ -37,14 +40,12 @@
       </form>
     </div>
 
-    <table class="striped">
-      <thead><tr><th class="col-num">Local</th><th class="col-num">Online</th><th>Name</th><th></th></tr></thead>
+    <table class="striped tags-table">
+      <thead><tr><th>Name</th><th class="col-num">Local</th><th class="col-num">Online</th><th class="col-link"></th></tr></thead>
       <tbody>
         @foreach (var tag in Model.Result.Rows)
         {
           <tr>
-            <td class="col-num">@Model.LocalCount(tag.Name).ToString("N0")</td>
-            <td class="col-num">@tag.PostCount.ToString("N0")</td>
             <td class="category-@tag.Category">
               @if (tag.Category == 1)
               {
@@ -56,7 +57,9 @@
               }
               <a href="/posts?tags=@Uri.EscapeDataString(tag.Name)">@tag.Name</a>
             </td>
-            <td><a href="@(SiteConfig.Url("posts?tags=" + Uri.EscapeDataString(tag.Name)))" rel="nofollow noopener">online</a></td>
+            <td class="col-num">@Model.LocalCount(tag.Name).ToString("N0")</td>
+            <td class="col-num muted">@tag.PostCount.ToString("N0")</td>
+            <td class="col-link"><a href="@(SiteConfig.Url("posts?tags=" + Uri.EscapeDataString(tag.Name)))" rel="nofollow noopener">online</a></td>
           </tr>
         }
         @if (Model.Result.Rows.Count == 0)

@@ -45,10 +45,6 @@
       </section>
 
       <section id="tag-list">
-        @if (Model.TagGroups.Count > 0)
-        {
-          <div class="tag-list-columns" aria-hidden="true"><span></span><span>Local</span><span>Online</span></div>
-        }
         @foreach (var (cssName, header, tags) in Model.TagGroups)
         {
           <h5 class="tag-list-header @cssName-tag-list-header" data-category="@cssName">@header</h5>

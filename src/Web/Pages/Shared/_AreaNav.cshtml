@@ -6,6 +6,7 @@
     (string Text, string Url)[] items = Model switch
     {
         "posts" => [("Listing", "/posts"), ("Favorites", "/posts/favorites"), ("Downloads", "/posts/downloads"), ("Bin", "/bin")],
+        "tags" => [("Tags", "/tags"), ("Searches", "/tags/searches")],
         "artists" => [("Local", "/artists/local"), ("Online", "/artists/online")],
         "pools" => [("Local", "/pools/local"), ("Local gallery", "/pools/local/gallery"), ("Online", "/pools/online"), ("Online gallery", "/pools/online/gallery")],
         _ => [],

@@ -123,15 +123,6 @@ app.MapPost("/favorite_folders/{id:long}/move", (long id, FolderRequest body, Fa
 app.MapDelete("/favorite_folders/{id:long}", (long id, FavoriteFolders folders) => Folder(() => new { parent_id = folders.Delete(id) }));
 app.MapPost("/favorites/{id:long}/move", (long id, FolderRequest body, FavoriteFolders folders) => Folder(() => { folders.MovePost(id, body.FolderId); return new { id, folder_id = body.FolderId }; }));
 
-// The favorites listing used to live at /favorites (PUT/DELETE /favorites/<id> still toggle one).
-app.MapGet("/favorites", (HttpContext http) => Results.Redirect("/posts/favorites" + http.Request.QueryString, permanent: true));
-
-// The watch pages used to live under /watches.
-app.MapGet("/watches", () => Results.Redirect("/artists/local", permanent: true));
-app.MapGet("/watches/artists", () => Results.Redirect("/artists/local", permanent: true));
-app.MapGet("/watches/pools", () => Results.Redirect("/pools/local", permanent: true));
-app.MapGet("/watches/searches", () => Results.Redirect("/searches", permanent: true));
-
 // e621ng-compatible tag autocomplete (js/components/autocomplete/providers/TagProvider.ts).
 app.MapGet("/tags/autocomplete.json", (HttpContext http, TagsRepository tags, LocalTagCounts localCounts) =>
 {

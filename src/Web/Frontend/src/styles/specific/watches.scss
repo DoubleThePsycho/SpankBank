@@ -360,5 +360,19 @@ $count-orange: #e8924a;
   form { margin: 0; }
 }
 
-// The tag list: counts hug their numbers on the right, the name takes the rest.
-#c-tags table .col-num { width: 1%; white-space: nowrap; text-align: right; padding-left: 1.25rem; }
+// The tag list: name on the left, then the local and online counts and the link, each only as wide as it needs.
+#c-tags table {
+  width: 100%;
+  max-width: 52rem;
+
+  td:first-child { white-space: nowrap; } // names such as digital_media_(artwork) stay on one line
+
+  .col-num, .col-link { width: 1%; white-space: nowrap; padding-left: 1.5rem; }
+  .col-num { text-align: right; font-variant-numeric: tabular-nums; }
+  .col-num.muted { color: themed("color-text-muted"); }
+}
+
+// e621's tag table put the count first and right-aligns its first column; here the name is first.
+div#c-tags div#a-index table.striped.tags-table {
+  th:nth-child(1), td:nth-child(1) { text-align: left; }
+}

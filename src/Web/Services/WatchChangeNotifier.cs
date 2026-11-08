@@ -17,7 +17,7 @@ public sealed class WatchChangeNotifier : IAsyncPageFilter
 
         var request = context.HttpContext.Request;
         if (HttpMethods.IsPost(request.Method)
-            && new[] { "/artists", "/artist", "/pools", "/pool", "/searches" }.Any(p => request.Path.StartsWithSegments(p))
+            && new[] { "/artists", "/artist", "/pools", "/pool", "/tags/searches" }.Any(p => request.Path.StartsWithSegments(p))
             && executed.Exception is null
             && context.HttpContext.Response.StatusCode < 400
             && executed.Result is not Microsoft.AspNetCore.Mvc.ContentResult { StatusCode: >= 400 })
