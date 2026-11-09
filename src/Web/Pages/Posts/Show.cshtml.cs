@@ -1,3 +1,4 @@
+using SpankBank.Data;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using SpankBank.Core.Models;
@@ -97,8 +98,8 @@ public class ShowModel : PageModel
         var md5 = Post.Md5;
         if (md5.Length != 32) return;
 
-        var original = MediaPaths.Original(WebPaths.MediaDir, md5, Post.FileExt);
-        var sample = MediaPaths.Sample(WebPaths.MediaDir, md5);
+        var original = MediaPaths.Original(SpankBankPaths.Current.MediaDir, md5, Post.FileExt);
+        var sample = MediaPaths.Sample(SpankBankPaths.Current.MediaDir, md5);
         var isVideo = Post.FileExt is "webm" or "mp4";
         var isImage = Post.FileExt is "jpg" or "jpeg" or "png" or "gif" or "webp";
 

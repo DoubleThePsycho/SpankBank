@@ -1,3 +1,4 @@
+using SpankBank.Data;
 using SpankBank.Data.RubbishBin;
 using SpankBank.Worker.Progress;
 
@@ -30,7 +31,7 @@ public sealed class BinService : BackgroundService
         {
             try
             {
-                var changed = _bin.Process(WorkerPaths.MediaDir, DateTimeOffset.UtcNow);
+                var changed = _bin.Process(SpankBankPaths.Current.MediaDir, DateTimeOffset.UtcNow);
                 if (changed > 0)
                 {
                     _logger.LogInformation("Rubbish bin: {Count} post(s) handled.", changed);

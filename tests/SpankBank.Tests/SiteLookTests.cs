@@ -3,8 +3,21 @@ using Xunit;
 
 namespace SpankBank.Tests;
 
-public class SiteLookTests
+[Collection("SiteConfig")]
+public class SiteLookTests : IDisposable
 {
+    public void Dispose() => SiteConfig.Configure(SiteConfigTests.E621);
+
+    [Theory]
+    [InlineData("e621.net", "e621", "hexagon")]
+    [InlineData("e6ai.net", "e6ai", "bloodlust")]
+    public void The_look_follows_SITE_HOST(string host, string site, string theme)
+    {
+        SiteConfig.Configure(name => name == "SITE_HOST" ? host : null);
+
+        Assert.Equal((site, theme), (SiteLook.Site, SiteLook.DefaultTheme));
+    }
+
     [Fact]
     public void E621_gets_the_stock_hexagon_look()
         => Assert.Equal(("e621", "hexagon", "#00549e"), SiteLook.For("e621"));

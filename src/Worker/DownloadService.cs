@@ -39,7 +39,7 @@ public sealed class DownloadService : BackgroundService
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        Directory.CreateDirectory(WorkerPaths.MediaDir);
+        Directory.CreateDirectory(SpankBankPaths.Current.MediaDir);
         using var fetcher = new PostFetcher { Notice = message => _logger.LogWarning("{Message}", message) };
         if (_settings.Get(WorkerSettingsKeys.SourcesRetried) != "true")
         {
@@ -168,7 +168,7 @@ public sealed class DownloadService : BackgroundService
             }
 
             _progress.FileStarted(postId, $"{post.Md5}.{post.Ext}");
-            var outcome = await fetcher.FetchAsync(post, WorkerPaths.MediaDir, cancellationToken,
+            var outcome = await fetcher.FetchAsync(post, SpankBankPaths.Current.MediaDir, cancellationToken,
                 (done, total) => _progress.FileProgress(postId, done, total),
                 stage => _progress.FileStage(postId, stage));
 

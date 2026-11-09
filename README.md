@@ -26,7 +26,7 @@ It runs as a small Docker stack on a home server or any always-on machine:
 [Using SpankBank](#using-spankbank) ·
 [Access and security](#access-and-security) ·
 [Operating it](#operating-it-updates-backups-moving-data) ·
-[Archiving another e621ng site](#archiving-another-e621ng-site) ·
+[Archiving more than one site](#archiving-more-than-one-site) ·
 [Building and developing without Docker](#building-and-developing-without-docker) ·
 [Troubleshooting](#troubleshooting) ·
 [Project layout](#project-layout) ·
@@ -55,7 +55,7 @@ It runs as a small Docker stack on a home server or any always-on machine:
   thumbnails for them (e621 has none).
 - **Polite by design.** The catalog comes from the bulk exports. The API and the file servers are only used for the
   files you asked for, with a proper User-Agent, bounded parallelism, a daily limit and back-off on errors.
-- **Any e621ng site.** Point it at another site that runs e621ng (for example e6ai) with three environment variables.
+- **Any e621ng site.** Point it at another site that runs e621ng (for example e6ai) with one environment variable (`SITE_HOST`).
 
 ## How it works
 
@@ -69,26 +69,27 @@ It runs as a small Docker stack on a home server or any always-on machine:
                  └── watches, favorites, settings ──►  SpankBank.sqlite (your state)
 ```
 
-- **Three SQLite databases** (WAL mode) in `data/db`:
+- **Three SQLite databases** (WAL mode) in `data/db` (`/data/db` in the containers):
   - `server.sqlite`: the raw imported catalog, rebuilt from the exports. Big (about 9 GB with all of e621) but
     disposable: the next import recreates it.
   - `device.sqlite`: what is downloaded or restored on this device.
   - `SpankBank.sqlite`: your state: watches, favorites, blacklist, settings, queue, import history.
 - **Imported is not downloaded.** The catalog knows every post on the site; only watched posts become local files.
 - **One writer per job.** The worker owns imports and downloads. The web app only writes small things (watches,
-  favorites, settings, queue rows) and then wakes the worker over the compose network (`http://worker:8081`,
+  favorites, settings, queue rows) and then wakes the worker over the compose network (`WORKER_URL`, `http://worker:8081` in the example;
   not published). There is no polling.
+- **Two folders per instance.** `data/` holds the databases, the downloaded exports and the key ring; `media/` holds
+  the downloaded files. The web app gets `media/` read-only.
 - **Media layout** is e621's: `media/ab/cd/abcd….jpg`, with `preview/` and `sample/` folders beside it. There are no
   per-artist or per-tag folders; the database is the index. Nothing under `media/.bin/` (the rubbish bin) is served.
 
 ## Requirements
 
-- A machine that is on most of the time, with **Docker Engine and the Docker Compose plugin v2.24 or newer** (the compose file uses the long `env_file`
-  syntax). Linux is what it is developed and run on; other platforms are untested (mind that bind mounts can be slow
+- A machine that is on most of the time, with **Docker Engine and the Docker Compose plugin v2**. Linux is what it is developed and run on; other platforms are untested (mind that bind mounts can be slow
   for the databases on Docker Desktop).
 - **Disk space.** About 10 GB for the databases and imports, plus room for what you download (e621 files are
   commonly 0.1–10 MB each; a few hundred thousand posts is hundreds of GB).
-- **Fast storage for the databases.** Keep `data/db` on an SSD/NVMe. SQLite does many small random reads, and on a
+- **Fast storage for the databases.** Keep `data/` on an SSD/NVMe. SQLite does many small random reads, and on a
   spinning disk or a network share pages such as *Status* become painfully slow. The media folder can live on a big,
   slow disk.
 - **Network access** to e621 (the exports, the file servers). Optionally the Wayback Machine and Inkbunny.
@@ -105,11 +106,11 @@ cd SpankBank
 
 # 2. Your configuration
 cp compose.example.yaml compose.yaml
-cp example.env .env              # then edit it: at least have a look at the paths and the port (see "Configuration")
+cp example.env .env              # then edit it: SITE_HOST, and optionally an Inkbunny account (see "Configuration")
 
-# 3. Folders for the data (must be writable by SPANKBANK_UID:SPANKBANK_GID, 1000:1000 by default)
-mkdir -p data/db data/imports data/keys data/media
-#    If your user is not 1000: set SPANKBANK_UID / SPANKBANK_GID in .env, or run: sudo chown -R 1000:1000 data
+# 3. The two folders (the containers run as 1000:1000 and must be able to write them)
+mkdir -p data media
+#    If your user is not 1000: change `user:` in compose.yaml (both services), or run: sudo chown -R 1000:1000 data media
 
 # 4. Build the Flash helper image once (about 30 minutes; the worker image copies one binary out of it)
 docker compose --profile tools build ruffle-exporter
@@ -123,7 +124,7 @@ docker compose up -d
 docker compose ps
 ```
 
-Open **http://127.0.0.1:8621** (or the address and port you set in `.env`). The site is empty at first: continue with
+Open **http://127.0.0.1:8621** (or the address and port in the `ports:` line of `compose.yaml`). The site is empty at first: continue with
 [First steps](#first-steps-in-the-web-interface).
 
 Things worth knowing right away:
@@ -133,27 +134,33 @@ Things worth knowing right away:
   image `spankbank-ruffle-exporter:0.7.1` because no container runs it. The *next worker build then fails*. Rebuild it
   with step 4 (fast while the build cache is there), or keep a copy: `docker save spankbank-ruffle-exporter:0.7.1 | gzip > exporter.tar.gz`
   and `docker load -i exporter.tar.gz`.
-- Use a different directory name or `-p name` per instance if you run more than one stack on a host (see
-  [Archiving another e621ng site](#archiving-another-e621ng-site)).
+- To archive a second site (e6ai, say) add a second worker/web pair to the same compose file (see
+  [Archiving more than one site](#archiving-more-than-one-site)).
 
 ## Configuration
 
-All settings are environment variables in `.env` (next to `compose.yaml`; every line is optional). The compose file
-reads it for the `${...}` values, and the worker also receives it as its environment.
+**`.env`** (next to `compose.yaml`) has four lines; only `SITE_HOST` is required. Compose
+reads the file itself and fills the `${...}` values of the compose file from it; the containers receive only what the
+`environment:` of their service lists (so the web app never sees the Inkbunny password).
 
 | Variable | Default | Meaning |
 |---|---|---|
-| `SITE_HOST` | `e621.net` | The e621ng site to archive. Read by both containers. |
+| `SITE_HOST` | none, **required** | The e621ng site to archive, e.g. `e621.net` or `e6ai.net`. A container started without it stops with an error instead of guessing. The short name in page titles and texts ("e621", "e6ai") is its first label, and it picks the look: `e6ai.net` gets the black and yellow theme and logo, anything else e621's. |
 | `STATIC_HOST` | `static1.<SITE_HOST>` | The site's file server. |
-| `SITE_NAME` | first part of `SITE_HOST` | Short name used in page titles and texts; also picks the look (`e621`, `e6ai`; anything else gets e621's). |
 | `INKBUNNY_USERNAME` / `INKBUNNY_PASSWORD` | empty (guest) | Optional [Inkbunny](https://inkbunny.net) account used to recover deleted posts whose source is an Inkbunny submission. The guest login only sees general-rated art; for mature art use a dedicated account with mature ratings (and API access) enabled. Quote passwords containing `$`: `INKBUNNY_PASSWORD='p@ss$word'`. Worker only. |
-| `SPANKBANK_DB_DIR` | `./data/db` | Host folder for the three SQLite databases. **Fast storage.** |
-| `SPANKBANK_IMPORTS_DIR` | `./data/imports` | Downloaded export files (a few recent ones are kept). |
-| `SPANKBANK_KEYS_DIR` | `./data/keys` | The web app's key ring (antiforgery tokens). Must survive redeploys. |
-| `SPANKBANK_MEDIA_DIR` | `./data/media` | The downloaded files. Can be a big, slow disk. |
-| `SPANKBANK_UID` / `SPANKBANK_GID` | `1000` / `1000` | The user the containers run as; it must own the four folders. |
-| `SPANKBANK_WEB_BIND` | `127.0.0.1` | The address the web port is published on. See [Access and security](#access-and-security). |
-| `SPANKBANK_WEB_PORT` | `8621` | The published port. |
+
+**`compose.yaml`** holds the rest, as plain values you edit in place:
+
+| Setting | In the example | Meaning |
+|---|---|---|
+| `volumes: ./data:/data` | both services, read-write | Databases (`db/`), downloaded exports (`imports/`), the web app's key ring (`keys/`). **Fast storage.** |
+| `volumes: ./media:/media` | worker read-write, web `:ro` | Downloaded files, `preview/`, `sample/` and the rubbish bin `.bin/`. A big, slow disk is fine. |
+| `user: "1000:1000"` | both services | The user the containers run as; it must own both folders. |
+| `ports: "127.0.0.1:8621:8080"` | web | Where the site is published. See [Access and security](#access-and-security). |
+| `WORKER_URL: http://worker:8081` | web | The command address of *this pair's* worker (its service name). Required for each web app. |
+
+The worker listens on port 8081 inside its own container (`WORKER_COMMAND_PORT` changes it); it is never published, so
+several workers do not collide.
 
 Everything else (daily update time, download limits and parallelism, list sizes, delete mode, pool auto-adding) is
 set on the **Settings** page of the site and stored in the database. The defaults:
@@ -285,8 +292,8 @@ headless exporter. Files it cannot render get a `.nopreview` marker beside the p
 SpankBank is built for **one user on a private network**. It has **no accounts and no login**: anyone who can reach
 the web port can browse everything, change your watches and delete your posts.
 
-- By default the port is published on `127.0.0.1` only. To use it from your phone or another PC, set
-  `SPANKBANK_WEB_BIND` to the address of a **private** interface (your LAN address, or your VPN address such as a
+- By default the port is published on `127.0.0.1` only. To use it from your phone or another PC, change
+  the host in the web service's `ports:` line to the address of a **private** interface (your LAN address, or your VPN address such as a
   Tailscale/WireGuard one) and keep the machine off the public internet.
 - To expose it beyond that, put a reverse proxy **with authentication** in front (Caddy, Traefik, nginx + an auth
   proxy, …). In that case remove the `ports:` section of the `web` service and let the proxy join the compose network
@@ -328,8 +335,8 @@ sqlite3 data/db/device.sqlite    ".backup 'backup/device.sqlite'"
 
 Back up the media folder with any file tool (`rsync -a` is fine).
 
-**Move the data.** `docker compose down`, move the folders, change the `SPANKBANK_*_DIR` values in `.env`,
-`docker compose up -d`. If you replace or recreate a data folder *while the containers are running*, restart them
+**Move the data.** `docker compose down`, move the folders, change the left side of the two `volumes:` lines (in both
+services), `docker compose up -d`. If you replace or recreate a data folder *while the containers are running*, restart them
 afterwards: a container keeps the folder it first mounted, so it would otherwise see an empty or deleted one and fail
 with "unable to open database file".
 
@@ -337,23 +344,103 @@ with "unable to open database file".
 `data/db/server.sqlite` to rebuild the catalog at the next update. Media is never deleted by SpankBank except through the
 bin.
 
-## Archiving another e621ng site
+## Archiving more than one site
 
-The same images work for any site that runs [e621ng](https://github.com/e621ng/e621ng) and publishes the same database
-exports, for example e6ai. Make a second stack (a copy of the compose file and `.env` in another directory, so it has
-its own project name) with its own data folders and port, and set:
+The same two images work for any site that runs [e621ng](https://github.com/e621ng/e621ng) and publishes the same
+database exports, for example e6ai. Each site gets its own **worker/web pair** in the same compose file: same images, no
+code changes. `compose.example.yaml` stays a single pair; for two, write your own `compose.yaml` like this (the services
+and folders are named by you; nothing in SpankBank depends on the names):
 
-```bash
-SITE_HOST=e6ai.net        # STATIC_HOST defaults to static1.<SITE_HOST>
-SITE_NAME=e6ai            # picks the e6ai look (black and yellow theme and logo); other names get e621's look
-SPANKBANK_WEB_PORT=8681
-SPANKBANK_DB_DIR=./data/e6ai/db   # …and the same for the imports, keys and media folders
+```yaml
+services:
+  e621-worker:
+    image: spankbank-worker:latest
+    user: "1000:1000"
+    environment:
+      SITE_HOST: e621.net
+      INKBUNNY_USERNAME: ${INKBUNNY_USERNAME:-}     # one account in .env can serve every worker
+      INKBUNNY_PASSWORD: ${INKBUNNY_PASSWORD:-}
+    volumes:
+      - ./e621/data:/data
+      - ./e621/media:/media
+
+  e621-web:
+    image: spankbank-web:latest
+    user: "1000:1000"
+    environment:
+      SITE_HOST: e621.net
+      WORKER_URL: http://e621-worker:8081           # this pair's worker, by its service name
+    ports: ["127.0.0.1:8621:8080"]
+    volumes:
+      - ./e621/data:/data
+      - ./e621/media:/media:ro
+
+  e6ai-worker:
+    image: spankbank-worker:latest
+    user: "1000:1000"
+    environment:
+      SITE_HOST: e6ai.net                            # STATIC_HOST defaults to static1.e6ai.net
+      INKBUNNY_USERNAME: ${INKBUNNY_USERNAME:-}
+      INKBUNNY_PASSWORD: ${INKBUNNY_PASSWORD:-}
+    volumes:
+      - ./e6ai/data:/data
+      - ./e6ai/media:/media
+
+  e6ai-web:
+    image: spankbank-web:latest
+    user: "1000:1000"
+    environment:
+      SITE_HOST: e6ai.net
+      WORKER_URL: http://e6ai-worker:8081
+    ports: ["127.0.0.1:8681:8080"]
+    volumes:
+      - ./e6ai/data:/data
+      - ./e6ai/media:/media:ro
 ```
+
+Rules for a pair:
+
+- **Own folders.** Every pair mounts its own `/data` and `/media` from host folders no other pair uses. The databases
+  and the media are what make an instance independent; sharing them would mix the sites.
+- **Own site.** Set `SITE_HOST` (and `STATIC_HOST` if the file host is not `static1.<host>`) in each service's
+  `environment:`. Do not use a shared `env_file:` for these, and do not rely on `.env` for the site in a multi-pair file:
+  a pair that forgets `SITE_HOST` stops with "SITE_HOST is not set" instead of archiving e621. The worker and the web
+  app of a pair need the same values.
+- **Own worker.** `WORKER_URL` on each web app is the address of its worker's service name, port 8081 (every worker can
+  use 8081; none is published). There is no default service name, so a web app can never wake another pair's worker by
+  accident.
+- **Own port.** Publish each web app on its own host port (or none, behind a reverse proxy).
+- Build once: `docker compose build` builds the images from the services that name `build:`; the pairs above only
+  reference the images, so keep the `build:` sections from the example on one worker and one web service, or run
+  `docker build -f docker/worker.Dockerfile -t spankbank-worker:latest .` and the same for `web.Dockerfile`.
 
 The downloader refuses any request for the site's hosts that ends up on a different host, and an export index that
 points off-site is rejected, so a site that closes and redirects to another cannot pour that site's data into this
 catalog. Adding another site's look takes one logo in `src/Web/Frontend/images/logo/`, one SCSS file in
 `src/Web/Frontend/src/styles/sites/` and one line in `src/Core/SiteLook.cs`.
+
+## Migrating from the earlier layout
+
+Before this layout an instance mounted four folders: `db`, `imports`, `keys` and `media` (the database folder as
+`/data/db`, and so on). Now it mounts two: one that *contains* `db`, `imports` and `keys` as `/data`, and the media
+folder as `/media`. The databases do not store media paths, so nothing inside them changes; only the mounts do.
+
+1. `docker compose down` (the databases must not be copied or moved while the worker runs).
+2. Make one parent for the three small folders **on the same filesystem** (the move is then instant):
+   ```bash
+   cd /path/where/db-imports-keys/are
+   mkdir data && mv db imports keys data/
+   ```
+   The media folder stays where it is; it is mounted as `/media` now.
+3. In `compose.yaml` mount `<that>/data:/data` and `<media folder>:/media` (web: `:ro`) as shown above, remove the
+   old `/data/db`, `/data/imports`, `/data/keys` and `/data/media` lines, and add `WORKER_URL` to the web service.
+4. Put `SITE_HOST` (and `STATIC_HOST` if you set one) in each service's `environment:`; `SITE_NAME` and
+   `DOWNLOAD_PARALLELISM` are no longer read (parallel downloads is a setting on the **Settings** page).
+5. `docker compose up -d`.
+
+An existing e6ai instance migrates the same way and keeps working with the same images as e621; only `SITE_HOST=e6ai.net`
+differs. Its databases and media are compatible: the schema is created or extended at start and the media layout is the
+same.
 
 ## Building and developing without Docker
 
@@ -371,8 +458,10 @@ dotnet test tests/SpankBank.Tests
 To run both processes on your machine against a local data folder:
 
 ```bash
-mkdir -p data/db data/imports data/keys data/media
-export SPANKBANK_DATA_DIR=$PWD/data
+mkdir -p data media
+export SITE_HOST=e621.net                            # required, as in Docker
+export SPANKBANK_DATA_DIR=$PWD/data                  # defaults to /data
+export SPANKBANK_MEDIA_DIR=$PWD/media                # defaults to /media
 dotnet run --project src/Worker                      # terminal 1: the worker (command server on :8081)
 WORKER_URL=http://localhost:8081/ ASPNETCORE_URLS=http://127.0.0.1:8621 \
   dotnet run --project src/Web                       # terminal 2: the site
@@ -388,14 +477,15 @@ configuration.
 
 | Symptom | Likely cause and fix |
 |---|---|
-| The web page answers 500 and the log says `unable to open database file` | The data folder is not writable by `SPANKBANK_UID:SPANKBANK_GID`, does not exist (Docker then creates it as root), or was recreated while the container ran (restart the stack). |
+| The web page answers 500 and the log says `unable to open database file` | The data folder is not writable by the `user:` of the compose file, does not exist (Docker then creates it as root), or was recreated while the container ran (restart the stack). |
 | `docker compose build` fails at `COPY --from=spankbank-ruffle-exporter:0.7.1` | The Flash helper image is missing (never built, or removed by an image prune). Build it again: `docker compose --profile tools build ruffle-exporter`. |
-| Status says "The worker is not reachable" | The worker is not running or still starting: `docker compose ps`, `docker compose logs worker`. |
+| A container exits with "SITE_HOST is not set" | Set `SITE_HOST` in `.env` (single pair) or in that service's `environment:`. |
+| Status says "The worker is not reachable" | `WORKER_URL` of the web service is missing or names another service, or the worker is not running or still starting: `docker compose ps`, `docker compose logs worker`. |
 | Tags, artists and pools are empty | The catalog has not been imported yet: press *Update from e621 now* on **Status** and wait for it to finish. |
-| Pages such as Status are very slow | The databases are on a slow disk or a network share. Move `SPANKBANK_DB_DIR` to an SSD. |
+| Pages such as Status are very slow | The databases are on a slow disk or a network share. Move the `/data` folder to an SSD. |
 | Nothing is downloading | Check **Settings** (downloads on, daily limit reached?), that a watch is *enabled*, and **Posts → Downloads** for errors. |
 | Wayback / Inkbunny recovery does nothing | They may not be reachable from your network or may be rate-limiting you; the worker backs off (up to an hour) and the log says so. |
-| A form submit fails with a 400 after a redeploy | The browser holds an antiforgery token from the old key ring; reload the page. Keep `SPANKBANK_KEYS_DIR` persistent so it does not happen. |
+| A form submit fails with a 400 after a redeploy | The browser holds an antiforgery token from the old key ring; reload the page. Keep the `/data` folder persistent so it does not happen. |
 
 ## Project layout
 

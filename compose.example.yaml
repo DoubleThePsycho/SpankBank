@@ -1,15 +1,22 @@
-# Example Docker Compose file for SpankBank. Copy it to compose.yaml (or keep the name and pass -f), copy example.env to
-# .env next to it, then see README.md ("Quick start"). Everything marked ${...} can be set in .env.
+# Example Docker Compose file for SpankBank: one worker and one web app archiving one e621ng site. Copy it to
+# compose.yaml (or keep the name and pass -f), copy example.env to .env next to it, then see README.md ("Quick start").
+# Running a second site (e6ai, say) next to this one is a matter of adding another worker/web pair; the README shows how.
 #
 #   docker build -f docker/ruffle-exporter.Dockerfile -t spankbank-ruffle-exporter:0.7.1 .   # once, about 30 minutes
 #   docker compose build
 #   docker compose up -d
 #
-# Two services share the data folders:
-#   worker  imports the e621 exports, matches your watches, downloads the files, makes Flash previews, empties the bin.
-#           It is the only writer of imports and downloads and is never published; the web app wakes it over the compose
-#           network (http://worker:8081).
-#   web     the browsable site. It only writes small things (watches, favorites, settings, queue rows).
+# worker  imports the site's exports, matches your watches, downloads the files, makes Flash previews, empties the bin.
+#         It is the only writer of imports and downloads, and it is never published: the web app wakes it over the
+#         compose network (WORKER_URL).
+# web     the browsable site. It only writes small things (watches, favorites, settings, queue rows).
+#
+# Each worker/web pair has two host folders:
+#   ./data   /data   the three SQLite databases (db/), the downloaded export files (imports/) and the web app's key ring
+#                    (keys/). Put it on fast storage (SSD/NVMe): SQLite does many small random reads.
+#   ./media  /media  downloaded files, laid out like e621 (<md5[0:2]>/<md5[2:4]>/<md5>.<ext>), plus preview/, sample/ and
+#                    .bin/ (the rubbish bin). Big and cold: any disk will do.
+# Both folders must be writable by the user below. The web app mounts media read-only.
 services:
   worker:
     image: spankbank-worker:latest
@@ -19,25 +26,18 @@ services:
     # Built from this checkout; there is no registry to pull from.
     pull_policy: never
     restart: unless-stopped
-    # The folders below must be writable by this user. Change it in .env if yours is not 1000.
-    user: "${SPANKBANK_UID:-1000}:${SPANKBANK_GID:-1000}"
-    # INKBUNNY_USERNAME / INKBUNNY_PASSWORD are read from here (see example.env).
-    env_file:
-      - path: .env
-        required: false
-    environment: &site
-      # Which e621ng site this install archives; the worker and the web app need the same values.
-      SITE_HOST: ${SITE_HOST:-e621.net}
+    user: "1000:1000"
+    # ${...} is filled in from .env by Compose itself; only what is listed here reaches the container.
+    environment:
+      # Which e621ng site this pair archives. Required: without it the container stops instead of guessing.
+      SITE_HOST: ${SITE_HOST:?Set SITE_HOST in .env (for example e621.net)}
       STATIC_HOST: ${STATIC_HOST:-}
-      SITE_NAME: ${SITE_NAME:-}
+      # Optional Inkbunny account for recovering deleted posts. Only the worker needs it.
+      INKBUNNY_USERNAME: ${INKBUNNY_USERNAME:-}
+      INKBUNNY_PASSWORD: ${INKBUNNY_PASSWORD:-}
     volumes:
-      # Host folder : fixed container path. Point the left side wherever you like (see example.env).
-      # The databases want fast storage (SSD/NVMe): SQLite does many small random reads.
-      - ${SPANKBANK_DB_DIR:-./data/db}:/data/db
-      - ${SPANKBANK_IMPORTS_DIR:-./data/imports}:/data/imports
-      # Downloaded files, laid out like e621: <md5[0:2]>/<md5[2:4]>/<md5>.<ext>, plus preview/ and sample/.
-      # This one can live on a big, slow disk.
-      - ${SPANKBANK_MEDIA_DIR:-./data/media}:/data/media
+      - ./data:/data
+      - ./media:/media
 
   web:
     image: spankbank-web:latest
@@ -46,20 +46,24 @@ services:
       dockerfile: docker/web.Dockerfile
     pull_policy: never
     restart: unless-stopped
-    user: "${SPANKBANK_UID:-1000}:${SPANKBANK_GID:-1000}"
-    environment: *site
-    # SpankBank has no login. By default it is reachable from this machine only; to use it from other devices put the
-    # address of a private interface (LAN or VPN) in SPANKBANK_WEB_BIND, or put a reverse proxy with authentication
-    # in front. Never publish it on 0.0.0.0 on a machine that is reachable from the internet.
+    user: "1000:1000"
+    environment:
+      SITE_HOST: ${SITE_HOST:?Set SITE_HOST in .env (for example e621.net)}
+      STATIC_HOST: ${STATIC_HOST:-}
+      # This pair's worker, by its service name above. Every web app needs its own; there is no default.
+      WORKER_URL: http://worker:8081
+    # SpankBank has no login. As written it is reachable from this machine only; to use it from other devices replace
+    # 127.0.0.1 with the address of a private interface (LAN or VPN), or put a reverse proxy with authentication in front.
+    # Never publish it on 0.0.0.0 on a machine that is reachable from the internet.
     ports:
-      - "${SPANKBANK_WEB_BIND:-127.0.0.1}:${SPANKBANK_WEB_PORT:-8621}:8080"
+      - "127.0.0.1:8621:8080"
     volumes:
       # Read-write: SQLite in WAL mode needs write access even to read, and the pages write watches and settings.
-      - ${SPANKBANK_DB_DIR:-./data/db}:/data/db
-      # The Data Protection key ring (antiforgery tokens); it must survive redeploys.
-      - ${SPANKBANK_KEYS_DIR:-./data/keys}:/data/keys
+      - ./data:/data
       # Read-only: the web app only shows the files.
-      - ${SPANKBANK_MEDIA_DIR:-./data/media}:/data/media:ro
+      - ./media:/media:ro
+    depends_on:
+      - worker
 
   # Not a running service: it only builds the helper image that worker.Dockerfile copies Ruffle's headless exporter
   # from (Flash thumbnails). Build it once with:  docker compose --profile tools build ruffle-exporter

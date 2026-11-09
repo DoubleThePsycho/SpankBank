@@ -1,9 +1,11 @@
 namespace SpankBank.Core;
 
 /// <summary>
-/// Which e621ng site this install archives: <c>SITE_HOST</c> (default e621.net), the host its files come from
-/// (<c>STATIC_HOST</c>, default static1.&lt;SITE_HOST&gt;) and the short name used in texts (<c>SITE_NAME</c>, default the
-/// host's first label, so "e621" or "e6ai"). Read once at start; the worker and the web app must be given the same values.
+/// Which e621ng site this install archives: <c>SITE_HOST</c> (required, no default: an instance whose setting went
+/// missing must not quietly archive e621), the host its files come from (<c>STATIC_HOST</c>, default
+/// static1.&lt;SITE_HOST&gt;) and the short name used in texts, the host's first label ("e621", "e6ai"). Read once at
+/// start by <see cref="ConfigureFromEnvironment"/>; the worker and the web app of one instance need the same values.
+/// Until configured (tests only) the values are e621's.
 /// </summary>
 public static class SiteConfig
 {
@@ -11,15 +13,18 @@ public static class SiteConfig
     public static string StaticHost { get; private set; } = "static1.e621.net";
     public static string Name { get; private set; } = "e621";
 
-    static SiteConfig() => Configure(Environment.GetEnvironmentVariable);
+    /// <summary>Reads the settings from the environment; throws when <c>SITE_HOST</c> is not set. Call it first thing at start.</summary>
+    public static void ConfigureFromEnvironment() => Configure(Environment.GetEnvironmentVariable);
 
-    /// <summary>Reads the settings from the given lookup (the environment at start; tests pass their own).</summary>
+    /// <summary>Reads the settings from the given lookup (tests pass their own).</summary>
     public static void Configure(Func<string, string?> get)
     {
-        var host = Clean(get("SITE_HOST")) ?? "e621.net";
+        var host = Clean(get("SITE_HOST"))
+            ?? throw new InvalidOperationException(
+                "SITE_HOST is not set. Set it to the e621ng site this instance archives (for example e621.net or e6ai.net); there is no default.");
         Host = host;
         StaticHost = Clean(get("STATIC_HOST")) ?? "static1." + host;
-        Name = Clean(get("SITE_NAME")) ?? host.Split('.')[0];
+        Name = host.Split('.')[0];
     }
 
     /// <summary>An address on the site, e.g. <c>Url("posts/12")</c> is https://e621.net/posts/12.</summary>

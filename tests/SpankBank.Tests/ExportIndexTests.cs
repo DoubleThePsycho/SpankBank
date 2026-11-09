@@ -6,9 +6,9 @@ namespace SpankBank.Tests;
 [Collection("SiteConfig")]
 public class ExportIndexTests : IDisposable
 {
-    public ExportIndexTests() => SiteConfig.Configure(_ => null);
+    public ExportIndexTests() => SiteConfig.Configure(SiteConfigTests.E621);
 
-    public void Dispose() => SiteConfig.Configure(_ => null);
+    public void Dispose() => SiteConfig.Configure(SiteConfigTests.E621);
 
     private static string Index(string url, string? checksum = "abc123")
         => $$"""[{"name":"posts","url":"{{url}}","updated_at":"2026-11-05T01:00:00Z"{{(checksum is null ? "" : $",\"checksum\":\"{checksum}\"")}}}]""";

@@ -1,3 +1,4 @@
+using SpankBank.Data;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using SpankBank.Data.Downloads;
@@ -137,9 +138,9 @@ public class IndexModel : PageModel
         if (post.Md5 is not { Length: 32 } md5)
             return "/dist/assets/blank.png";
 
-        if (System.IO.File.Exists(MediaPaths.Preview(WebPaths.MediaDir, md5))) return MediaPaths.PreviewUrl(md5);
-        if (System.IO.File.Exists(MediaPaths.Sample(WebPaths.MediaDir, md5))) return MediaPaths.SampleUrl(md5);
-        if (post.FileExt is "jpg" or "png" or "gif" or "webp" && System.IO.File.Exists(MediaPaths.Original(WebPaths.MediaDir, md5, post.FileExt)))
+        if (System.IO.File.Exists(MediaPaths.Preview(SpankBankPaths.Current.MediaDir, md5))) return MediaPaths.PreviewUrl(md5);
+        if (System.IO.File.Exists(MediaPaths.Sample(SpankBankPaths.Current.MediaDir, md5))) return MediaPaths.SampleUrl(md5);
+        if (post.FileExt is "jpg" or "png" or "gif" or "webp" && System.IO.File.Exists(MediaPaths.Original(SpankBankPaths.Current.MediaDir, md5, post.FileExt)))
             return MediaPaths.OriginalUrl(md5, post.FileExt);
 
         return "/dist/assets/blank.png";

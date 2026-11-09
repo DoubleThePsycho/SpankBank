@@ -68,8 +68,8 @@ public sealed class FlashPreviewService : BackgroundService
         {
             cancellationToken.ThrowIfCancellationRequested();
 
-            var swf = MediaPaths.Original(WorkerPaths.MediaDir, md5, "swf");
-            var preview = MediaPaths.Preview(WorkerPaths.MediaDir, md5);
+            var swf = MediaPaths.Original(SpankBankPaths.Current.MediaDir, md5, "swf");
+            var preview = MediaPaths.Preview(SpankBankPaths.Current.MediaDir, md5);
             var marker = Path.ChangeExtension(preview, ".nopreview");
             if (File.Exists(preview) || File.Exists(marker) || !File.Exists(swf)) continue;
 

@@ -5,15 +5,26 @@ namespace SpankBank.Tests;
 [Collection("SiteConfig")]
 public class SiteConfigTests : IDisposable
 {
-    public void Dispose() => SiteConfig.Configure(_ => null);
+    public void Dispose() => SiteConfig.Configure(E621);
+
+    /// <summary>The lookup of an e621 install; the tests' starting point.</summary>
+    public static string? E621(string name) => name == "SITE_HOST" ? "e621.net" : null;
 
     private static void Set(params (string Name, string Value)[] values)
         => SiteConfig.Configure(name => values.FirstOrDefault(v => v.Name == name).Value);
 
     [Fact]
-    public void Without_settings_it_is_e621()
+    public void Without_a_host_it_refuses_instead_of_defaulting_to_e621()
     {
-        SiteConfig.Configure(_ => null);
+        var error = Assert.Throws<InvalidOperationException>(() => SiteConfig.Configure(_ => null));
+        Assert.Contains("SITE_HOST", error.Message);
+        Assert.Throws<InvalidOperationException>(() => SiteConfig.Configure(name => name == "STATIC_HOST" ? "files.example.org" : "  "));
+    }
+
+    [Fact]
+    public void Only_the_host_is_needed_for_e621()
+    {
+        SiteConfig.Configure(E621);
 
         Assert.Equal(("e621.net", "static1.e621.net", "e621"), (SiteConfig.Host, SiteConfig.StaticHost, SiteConfig.Name));
         Assert.Equal("https://e621.net/posts/5", SiteConfig.Url("posts/5"));
@@ -31,15 +42,16 @@ public class SiteConfigTests : IDisposable
     [Fact]
     public void Each_value_can_be_set_and_a_pasted_address_is_cleaned()
     {
-        Set(("SITE_HOST", "https://example.org/"), ("STATIC_HOST", "files.example.org"), ("SITE_NAME", "Example"), ("OTHER", "x"));
+        Set(("SITE_HOST", "https://example.org/"), ("STATIC_HOST", "files.example.org"), ("SITE_NAME", "Ignored"), ("OTHER", "x"));
 
-        Assert.Equal(("example.org", "files.example.org", "Example"), (SiteConfig.Host, SiteConfig.StaticHost, SiteConfig.Name));
+        // SITE_NAME is no longer read: the name comes from the host.
+        Assert.Equal(("example.org", "files.example.org", "example"), (SiteConfig.Host, SiteConfig.StaticHost, SiteConfig.Name));
     }
 
     [Fact]
-    public void Blank_settings_count_as_unset()
+    public void A_blank_file_host_counts_as_unset()
     {
-        Set(("SITE_HOST", ""), ("STATIC_HOST", "  "), ("SITE_NAME", ""));
+        Set(("SITE_HOST", "e621.net"), ("STATIC_HOST", "  "));
 
         Assert.Equal(("e621.net", "static1.e621.net", "e621"), (SiteConfig.Host, SiteConfig.StaticHost, SiteConfig.Name));
     }

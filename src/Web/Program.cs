@@ -1,3 +1,4 @@
+using SpankBank.Core;
 using SpankBank.Data;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.Extensions.FileProviders;
@@ -6,22 +7,25 @@ using SpankBank.Data.Import;
 using SpankBank.Data.Repositories;
 using SpankBank.Web.Services;
 
+SiteConfig.ConfigureFromEnvironment(); // fails at start without SITE_HOST
+
 var builder = WebApplication.CreateBuilder(args);
 
-var paths = WebPaths.Databases();
+var paths = SpankBankPaths.Current.Databases();
 DatabaseInitializer.Initialize(paths);
 
 // Keep the key ring outside the container, or every redeploy invalidates the antiforgery tokens of open pages.
-Directory.CreateDirectory(WebPaths.KeysDir);
+Directory.CreateDirectory(SpankBankPaths.Current.KeysDir);
 builder.Services.AddDataProtection()
-    .PersistKeysToFileSystem(new DirectoryInfo(WebPaths.KeysDir))
+    .PersistKeysToFileSystem(new DirectoryInfo(SpankBankPaths.Current.KeysDir))
     .SetApplicationName("SpankBank");
 builder.Services.AddRazorPages(options => options.Conventions.AddPageRoute("/Posts/Index", "/posts/favorites")) // the listing, narrowed to favorites
     .AddMvcOptions(options => options.Filters.Add<WatchChangeNotifier>());
 builder.Services.AddHttpClient<WorkerClient>(client =>
 {
-    // The worker's command server; only reachable on the compose network.
-    client.BaseAddress = new Uri(Environment.GetEnvironmentVariable("WORKER_URL") ?? "http://worker:8081/");
+    // This instance's worker (its command server, only reachable on the compose network), e.g. http://worker:8081/.
+    // No service-name default: a second web app that forgot it must not wake the first instance's worker.
+    client.BaseAddress = new Uri(Environment.GetEnvironmentVariable("WORKER_URL") ?? "http://localhost:8081/");
     client.Timeout = TimeSpan.FromSeconds(3);
 });
 builder.Services.AddSingleton(paths);
@@ -73,12 +77,12 @@ app.Use(async (context, next) =>
 app.UseStaticFiles();
 
 // Downloaded files, read-only. The folder exists once the compose volume is mounted.
-if (Directory.Exists(WebPaths.MediaDir))
+if (Directory.Exists(SpankBankPaths.Current.MediaDir))
 {
     // .swf is not in ASP.NET's list of known types, and unknown types are not served.
     var mediaTypes = new Microsoft.AspNetCore.StaticFiles.FileExtensionContentTypeProvider();
     mediaTypes.Mappings[".swf"] = "application/x-shockwave-flash";
-    app.UseStaticFiles(new StaticFileOptions { FileProvider = new PhysicalFileProvider(WebPaths.MediaDir), RequestPath = "/media", ContentTypeProvider = mediaTypes });
+    app.UseStaticFiles(new StaticFileOptions { FileProvider = new PhysicalFileProvider(SpankBankPaths.Current.MediaDir), RequestPath = "/media", ContentTypeProvider = mediaTypes });
 }
 // Routing starts here, after the error-page middleware above: re-executing a request for the error page must route it again.
 app.UseRouting();
@@ -113,7 +117,7 @@ app.MapGet("/bin/preview/{id:long}", (long id, SpankBank.Data.RubbishBin.BinStor
 {
     var post = bin.Get(id);
     if (post is null || post.Md5.Length != 32) return Results.NotFound();
-    foreach (var root in new[] { Path.Combine(WebPaths.MediaDir, SpankBank.Data.RubbishBin.BinStore.BinFolder), WebPaths.MediaDir })
+    foreach (var root in new[] { Path.Combine(SpankBankPaths.Current.MediaDir, SpankBank.Data.RubbishBin.BinStore.BinFolder), SpankBankPaths.Current.MediaDir })
     {
         var preview = MediaPaths.Preview(root, post.Md5);
         if (File.Exists(preview)) return Results.File(preview, "image/jpeg");
