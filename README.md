@@ -409,7 +409,9 @@ Rules for a pair:
 - **Own worker.** `WORKER_URL` on each web app is the address of its worker's service name, port 8081 (every worker can
   use 8081; none is published). There is no default service name, so a web app can never wake another pair's worker by
   accident.
-- **Own port.** Publish each web app on its own host port (or none, behind a reverse proxy).
+- **Own port.** Publish each web app on its own host port (or none, behind a reverse proxy). Pairs on one address
+  share the browser's cookies (cookies ignore the port), so each web app names its antiforgery and TempData cookies
+  after its site (`.SpankBank.<site>.Antiforgery`); a form posted after visiting the other site still works.
 - Build once: `docker compose build` builds the images from the services that name `build:`; the pairs above only
   reference the images, so keep the `build:` sections from the example on one worker and one web service, or run
   `docker build -f docker/worker.Dockerfile -t spankbank-worker:latest .` and the same for `web.Dockerfile`.

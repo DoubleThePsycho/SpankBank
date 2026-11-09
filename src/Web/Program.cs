@@ -19,6 +19,10 @@ Directory.CreateDirectory(SpankBankPaths.Current.KeysDir);
 builder.Services.AddDataProtection()
     .PersistKeysToFileSystem(new DirectoryInfo(SpankBankPaths.Current.KeysDir))
     .SetApplicationName("SpankBank");
+// Per-site cookie names: two instances on one address (different ports) share cookies, see SiteCookies.
+builder.Services.AddAntiforgery(options => options.Cookie.Name = SiteCookies.Current.Antiforgery);
+builder.Services.Configure<Microsoft.AspNetCore.Mvc.CookieTempDataProviderOptions>(
+    options => options.Cookie.Name = SiteCookies.Current.TempData);
 builder.Services.AddRazorPages(options => options.Conventions.AddPageRoute("/Posts/Index", "/posts/favorites")) // the listing, narrowed to favorites
     .AddMvcOptions(options => options.Filters.Add<WatchChangeNotifier>());
 builder.Services.AddHttpClient<WorkerClient>(client =>
