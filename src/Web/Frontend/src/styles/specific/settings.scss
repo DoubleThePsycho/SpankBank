@@ -1,0 +1,33 @@
+// SpankBank: the pill row of the Settings pages (Downloads, Library, Blacklist, Theme). Follows the look of e621ng's
+// settings tabs (views/users/edit/_edit.scss `tabs-menu`), but the pills are links to separate pages.
+.settings-pills {
+  display: flex;
+  flex-wrap: wrap;
+  width: 100%;
+  max-width: 50rem;
+  margin: 0.5rem 0 1rem;
+
+  a {
+    padding: 0.5rem 1rem;
+    border-bottom: 2px solid themed("color-section");
+    font-size: 1rem;
+    line-height: 1rem;
+    color: themed("color-link");
+    text-decoration: none;
+
+    &:hover { color: themed("color-link-hover"); }
+
+    &.active {
+      background: themed("color-section");
+      border-radius: 0.25rem 0.25rem 0 0;
+      color: themed("color-text");
+    }
+  }
+
+  .spacer {
+    flex: 1;
+    border-bottom: 2px solid themed("color-section");
+  }
+}
+
+#c-settings .settings-form { max-width: 50rem; }

@@ -5,8 +5,8 @@
     ViewData["BodyClass"] = "c-status";
 }
 <div id="c-blacklist" class="container"><div id="a-index">
-  <p><a href="/settings">&larr; Settings</a></p>
-  <h1>Blacklist</h1>
+  <h1>Settings</h1>
+  @await Html.PartialAsync("_SettingsPills")
 
   @if (Model.Message is not null) { <div class="notice notice-info">@Model.Message</div> }
   @if (Model.Error is not null) { <div class="notice notice-error">@Model.Error</div> }
@@ -23,6 +23,7 @@
     <button type="submit" class="st-button">Save</button>
   </form>
 
-  <p class="hint">Currently blocked: @Model.Pending.ToString("N0") waiting posts that will not be downloaded, @Model.Local.ToString("N0") posts already on this device (hidden).
+  <p class="hint">
+    Currently blocked: @Model.Pending.ToString("N0") waiting posts that will not be downloaded, @Model.Local.ToString("N0") posts already on this device (hidden).<br />
     A watch can opt out from its own settings (&ldquo;Ignore blacklist&rdquo;). Changes apply within a few seconds.</p>
 </div></div>

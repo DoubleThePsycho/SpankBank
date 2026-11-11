@@ -1,6 +1,3 @@
-// SpankBank: one logo per archived site, picked by <body data-site="..."> (SITE_NAME in .env; unknown names get e621's).
-// images/logo/e621.svg is e621's shape with the lettering replaced by "SB"; images/logo/e6ai.svg is the e6ai look.
-// The upstream themed logo set (pride flags etc.) is not used.
+// SpankBank: the logo (images/logo/spankbank.svg), the same on every site and theme. The upstream themed logo set (pride flags etc.) is not used.
 // (Upstream: e621ng app/javascript/src/styles/base/_logos.scss)
-body a.nav-logo-link { background-image: url("~/images/logo/e621.svg"); }
-body[data-site="e6ai"] a.nav-logo-link { background-image: url("~/images/logo/e6ai.svg"); }
+body a.nav-logo-link { background-image: url("~/images/logo/spankbank.svg"); }

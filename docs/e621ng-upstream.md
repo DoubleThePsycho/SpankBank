@@ -20,7 +20,7 @@ To update: diff the upstream files against the local copies and re-apply. The si
 
 The autocomplete and modal files were copied from a local e621ng checkout (commit `b548347e5e5ca06472f8d6abfe642b816d67583b`), which is newer than the pinned commit above. The watches pages (`src/Web/Pages/Watches`) and `styles/specific/watches.scss` are SpankBank's own.
 
-`js/core/Navigation.ts` is a trimmed copy (main-menu toggle only). `images/logo/e621.svg` is e621's logo shape with the lettering replaced by "SB" (`e6ai.svg` is the e6ai look). `common/container_local.scss` (Bootstrap container sizing) and `common/layout_local.scss` are SpankBank's own.
+`js/core/Navigation.ts` is a trimmed copy (main-menu toggle only). `images/logo/spankbank.svg` is SpankBank's own logo (also `wwwroot/favicon.*`). The Settings pill row (`specific/settings.scss`) imitates the `tabs-menu` look of `users/edit`. `common/container_local.scss` (Bootstrap container sizing) and `common/layout_local.scss` are SpankBank's own.
 `js/core/PaginatorFastTravel.ts` is a copy (only the jquery import was added).
 
 The Tags, Artists and Pools pages (`src/Web/Pages/{Tags,Artists,Pools}`) follow e621ng's `tags/index`, `artists/index` and `pools/index`/`show` views, adapted to the local catalog.

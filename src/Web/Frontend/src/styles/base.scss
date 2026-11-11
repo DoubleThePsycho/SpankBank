@@ -9,8 +9,6 @@
 @import "base/links";
 @import "base/fonts";
 @import "base/logos";
-@import "sites/e621";
-@import "sites/e6ai";
 
 @import "common/standard_variables";
 @import "common/standard_elements";
@@ -117,6 +115,7 @@
 @import "specific/tags.scss";
 @import "specific/takedowns.scss";
 @import "specific/themes.scss";
+@import "specific/settings.scss";
 @import "specific/uploads.scss";
 @import "specific/uploads_file.scss";
 @import "specific/user_deletions.scss";

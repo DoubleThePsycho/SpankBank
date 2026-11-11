@@ -1,0 +1,15 @@
+@* The pills of the Settings area (one page each). The pill row follows e621ng's settings tabs (users/edit). *@
+@{
+    var path = (Context.Request.Path.Value ?? "").TrimEnd('/');
+    (string Text, string Url)[] items =
+    [
+        ("Downloads", "/settings"), ("Library", "/settings/library"), ("Blacklist", "/settings/blacklist"), ("Theme", "/settings/theme"),
+    ];
+}
+<nav class="settings-pills" aria-label="Settings">
+  @foreach (var (text, url) in items)
+  {
+    <a href="@url" class="@(path.Equals(url, StringComparison.OrdinalIgnoreCase) ? "active" : null)">@text</a>
+  }
+  <span class="spacer"></span>
+</nav>

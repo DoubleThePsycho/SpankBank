@@ -1,6 +1,15 @@
-# SpankBank
+<div align="center">
+  <img src="src/Web/Frontend/images/logo/spankbank.svg" width="180" height="150" align="left" alt="SpankBank logo">
+  <div align="left">
+    <h3>SpankBank</h3>
+    A self-hosted e621ng archive: catalog browser and download manager.<br />
+    Docker stack · .NET 10 · SQLite · an e621-style web interface<br />
+    <a href="#quick-start">Quick start</a> · <a href="#configuration">Configuration</a> · <a href="#access-and-security">Access and security</a>
+  </div>
+</div>
+<br clear="left" />
 
-A self-hosted **e621 catalog browser and download manager**. It keeps a local copy of e621's public database exports,
+A self-hosted **e621ng catalog browser and download manager**. It keeps a local copy of e621's public database exports,
 lets you pick the artists, pools and searches you care about, downloads the matching files, and gives you a web
 interface that is a faithful clone of e621's own site (same markup, same styles, same search syntax) to browse the
 result, entirely offline from then on.
@@ -12,6 +21,7 @@ It runs as a small Docker stack on a home server or any always-on machine:
 | `worker` | Downloads and imports e621's daily database exports, matches your watches against the catalog, downloads the files (with a recovery path for posts e621 has deleted), makes thumbnails for Flash files, empties the rubbish bin. |
 | `web` | The site you browse: local posts, favorites, artists, pools, tags, downloads, settings. |
 
+> [!WARNING]
 > **Heads-up.** e621 is an adult site and SpankBank archives what you tell it to, including explicit material. It is for
 > personal, private use by adults. It has **no login** (see [Access and security](#access-and-security)), is not
 > affiliated with e621, and is not a substitute for supporting the site.
@@ -145,7 +155,7 @@ reads the file itself and fills the `${...}` values of the compose file from it;
 
 | Variable | Default | Meaning |
 |---|---|---|
-| `SITE_HOST` | none, **required** | The e621ng site to archive, e.g. `e621.net` or `e6ai.net`. A container started without it stops with an error instead of guessing. The short name in page titles and texts ("e621", "e6ai") is its first label, and it picks the look: `e6ai.net` gets the black and yellow theme and logo, anything else e621's. |
+| `SITE_HOST` | none, **required** | The e621ng site to archive, e.g. `e621.net` or `e6ai.net`. A container started without it stops with an error instead of guessing. The short name in page titles and texts ("e621", "e6ai") is its first label. The look does not depend on it: the theme is a setting (**Settings → Theme**). |
 | `STATIC_HOST` | `static1.<SITE_HOST>` | The site's file server. |
 | `INKBUNNY_USERNAME` / `INKBUNNY_PASSWORD` | empty (guest) | Optional [Inkbunny](https://inkbunny.net) account used to recover deleted posts whose source is an Inkbunny submission. The guest login only sees general-rated art; for mature art use a dedicated account with mature ratings (and API access) enabled. Quote passwords containing `$`: `INKBUNNY_PASSWORD='p@ss$word'`. Worker only. |
 
@@ -162,8 +172,8 @@ reads the file itself and fills the `${...}` values of the compose file from it;
 The worker listens on port 8081 inside its own container (`WORKER_COMMAND_PORT` changes it); it is never published, so
 several workers do not collide.
 
-Everything else (daily update time, download limits and parallelism, list sizes, delete mode, pool auto-adding) is
-set on the **Settings** page of the site and stored in the database. The defaults:
+Everything else (daily update time, download limits and parallelism, list sizes, delete mode, pool auto-adding, theme) is
+set on the **Settings** pages of the site and stored in the database. The defaults:
 
 | Setting | Default |
 |---|---|
@@ -174,6 +184,8 @@ set on the **Settings** page of the site and stored in the database. The default
 | Rows per page in the artist and pool lists | 100 |
 | Allow delete mode | off |
 | Add an artist's pools automatically when at least this share of their posts is the artist's | on, 90 % |
+| Theme | Hexagon |
+| Embellishments | Hexagon |
 
 Run `docker compose config` to see the final, merged configuration.
 
@@ -251,7 +263,7 @@ the bin automatically.
 
 ### Blacklist
 
-**Settings → Edit the blacklist**: one e621-style search per line (tags, `-tag`, `~tag`, OR groups, `*`, `rating:`,
+**Settings → Blacklist**: one e621-style search per line (tags, `-tag`, `~tag`, OR groups, `*`, `rating:`,
 `score:`, …; no pool/parent/fav terms). A post matching any line is never downloaded and is hidden in listings; use
 `blacklisted:true` or `blacklisted:any` in a search to see them anyway. A single artist can ignore the global blacklist
 on their page.
@@ -284,8 +296,10 @@ headless exporter. Files it cannot render get a `.nopreview` marker beside the p
 |---|---|
 | **Status** | Last update, posts in the catalog, strays, import history, the *Update now* button, and live progress. |
 | **Posts → Downloads** | The download queue: progress, speed, ETA and the posts that failed. |
-| **Settings** | Daily update time, download switch / daily limit / parallelism, list size, delete mode, pool auto-adding. |
+| **Settings → Downloads** | Daily update time, download switch / daily limit / parallelism. |
+| **Settings → Library** | List size, pool auto-adding, delete mode. |
 | **Settings → Blacklist** | The global blacklist. |
+| **Settings → Theme** | The theme and the embellishments (stored with the instance, so every browser sees them). |
 
 ## Access and security
 
@@ -418,8 +432,8 @@ Rules for a pair:
 
 The downloader refuses any request for the site's hosts that ends up on a different host, and an export index that
 points off-site is rejected, so a site that closes and redirects to another cannot pour that site's data into this
-catalog. Adding another site's look takes one logo in `src/Web/Frontend/images/logo/`, one SCSS file in
-`src/Web/Frontend/src/styles/sites/` and one line in `src/Core/SiteLook.cs`.
+catalog. Every site looks the same until you pick another theme: it is an instance setting (**Settings → Theme**),
+not tied to the site, so give each pair the theme you like.
 
 ## Migrating from the earlier layout
 

@@ -1,0 +1,48 @@
+@page "/settings/theme"
+@model SpankBank.Web.Pages.SettingsPages.ThemeModel
+@{
+    ViewData["Title"] = "Settings";
+}
+<div id="c-settings" class="container"><div id="a-theme">
+  <h1>Settings</h1>
+  @await Html.PartialAsync("_SettingsPills")
+
+  @if (Model.Message is not null) { <div class="notice notice-info">@Model.Message</div> }
+  @if (Model.Error is not null) { <div class="notice notice-error">@Model.Error</div> }
+
+  <form method="post" class="settings-form">
+    <section class="box-section">
+      <h2>Theme</h2>
+      <div class="input">
+        <label for="theme">Theme</label>
+        <select id="theme" name="theme" data-theme-preview="main">
+          @foreach (var (value, label, _) in SpankBank.Data.ThemeSettings.Themes)
+          {
+            <option value="@value" selected="@(value == Model.Theme)">@label</option>
+          }
+        </select>
+      </div>
+      <div class="input">
+        <label for="extra">Embellishments</label>
+        <select id="extra" name="extra" data-theme-preview="extra">
+          @foreach (var (value, label) in SpankBank.Data.ThemeSettings.Extras)
+          {
+            <option value="@value" selected="@(value == Model.Extra)">@label</option>
+          }
+        </select>
+        <p class="hint">The picture drawn over the top (and sometimes the bottom) of every page. The choice is saved with this instance and applies to every browser; the page shows it as soon as you pick.</p>
+      </div>
+    </section>
+
+    <button type="submit" class="st-button">Save</button>
+  </form>
+</div></div>
+@section Scripts {
+  <script>
+    document.querySelectorAll("select[data-theme-preview]").forEach(function (select) {
+      select.addEventListener("change", function () {
+        document.body.setAttribute("data-th-" + select.dataset.themePreview, select.value);
+      });
+    });
+  </script>
+}

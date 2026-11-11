@@ -17,6 +17,10 @@ public static class WorkerSettingsKeys
     public const string DeleteModeEnabled = "Bin.DeleteModeEnabled";
     /// <summary>Rows per page in the artist and pool lists (default 100).</summary>
     public const string ListPageSize = "Ui.ListPageSize";
+    /// <summary>The site theme (hexagon, pony, bloodlust, ...); default hexagon. Stored per instance, not tied to a site.</summary>
+    public const string UiTheme = "Ui.Theme";
+    /// <summary>The embellishment drawn over the theme (hexagon, none, autumn, ...); default hexagon.</summary>
+    public const string UiThemeExtra = "Ui.ThemeExtra";
     public const string DailyRunTimeUtc = "Worker.DailyRunTimeUtc";
     public const string LastRunStartedAt = "Worker.LastRunStartedAt";
     public const string LastRunCompletedAt = "Worker.LastRunCompletedAt";
