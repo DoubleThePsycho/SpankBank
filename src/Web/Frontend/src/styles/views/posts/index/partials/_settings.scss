@@ -180,7 +180,8 @@ tab-entry[tab="blacklist"] textarea {
   #advanced-search-container,
   #layout-settings-container {
     top: 0.5rem;
-    left: 16.5rem;
+    // Just right of the sidebar (19rem wide in SpankBank, 16rem upstream) so it leaves the search button and counts uncovered.
+    left: 19.5rem;
 
     .ssc-desktop-only { display: grid; }
   }

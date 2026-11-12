@@ -23,3 +23,9 @@ ul.tag-list .tag-list-search {
   }
   .tag-list-count-local.none { opacity: 0.45; }
 }
+
+// On narrow screens the upstream rows are only as wide as their content, which squeezes the name into a column of
+// single letters. Let them take the full width instead; the look of a row stays the same.
+@include window-smaller-than(50rem) {
+  ul.tag-list li { width: 100%; }
+}

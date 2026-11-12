@@ -40,6 +40,7 @@ It runs as a small Docker stack on a home server or any always-on machine:
 [Building and developing without Docker](#building-and-developing-without-docker) ·
 [Troubleshooting](#troubleshooting) ·
 [Project layout](#project-layout) ·
+[AI disclosure](#ai-disclosure) ·
 [Credits and licence](#credits-and-licence)
 
 ---
@@ -514,6 +515,12 @@ tests/         xUnit regression tests
 docker/        Dockerfiles for the worker, the web app and the Ruffle exporter
 docs/          notes on code adapted from e621ng
 ```
+
+## AI disclosure
+
+SpankBank was built with AI assistance. Most of the code, tests and documentation were written by Claude Code under my
+direction; I set the requirements and architecture, reviewed the changes, and run it myself. ChatGPT helped with
+planning and review. I'm responsible for the project, and bug reports and pull requests are welcome.
 
 ## Credits and licence
 

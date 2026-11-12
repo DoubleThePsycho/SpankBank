@@ -73,7 +73,7 @@ div#c-favorites {
   // Green/red split lives on .thm-desc itself so .thm-desc-a's independently-rounded chip
   // covers the seam, same mechanic as the rating-colored post footer.
   .favorite-folder-card-desc {
-    grid-template-columns: 1.25rem auto 1.25rem;
+    grid-template-columns: 1.25rem minmax(0, 1fr) 1.25rem;
     background: linear-gradient(
       to right,
       palette("background-green") 0%,
@@ -86,6 +86,16 @@ div#c-favorites {
   .favorite-go-up-card-desc, .favorite-new-folder-card-desc {
     grid-template-columns: 1fr;
     background-color: themed("color-section-lighten-5");
+  }
+
+  // The thumbnail component narrows every footer to "name | 0.75rem" below 500px (post_thumbnail_component.scss), which
+  // would squeeze the folder footer's three cells into two. Same condition, one class more, so the folder footer keeps
+  // its own columns (tap targets a little wider than on desktop).
+  body:not([data-st-size="l"]) & article.thumbnail {
+    @include window-smaller-than(500px) {
+      .favorite-folder-card-desc { grid-template-columns: 1.5rem minmax(0, 1fr) 1.5rem; }
+      .favorite-go-up-card-desc, .favorite-new-folder-card-desc { grid-template-columns: 1fr; }
+    }
   }
 
   // No padding of its own: the name cell's height drives the row, keeping the card the
