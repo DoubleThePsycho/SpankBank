@@ -70,7 +70,9 @@
       <table class="striped watches-table artists-table" data-server-sorted>
         <thead>
           <tr class="group-headers">
-            <th colspan="3" class="group-blank"></th>
+            @* Three blank cells over ID, Artist and Aliases; the Aliases one goes with its column on a phone (a colspan of 3 would leave one cell too many there). *@
+            <th colspan="2" class="group-blank"></th>
+            <th class="group-blank col-num"></th>
             <th colspan="3" class="group-label sep">Characters</th>
             <th colspan="5" class="group-label sep">Posts</th>
             <th class="group-blank sep"></th>

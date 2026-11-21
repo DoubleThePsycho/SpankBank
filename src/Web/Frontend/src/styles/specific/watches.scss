@@ -336,33 +336,22 @@ $count-orange: #e8924a;
   .count-pending { color: $count-orange; }
 }
 
-// On a phone the stats would wrap inside the narrow value cell: the row takes the full width instead (the name above the
-// values) and the five stats become five equal columns of icon and number, without their words (the icons are the ones
-// of the lists' count columns, and each has a tooltip).
+// On a phone the stats would wrap inside the narrow value cell, so they become five columns of icon and number without
+// their words (the icons are the ones of the lists' count columns, and each has a tooltip), on the same line as the name.
+// A column is as wide as the others where that fits, and wider (taking width from the others) when its number needs it;
+// when even that is too tight the number drops under its icon.
 @include window-smaller-than(40rem) {
-  // The rows become grid rows (name | value), so that the stats row can put the name above the values and use the full
-  // width; a table row cannot be made wider than its cells.
-  .artist-info-table {
-    display: block;
-    tbody { display: block; }
-    tr { display: grid; grid-template-columns: max-content minmax(0, 1fr); align-items: center; }
-    th, td { width: auto; }
-    .post-stats-row {
-      grid-template-columns: minmax(0, 1fr);
-      th { padding-bottom: 0; }
-    }
-  }
-
   .post-stats {
     display: grid;
-    grid-template-columns: repeat(5, minmax(0, 1fr));
+    grid-template-columns: repeat(5, minmax(min-content, 1fr));
     gap: 0.25rem;
 
     > span {
       display: flex;
+      flex-wrap: wrap;
       align-items: center;
       justify-content: center;
-      gap: 0.25rem;
+      column-gap: 0.25rem;
     }
     .stat-label { display: none; }
   }
