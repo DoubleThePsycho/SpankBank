@@ -282,6 +282,9 @@ label.sto-toggle--tri {
   &::after { width: 33.333%; transition: left 150ms, background 150ms; }
 
   .sto-tri {
+    display: flex;
+    justify-content: center;
+    align-items: center;
     width: 33.333%;
     z-index: 1;
     pointer-events: auto;

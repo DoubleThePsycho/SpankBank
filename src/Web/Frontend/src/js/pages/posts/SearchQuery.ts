@@ -222,6 +222,7 @@ interface ParsedState {
   inpool: string;
   ischild: string;
   isparent: string;
+  status: string;
   ratings: string;
   media: string;
   mediaCustom: boolean;
@@ -249,6 +250,8 @@ export default class SearchQuery {
   get inpool (): string { return this._state.inpool; }
   get ischild (): string { return this._state.ischild; }
   get isparent (): string { return this._state.isparent; }
+  /** "active", "deleted", or "" for any (also for an explicit status:any). */
+  get status (): string { return this._state.status; }
   get ratings (): string { return this._state.ratings; }
   get media (): string { return this._state.media; }
   get mediaCustom (): boolean { return this._state.mediaCustom; }
@@ -269,6 +272,10 @@ export default class SearchQuery {
 
   withIsparent (value: string): SearchQuery {
     return new SearchQuery(SearchQuery.replaceIsparentMetatags(this._raw, value));
+  }
+
+  withStatus (value: string): SearchQuery {
+    return new SearchQuery(SearchQuery.replaceStatusMetatags(this._raw, value));
   }
 
   withRatings (ratings: string[]): SearchQuery {
@@ -294,6 +301,7 @@ export default class SearchQuery {
       inpool: "",
       ischild: "",
       isparent: "",
+      status: "",
       ratings: RATING_ALL,
       media: MEDIA_ALL,
       mediaCustom: false,
@@ -318,6 +326,9 @@ export default class SearchQuery {
 
       const isparent = SearchQuery.parseIsparentToken(token.text);
       if (isparent !== null) state.isparent = isparent;
+
+      const status = SearchQuery.parseStatusToken(token.text);
+      if (status !== null) state.status = status === "any" ? "" : status;
 
       const rating = SearchQuery.parseRatingToken(token.text);
       if (rating) state.ratings = SearchQuery.applyRatingToken(state.ratings, rating);
@@ -423,6 +434,13 @@ export default class SearchQuery {
     return { value, negated: match[1] === "-" };
   }
 
+  // SpankBank's own (e621ng's toggles stop at inpool / ischild / isparent): active, deleted, or any (the default).
+  private static parseStatusToken (text: string): string | null {
+    const match = text.match(/^status:(active|deleted|any)$/i);
+    if (!match) return null;
+    return match[1].toLowerCase();
+  }
+
   private static parseIschildToken (text: string): string | null {
     const match = text.match(/^(?:ischild|hasparent):(true|false)$/i);
     if (!match) return null;
@@ -465,6 +483,15 @@ export default class SearchQuery {
     return SearchQuery.replaceTopLevelMetatags(
       query,
       (token) => SearchQuery.parseInpoolToken(token) !== null,
+      newToken,
+    );
+  }
+
+  private static replaceStatusMetatags (query: string, value: string): string {
+    const newToken = value ? "status:" + value : "";
+    return SearchQuery.replaceTopLevelMetatags(
+      query,
+      (token) => SearchQuery.parseStatusToken(token) !== null,
       newToken,
     );
   }

@@ -1,4 +1,5 @@
 @page "/"
 @functions {
-    public IActionResult OnGet() => RedirectToPage("/Posts/Index");
+    // A literal address: the posts listing also has the route /posts/favorites, which RedirectToPage would pick.
+    public IActionResult OnGet() => Redirect("/posts");
 }

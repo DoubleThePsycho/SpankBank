@@ -101,6 +101,22 @@
         </div>
       </div>
 
+      <div class="ssc-entry">
+
+        <div class="ssc-label">
+          <label for="ssc-status">Status</label>
+        </div>
+
+        <div class="ssc-body">
+          @* Any / Active / Deleted as icons (layers, circle-check, trash; lucide.dev): the words do not fit the segments. *@
+          <label class="sto-toggle sto-toggle--tri" id="ssc-status" data-advanced-search="status" data-state="unset">
+            <span class="sto-tri" title="Any status"><svg-icon name="layers" width="16" height="16" /></span>
+            <span class="sto-tri" title="Active (not deleted on the site)"><svg-icon name="circle_check" width="16" height="16" /></span>
+            <span class="sto-tri" title="Deleted on the site"><svg-icon name="trash" width="16" height="16" /></span>
+          </label>
+        </div>
+      </div>
+
       <div class="ssc-header">Post relationships</div>
 
       <div class="ssc-entry">
