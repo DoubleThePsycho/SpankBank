@@ -36,7 +36,8 @@ ul.tag-list {
     text-align: right;
     white-space: nowrap;
     font-variant-numeric: tabular-nums;
-    padding-right: 0;
+    // The sides keep the padding of the upstream styles (0.5rem on a phone, 0.25rem beside the posts), so the last
+    // count stays off the border.
   }
   .tag-list-search .tag-list-count-local { grid-column: 5; }
   .tag-list-search .tag-list-count-online { grid-column: 6; }
@@ -44,4 +45,19 @@ ul.tag-list {
 
   // The link has no box to draw a focus ring on, so its name does.
   .tag-list-search:focus-visible .tag-list-name { outline: 2px solid themed("color-link"); outline-offset: 1px; border-radius: 0.125rem; }
+}
+
+// On a phone the two counts sit close together: the local one keeps only a small gap on its right.
+@include window-smaller-than(50rem) {
+  ul.tag-list .tag-list-search .tag-list-count-local { padding-right: 0.25rem; }
+}
+
+// Beside the posts the list lines up with the category heading above it: the ? starts where the heading does, and the
+// last count keeps a little room (its padding) before the edge of the sidebar.
+@include window-larger-than(50rem) {
+  ul.tag-list {
+    margin-left: 0;
+    margin-right: 0;
+    .tag-list-wiki { padding-left: 0; }
+  }
 }
