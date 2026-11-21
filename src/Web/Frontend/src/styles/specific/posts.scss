@@ -399,7 +399,7 @@ body[data-user-can-approve-posts="true"] .notice {
 }
 
 // Post page: the notice of a post that was deleted on the site (SpankBank's own). One pill like the tag rows on a phone
-// (section background, 2px outline, thicker left edge, rounded), outlined in red, text in white: what happened and why.
+// (section background, 2px outline, thicker left edge, rounded) with the left edge in red, text in white: what happened and why.
 .deleted-notice {
   display: flex;
   flex-flow: column;
@@ -409,8 +409,8 @@ body[data-user-can-approve-posts="true"] .notice {
   padding: 0.25rem 0.5rem;
 
   background: themed("color-section");
-  border: 0.125rem solid palette("text-red");
-  border-left-width: 0.25rem;
+  border: 0.125rem solid themed("color-section-lighten-5");
+  border-left: 0.25rem solid palette("text-red");
   border-radius: 0.25rem;
 
   color: palette("text-white");

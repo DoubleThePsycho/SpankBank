@@ -82,10 +82,10 @@ public class DownloadStoreTests : IDisposable
     [Fact]
     public void Where_a_deleted_post_was_restored_from_is_remembered_and_kept_when_it_is_saved_again()
     {
-        _store.MarkSaved(Post(1), LocalPostStatus.Recovered, "the Wayback Machine");
+        _store.MarkSaved(Post(1), LocalPostStatus.Recovered, "Wayback Machine");
         _store.MarkSaved(Post(1), LocalPostStatus.Recovered); // saved again without a source: the earlier one stays
 
-        Assert.Equal("the Wayback Machine", new DownloadedPostsRepository(_db.Paths.DeviceDatabasePath).GetPost(1)!.RestoredFrom);
+        Assert.Equal("Wayback Machine", new DownloadedPostsRepository(_db.Paths.DeviceDatabasePath).GetPost(1)!.RestoredFrom);
         Assert.Null(new DownloadedPostsRepository(_db.Paths.DeviceDatabasePath).GetPost(2));
     }
 

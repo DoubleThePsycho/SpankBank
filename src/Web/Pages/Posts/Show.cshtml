@@ -146,10 +146,10 @@
 
         @if (Model.ShowDeletedNotice)
         {
-          @* One pill like the tag rows on a phone, with a red outline: what happened to the post and why. *@
+          @* One pill like the tag rows on a phone, with a red left edge: what happened to the post and why. *@
           <div class="deleted-notice" role="note">
-            <span class="deleted-notice-text">@Model.DeletedNotice</span>
-            @if (Model.DeletionReason is not null) { <span class="deleted-notice-reason">Reason: @Model.DeletionReason</span> }
+            <span class="deleted-notice-text">@if (Model.RestoredNotice is { } restored) { <strong>Post deleted:</strong> @restored } else { <strong>Post deleted.</strong> }</span>
+            @if (Model.DeletionReason is not null) { <span class="deleted-notice-reason"><strong>Reason:</strong> @Model.DeletionReason</span> }
           </div>
         }
 

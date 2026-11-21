@@ -37,14 +37,16 @@ public class ShowModel : PageModel
     /// <summary>The post was deleted on the site, or what is shown here is a restored copy.</summary>
     public bool ShowDeletedNotice => Extras?.IsDeleted == true || Post.Status is LocalPostStatus.Recovered or LocalPostStatus.SampleOnly;
 
-    /// <summary>"This post was deleted, restored the original from the Wayback Machine." and its shorter forms.</summary>
-    public string DeletedNotice
+    /// <summary>"Restored original from Wayback Machine." (shown after "Post deleted:"), or null when nothing was restored.</summary>
+    public string? RestoredNotice
     {
         get
         {
-            var version = Post.Status == LocalPostStatus.SampleOnly || ShowingSample ? "the sample" : Post.Status == LocalPostStatus.Recovered ? "the original" : null;
-            if (version is null) return "This post was deleted.";
-            return Post.RestoredFrom is { Length: > 0 } from ? $"This post was deleted, restored {version} from {from}." : $"This post was deleted, restored {version}.";
+            var version = Post.Status == LocalPostStatus.SampleOnly || ShowingSample ? "sample" : Post.Status == LocalPostStatus.Recovered ? "original" : null;
+            if (version is null) return null;
+            // Earlier versions stored "the Wayback Machine"; the article is left out here to keep the line short.
+            var from = Post.RestoredFrom is { Length: > 0 } stored ? (stored.StartsWith("the ", StringComparison.OrdinalIgnoreCase) ? stored[4..] : stored) : null;
+            return from is null ? $"Restored {version}." : $"Restored {version} from {from}.";
         }
     }
 
