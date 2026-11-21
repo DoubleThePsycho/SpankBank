@@ -146,8 +146,65 @@ div#c-favorites {
 
   // Not display:none: the card stays in its grid slot for the whole gesture so cancelling
   // never reflows sibling thumbnails. FavoriteFolderDrag.ts removes it only on success.
+  // It is drawn as a dashed placeholder (the look of the pool-ordering drop marker, e621ng PR 2771): "this is the one
+  // being moved", while its copy follows the pointer. Same footprint as a card, so nothing shifts.
   article.thumbnail.favorite-dragging {
-    opacity: 0.4;
+    position: relative;
+    width: 100%;
+    max-width: $image-max;
+    justify-self: center;
+    box-sizing: border-box;
+    border-radius: 0.25rem;
+    background: rgba(0, 124, 186, 0.1);
+    background: color-mix(in srgb, themed("color-link") 12%, transparent);
+    outline: 2px dashed #007cba;
+    outline: 2px dashed themed("color-link");
+    outline-offset: -2px;
+
+    & > * { visibility: hidden; }
+  }
+
+  // Move handle, a small pill in the top-right corner (after the pool-ordering handle, e621ng PR 2771). Only on screens
+  // with a touch input: there a finger can only drag by it, which leaves taps and page scrolling alone on the card.
+  article.thumbnail { position: relative; }
+
+  .favorite-move-handle {
+    display: none;
+    position: absolute;
+    top: 0.25rem;
+    right: 0.25rem;
+    z-index: 6; // above the thumbnail badges and ribbons
+
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    box-sizing: border-box;
+
+    color: themed("color-text");
+    background: themed("color-section");
+    border-radius: 0.5rem;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
+    opacity: 0.9;
+
+    cursor: grab;
+    touch-action: none; // required for pointermove to fire on touch instead of scrolling
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-touch-callout: none;
+
+    // Extends the touch target to about 36px without enlarging the visible pill
+    &::before {
+      content: "";
+      position: absolute;
+      inset: -4px;
+    }
+
+    svg { pointer-events: none; }
+  }
+
+  @media (any-pointer: coarse) {
+    .favorite-move-handle { display: flex; }
   }
 }
 

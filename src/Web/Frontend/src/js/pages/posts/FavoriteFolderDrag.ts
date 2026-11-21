@@ -10,6 +10,22 @@ const GHOST_SCALE = 0.7;
 /** Fixed pixel offset from the pointer, so the ghost never sits exactly under the cursor tip. */
 const GHOST_OFFSET = 12;
 
+// Edge autoscroll, after the pool-ordering Sortable (e621ng PR 2771, BSD-2): holding the pointer near the top or bottom
+// of the viewport scrolls the page, so a post far down a long page can be dropped on a folder at the top.
+/** Distance from the top/bottom viewport edge at which a drag starts scrolling the page. */
+const AUTOSCROLL_EDGE = 60;
+/** Autoscroll speed at the very edge of the viewport, in pixels per second. */
+const AUTOSCROLL_MAX_SPEED = 1200;
+/** Longest frame gap used for an autoscroll step, so a stalled frame can't cause a jump. */
+const AUTOSCROLL_MAX_FRAME = 50;
+
+/** How long a completed drag's click suppression is kept if the browser never fires the click (touch). */
+const CLICK_SUPPRESSION_MS = 400;
+
+/** lucide "move" icon: the handle that lets a finger start a drag without giving up taps and scrolling. */
+const MOVE_ICON = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" '
+  + 'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2v20M2 12h20M15 19l-3 3-3-3M19 9l3 3-3 3M9 5l3-3 3 3M5 9l-3 3 3 3"/></svg>';
+
 // Post sources use [data-id] and move via Favorite.move; folder sources use
 // [data-folder-drag-source] and move via FavoriteFolder.move. Go Up and New Folder carry
 // neither, so they're never drag sources.
@@ -28,6 +44,10 @@ interface DragState {
   rafId: number;
   pendingMove: { clientX: number; clientY: number } | null;
   ghost: HTMLElement | null;
+  /** Latest pointer position, for the drop target and the autoscroll. */
+  lastPointer: { clientX: number; clientY: number };
+  scrollRafId: number;
+  scrollLastTs: number;
 }
 
 // Elements whose pointer sequence ended in a completed (threshold-crossing) drag get a
@@ -39,8 +59,9 @@ const suppressedClickTargets = new WeakSet<Element>();
 
 /**
  * Favorites click-and-drag: posts move via FavoriteFolders.movePost, folders via
- * FavoriteFolders.moveFolder (parent_id only, never sibling order). Mouse/pen only - touch keeps
- * plain tap navigation.
+ * FavoriteFolders.moveFolder (parent_id only, never sibling order). A mouse or pen drags the whole card (after a small
+ * movement); a finger drags by the move handle in the card's corner (shown on touch screens), so taps and scrolling keep
+ * working. The card being moved stays in its grid slot as a dashed placeholder while its copy follows the pointer.
  *
  * Not built on the generic Sortable utility: it starts dragging on pointerdown (breaking
  * click navigation) and only handles reordering within one container, not distinct drop
@@ -58,6 +79,19 @@ export default class FavoriteFolderDrag {
     // Native HTML5 drag on the image/link would hijack the pointer stream before our own
     // threshold logic ever runs, so suppress it for drag sources unconditionally.
     this.container.addEventListener("dragstart", this.onNativeDragStart);
+    this.addMoveHandles();
+  }
+
+  /** Puts a move handle in the corner of every card that can be dragged (styled only on touch screens, see favorites.scss). */
+  addMoveHandles (): void {
+    for (const card of this.container.querySelectorAll<HTMLElement>("article.thumbnail[data-id], article.thumbnail[data-folder-drag-source]")) {
+      const handle = document.createElement("span");
+      handle.className = "favorite-move-handle";
+      handle.setAttribute("aria-hidden", "true");
+      handle.title = "Drag to move";
+      handle.innerHTML = MOVE_ICON;
+      card.appendChild(handle);
+    }
   }
 
   onNativeDragStart = (event: DragEvent): void => {
@@ -69,10 +103,13 @@ export default class FavoriteFolderDrag {
 
   onPointerDown = (event: PointerEvent): void => {
     if (event.button !== 0) return;
-    if (event.pointerType === "touch") return; // mouse/pen only in v1
     if (this.drag) return;
 
     const target = event.target as Element;
+    // A finger only drags by the handle, and starts at once: the handle opts out of scrolling (touch-action), the rest of
+    // the card keeps tapping and scrolling as usual.
+    const touch = event.pointerType === "touch";
+    if (touch && !target.closest(".favorite-move-handle")) return;
 
     const postSourceEl = target.closest<HTMLElement>("article.thumbnail[data-id]");
     if (postSourceEl) {
@@ -80,6 +117,7 @@ export default class FavoriteFolderDrag {
       const postId = postSourceEl.dataset.id;
       if (!postId) return;
       this.beginDrag(event, "post", postId, postSourceEl, postSourceEl);
+      if (touch) this.activate(event);
       return;
     }
 
@@ -91,6 +129,7 @@ export default class FavoriteFolderDrag {
       const folderId = folderSourceEl.dataset.folderId;
       if (!folderId) return;
       this.beginDrag(event, "folder", folderId, folderSourceEl, folderSourceEl);
+      if (touch) this.activate(event);
       return;
     }
   };
@@ -109,6 +148,9 @@ export default class FavoriteFolderDrag {
       rafId: 0,
       pendingMove: null,
       ghost: null,
+      lastPointer: { clientX: event.clientX, clientY: event.clientY },
+      scrollRafId: 0,
+      scrollLastTs: 0,
     };
 
     // Bound at the document level, not sourceEl: no pointer capture is held yet, so a
@@ -159,14 +201,16 @@ export default class FavoriteFolderDrag {
     drag.active = true;
     event.preventDefault();
     drag.captureEl.setPointerCapture(drag.pointerId);
-    // Dims in place; stays in the grid until commitMove confirms success, so a
-    // cancelled/failed drag never reflows sibling cards.
+    // Shown as a dashed placeholder in its slot ("this is the one being moved"); stays in the grid until commitMove
+    // confirms success, so a cancelled/failed drag never reflows sibling cards.
     drag.sourceEl.classList.add("favorite-dragging");
     drag.ghost = this.createGhost(drag, event.clientX, event.clientY);
 
     drag.captureEl.addEventListener("pointermove", this.onPointerMove);
     drag.captureEl.addEventListener("pointerup", this.onPointerUp);
     drag.captureEl.addEventListener("pointercancel", this.onPointerCancel);
+    drag.lastPointer = { clientX: event.clientX, clientY: event.clientY };
+    this.startAutoScroll();
   }
 
   createGhost (drag: DragState, clientX: number, clientY: number): HTMLElement {
@@ -193,6 +237,7 @@ export default class FavoriteFolderDrag {
     const ghost = drag.sourceEl.cloneNode(true) as HTMLElement;
     ghost.classList.remove("favorite-dragging");
     ghost.classList.add("favorite-drag-ghost");
+    ghost.querySelector(".favorite-move-handle")?.remove();
     this.sanitizeGhost(ghost);
     return ghost;
   }
@@ -244,6 +289,8 @@ export default class FavoriteFolderDrag {
     }
 
     drag.pendingMove = { clientX: event.clientX, clientY: event.clientY };
+    drag.lastPointer = drag.pendingMove;
+    this.startAutoScroll();
     if (!drag.rafId) {
       drag.rafId = requestAnimationFrame(() => {
         drag.rafId = 0;
@@ -253,6 +300,59 @@ export default class FavoriteFolderDrag {
       });
     }
   };
+
+  /**
+   * Scroll speed for a pointer at the given viewport Y, in pixels per second: negative near the top, positive near the
+   * bottom, 0 elsewhere. Ramps linearly from 0 at the inner edge of the zone to the maximum at the viewport edge.
+   */
+  autoScrollSpeed (clientY: number): number {
+    const edge = Math.min(AUTOSCROLL_EDGE, window.innerHeight / 4);
+    if (edge <= 0) return 0;
+
+    // A captured pointer can report positions outside the viewport; treat those as being at the edge.
+    const y = Math.min(Math.max(clientY, 0), window.innerHeight);
+    if (y < edge) return -AUTOSCROLL_MAX_SPEED * ((edge - y) / edge);
+    const fromBottom = window.innerHeight - y;
+    if (fromBottom < edge) return AUTOSCROLL_MAX_SPEED * ((edge - fromBottom) / edge);
+    return 0;
+  }
+
+  startAutoScroll (): void {
+    const drag = this.drag;
+    if (!drag || drag.scrollRafId || this.autoScrollSpeed(drag.lastPointer.clientY) === 0) return;
+
+    drag.scrollLastTs = 0;
+    drag.scrollRafId = requestAnimationFrame((timestamp) => this.autoScrollStep(timestamp));
+  }
+
+  autoScrollStep (timestamp: number): void {
+    const drag = this.drag;
+    if (!drag) return;
+    drag.scrollRafId = 0;
+
+    const speed = this.autoScrollSpeed(drag.lastPointer.clientY);
+    if (speed === 0) {
+      drag.scrollLastTs = 0;
+      return;
+    }
+
+    // First frame of a run has no previous timestamp; assume a typical frame.
+    const elapsed = drag.scrollLastTs ? timestamp - drag.scrollLastTs : 16;
+    drag.scrollLastTs = timestamp;
+    const dt = Math.min(Math.max(elapsed, 0), AUTOSCROLL_MAX_FRAME) / 1000;
+
+    const before = window.scrollY;
+    window.scrollBy(0, speed * dt);
+    if (window.scrollY === before) {
+      // Top or bottom of the page; resumes on the next pointermove into the zone.
+      drag.scrollLastTs = 0;
+      return;
+    }
+
+    // The page moved under a pointer that may be still, so work out what is under it now.
+    this.updateHoverTarget(drag.lastPointer.clientX, drag.lastPointer.clientY);
+    drag.scrollRafId = requestAnimationFrame((ts) => this.autoScrollStep(ts));
+  }
 
   updateHoverTarget (clientX: number, clientY: number): void {
     const drag = this.drag;
@@ -294,13 +394,18 @@ export default class FavoriteFolderDrag {
     drag.captureEl.removeEventListener("pointerup", this.onPointerUp);
     drag.captureEl.removeEventListener("pointercancel", this.onPointerCancel);
     if (drag.rafId) cancelAnimationFrame(drag.rafId);
+    if (drag.scrollRafId) cancelAnimationFrame(drag.scrollRafId);
 
     if (drag.currentTarget) drag.currentTarget.classList.remove("drag-hover");
     if (drag.ghost) drag.ghost.remove();
     drag.sourceEl.classList.remove("favorite-dragging");
 
     // A completed drag still fires a synthetic click on release; suppress it.
-    if (!cancelled) suppressedClickTargets.add(drag.sourceEl);
+    if (!cancelled) {
+      suppressedClickTargets.add(drag.sourceEl);
+      // A finger's drag fires no click, which would leave the entry behind to swallow the next real tap.
+      setTimeout(() => suppressedClickTargets.delete(drag.sourceEl), CLICK_SUPPRESSION_MS);
+    }
 
     const dropTarget = cancelled ? null : drag.currentTarget;
     this.drag = null;

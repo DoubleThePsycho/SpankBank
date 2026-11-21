@@ -260,7 +260,7 @@ posts of a watched artist.
 
 Press the star on a post, or use *Favorite* mode on the listing. **Posts → Favorites** lists them newest-favorited first
 and is searchable like the normal listing. Favorites sit in **nested folders**: create, rename and delete folders,
-open them, and drag posts or folders onto other folders. Favorited posts are never treated as strays and never moved to
+open them, and drag posts or folders onto other folders (with a mouse by the whole card, on a touch screen by the move handle in its corner; the page scrolls when you hold the pointer near its top or bottom edge, and the card being moved shows as a dashed placeholder). Favorited posts are never treated as strays and never moved to
 the bin automatically.
 
 ### Blacklist
