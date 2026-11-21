@@ -45,4 +45,11 @@ public class DeletionReasonsTests
     [InlineData("")]
     public void An_answer_that_is_not_a_list_of_flags_is_not_trusted(string answer)
         => Assert.Null(DeletionReasons.Parse(answer, [1]));
+
+    [Theory]
+    [InlineData("Young [[human]]-[[humanoid|like]] character in an explicit situation", "Young human-like character in an explicit situation")]
+    [InlineData("[[conditional_dnp|Conditional DNP]] (Only the artist)", "Conditional DNP (Only the artist)")]
+    [InlineData("Duplicate or inferior version of another post (post #6863643)", "Duplicate or inferior version of another post (post #6863643)")]
+    public void The_sites_link_markup_is_removed_from_a_reason_shown_on_the_post_page(string reason, string expected)
+        => Assert.Equal(expected, DeletionReasons.PlainText(reason));
 }

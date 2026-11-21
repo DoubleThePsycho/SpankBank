@@ -27,7 +27,7 @@ public sealed partial class PostFetcher
         {
             var result = await DownloadAsync(url, original, post.Md5, jpegOnly: false, StallTimeout, cancellationToken, _sources, onProgress);
             if (result.Kind == DownloadKind.Ok)
-                return new FetchOutcome(FetchResult.Recovered, $"Original recovered from its source ({new Uri(url).Host}).");
+                return new FetchOutcome(FetchResult.Recovered, $"Original recovered from its source ({new Uri(url).Host}).", RestoredFrom: new Uri(url).Host);
         }
 
         foreach (var id in SourceLinks.InkbunnySubmissionIds(post.Source).Take(3))
@@ -53,7 +53,7 @@ public sealed partial class PostFetcher
 
                 var result = await DownloadAsync(file.Url, original, post.Md5, jpegOnly: false, StallTimeout, cancellationToken, _sources, onProgress);
                 if (result.Kind == DownloadKind.Ok)
-                    return new FetchOutcome(FetchResult.Recovered, $"Original recovered from Inkbunny (submission {id}).");
+                    return new FetchOutcome(FetchResult.Recovered, $"Original recovered from Inkbunny (submission {id}).", RestoredFrom: "Inkbunny");
             }
         }
 

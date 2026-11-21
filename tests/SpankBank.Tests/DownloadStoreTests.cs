@@ -80,6 +80,32 @@ public class DownloadStoreTests : IDisposable
     }
 
     [Fact]
+    public void Where_a_deleted_post_was_restored_from_is_remembered_and_kept_when_it_is_saved_again()
+    {
+        _store.MarkSaved(Post(1), LocalPostStatus.Recovered, "the Wayback Machine");
+        _store.MarkSaved(Post(1), LocalPostStatus.Recovered); // saved again without a source: the earlier one stays
+
+        Assert.Equal("the Wayback Machine", new DownloadedPostsRepository(_db.Paths.DeviceDatabasePath).GetPost(1)!.RestoredFrom);
+        Assert.Null(new DownloadedPostsRepository(_db.Paths.DeviceDatabasePath).GetPost(2));
+    }
+
+    [Fact]
+    public void Posts_on_the_device_that_are_deleted_on_the_site_get_their_reason_looked_up_once()
+    {
+        MarkDeletedInExport(1, 2);
+        _store.MarkSaved(Post(1), LocalPostStatus.Downloaded);
+        _store.MarkSaved(Post(2), LocalPostStatus.Downloaded);
+
+        Assert.Equal([1L, 2L], _store.LocalDeletedPostsNeedingReason(10).Order().ToArray());
+
+        _store.SaveDeletionReasons(new Dictionary<long, string?> { [1] = "Paysite/commercial content", [2] = null });
+
+        Assert.Empty(_store.LocalDeletedPostsNeedingReason(10));
+        Assert.Equal("Paysite/commercial content", _store.GetDeletionReason(1));
+        Assert.Null(_store.GetDeletionReason(2));
+    }
+
+    [Fact]
     public void A_deleted_post_without_any_reason_is_still_recovered_and_low_effort_edits_are_skipped()
     {
         MarkDeletedInExport(1, 2);

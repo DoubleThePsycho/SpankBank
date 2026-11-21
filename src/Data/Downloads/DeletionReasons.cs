@@ -25,6 +25,10 @@ public static partial class DeletionReasons
         return DeletionKind.Other;
     }
 
+    /// <summary>A reason as plain words: the site's [[tag|text]] and [[tag]] links become their text.</summary>
+    public static string PlainText(string reason)
+        => WikiLink().Replace(reason, m => m.Groups[2].Success ? m.Groups[2].Value : m.Groups[3].Value.Replace('_', ' ')).Trim();
+
     /// <summary>The value stored in <c>DeletionReasons.Kind</c>: null for <see cref="DeletionKind.Other"/>.</summary>
     public static string? StoredKind(DeletionKind kind) => kind switch
     {
@@ -63,6 +67,9 @@ public static partial class DeletionReasons
             return null;
         }
     }
+
+    [GeneratedRegex(@"\[\[([^\]|]*)\|([^\]]*)\]\]|\[\[([^\]]*)\]\]")]
+    private static partial Regex WikiLink();
 
     [GeneratedRegex(@"inferior version", RegexOptions.IgnoreCase)]
     private static partial Regex InferiorVersion();

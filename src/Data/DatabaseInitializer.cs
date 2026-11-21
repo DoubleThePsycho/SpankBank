@@ -175,6 +175,9 @@ public static class DatabaseInitializer
             );
             """);
 
+        // Where a file that e621 had deleted was restored from (shown on the post page): "the Wayback Machine", "Inkbunny", ...
+        EnsureColumn(connection, "Posts", "RestoredFrom", "TEXT");
+
         Execute(connection, "CREATE INDEX IF NOT EXISTS IX_DevicePosts_SavedAt ON Posts (SavedAt);");
         Execute(connection, "CREATE INDEX IF NOT EXISTS IX_DevicePosts_Status ON Posts (Status);");
         Execute(connection, "CREATE INDEX IF NOT EXISTS IX_DevicePosts_Md5 ON Posts (Md5);");

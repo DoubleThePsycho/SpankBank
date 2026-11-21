@@ -142,6 +142,39 @@ public sealed class DownloadStore
         return ids;
     }
 
+    /// <summary>
+    /// Posts on this device that the catalog says are deleted and whose deletion reason has not been looked up yet, for the
+    /// reason shown on the post page (independent of the skip setting).
+    /// </summary>
+    public IReadOnlyList<long> LocalDeletedPostsNeedingReason(int limit)
+    {
+        using var connection = OpenAttached();
+        using var cmd = connection.CreateCommand();
+        cmd.CommandText = """
+            SELECT d.Id
+            FROM dev.Posts d JOIN srv.Posts p ON p.Id = d.Id AND p.IsDeleted = 1
+            WHERE d.SavedAt IS NOT NULL
+              AND NOT EXISTS (SELECT 1 FROM DeletionReasons r WHERE r.PostId = d.Id)
+            LIMIT $limit;
+            """;
+        cmd.Parameters.AddWithValue("$limit", limit);
+        using var reader = cmd.ExecuteReader();
+        var ids = new List<long>();
+        while (reader.Read()) ids.Add(reader.GetInt64(0));
+        return ids;
+    }
+
+    /// <summary>The remembered deletion reason of a post (null when none was found or it was not looked up yet).</summary>
+    public string? GetDeletionReason(long postId)
+    {
+        using var connection = new SqliteConnection($"Data Source={_paths.AppDatabasePath}");
+        connection.Open();
+        using var cmd = connection.CreateCommand();
+        cmd.CommandText = "SELECT Reason FROM DeletionReasons WHERE PostId = $id;";
+        cmd.Parameters.AddWithValue("$id", postId);
+        return cmd.ExecuteScalar() as string;
+    }
+
     /// <summary>Remembers the deletion reasons found (null for a post without one), with what each means for the skip setting.</summary>
     /// <returns>How many of them are inferior versions or low-effort edits.</returns>
     public int SaveDeletionReasons(IReadOnlyDictionary<long, string?> reasons)
@@ -221,7 +254,7 @@ public sealed class DownloadStore
     /// and any retry bookkeeping is cleared. Saving again keeps the original SavedAt. A crash between the two steps is harmless: the post counts as saved, and
     /// the leftover retry row is ignored because saved posts are never pending.
     /// </summary>
-    public void MarkSaved(CatalogPost post, LocalPostStatus status)
+    public void MarkSaved(CatalogPost post, LocalPostStatus status, string? restoredFrom = null)
     {
         var now = DateTimeOffset.UtcNow.ToString("o");
 
@@ -232,11 +265,12 @@ public sealed class DownloadStore
             cmd.CommandText = """
                 INSERT OR REPLACE INTO Posts
                     (Id, CreatedAt, UpdatedAt, Md5, Rating, Score, ImageWidth, ImageHeight, FileSize, FileExt,
-                     TagString, Description, Duration, ParentId, SavedAt, Status)
+                     TagString, Description, Duration, ParentId, SavedAt, Status, RestoredFrom)
                 VALUES
                     ($id, $created, $updated, $md5, $rating, $score, $width, $height, $size, $ext,
                      $tags, $description, $duration, $parent,
-                     COALESCE((SELECT SavedAt FROM Posts WHERE Id = $id), $saved), $status);
+                     COALESCE((SELECT SavedAt FROM Posts WHERE Id = $id), $saved), $status,
+                     COALESCE($from, (SELECT RestoredFrom FROM Posts WHERE Id = $id)));
                 """;
             cmd.Parameters.AddWithValue("$id", post.Id);
             cmd.Parameters.AddWithValue("$created", post.CreatedAt);
@@ -254,6 +288,7 @@ public sealed class DownloadStore
             cmd.Parameters.AddWithValue("$parent", (object?)post.ParentId ?? DBNull.Value);
             cmd.Parameters.AddWithValue("$saved", now);
             cmd.Parameters.AddWithValue("$status", (int)status);
+            cmd.Parameters.AddWithValue("$from", (object?)restoredFrom ?? DBNull.Value);
             cmd.ExecuteNonQuery();
         }
 

@@ -144,13 +144,13 @@
           <div id="nav-links-top" class="ui-corner-all nav-notice"><partial name="_PoolNav" model="Model.PoolNav" /></div>
         }
 
-        @if (post.Status == LocalPostStatus.Recovered)
+        @if (Model.ShowDeletedNotice)
         {
-          <div class="notice notice-info">@SiteConfig.Name has deleted this post. The original was recovered from the Wayback Machine.</div>
-        }
-        else if (post.Status == LocalPostStatus.SampleOnly || Model.ShowingSample)
-        {
-          <div class="notice notice-info">@SiteConfig.Name has deleted this post. Only its downsized sample could be recovered.</div>
+          @* One pill like the tag rows on a phone, with a red outline: what happened to the post and why. *@
+          <div class="deleted-notice" role="note">
+            <span class="deleted-notice-text">@Model.DeletedNotice</span>
+            @if (Model.DeletionReason is not null) { <span class="deleted-notice-reason">Reason: @Model.DeletionReason</span> }
+          </div>
         }
 
         <section id="image-container" class="blacklistable" data-post-id="@post.Id" data-is-favorited="@(Model.IsFavorite ? "true" : "false")">

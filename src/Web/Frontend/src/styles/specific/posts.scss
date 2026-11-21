@@ -397,3 +397,24 @@ body[data-user-can-approve-posts="true"] .notice {
     }
   }
 }
+
+// Post page: the notice of a post that was deleted on the site (SpankBank's own). One pill like the tag rows on a phone
+// (section background, 2px outline, thicker left edge, rounded), outlined in red, text in white: what happened and why.
+.deleted-notice {
+  display: flex;
+  flex-flow: column;
+  gap: 0.125rem;
+  box-sizing: border-box;
+  margin: 0.25rem 0;
+  padding: 0.25rem 0.5rem;
+
+  background: themed("color-section");
+  border: 0.125rem solid palette("text-red");
+  border-left-width: 0.25rem;
+  border-radius: 0.25rem;
+
+  color: palette("text-white");
+  font-size: 0.85rem;
+  line-height: 1.1rem;
+  overflow-wrap: anywhere;
+}

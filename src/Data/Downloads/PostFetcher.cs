@@ -21,7 +21,8 @@ public enum FetchResult
     Deferred,
 }
 
-public sealed record FetchOutcome(FetchResult Result, string Detail, DateTimeOffset? RetryAt = null);
+/// <param name="RestoredFrom">For a recovered file: where it came from, as shown on the post page ("the Wayback Machine", "Inkbunny", a host).</param>
+public sealed record FetchOutcome(FetchResult Result, string Detail, DateTimeOffset? RetryAt = null, string? RestoredFrom = null);
 
 /// <summary>
 /// Gets a post's file onto disk. Active posts come from e621's CDN. Deleted posts (or ones the CDN no longer has)
@@ -114,7 +115,7 @@ public sealed partial class PostFetcher : IDisposable
             {
                 var result = await DownloadAsync(ReplayUrl(snapshot), original, post.Md5, jpegOnly: false, WaybackStallTimeout, cancellationToken, _wayback, onProgress);
                 if (result.Kind == DownloadKind.Ok)
-                    return new FetchOutcome(FetchResult.Recovered, $"Original recovered from the Wayback Machine ({snapshot.Timestamp[..8]}).");
+                    return new FetchOutcome(FetchResult.Recovered, $"Original recovered from the Wayback Machine ({snapshot.Timestamp[..8]}).", RestoredFrom: "the Wayback Machine");
             }
         }
 
@@ -127,7 +128,7 @@ public sealed partial class PostFetcher : IDisposable
         {
             var result = await DownloadAsync(ReplayUrl(snapshot), samplePath, expectedMd5: null, jpegOnly: true, WaybackStallTimeout, cancellationToken, _wayback);
             if (result.Kind == DownloadKind.Ok)
-                return new FetchOutcome(FetchResult.SampleOnly, $"Only the sample was recovered from the Wayback Machine ({snapshot.Timestamp[..8]}).");
+                return new FetchOutcome(FetchResult.SampleOnly, $"Only the sample was recovered from the Wayback Machine ({snapshot.Timestamp[..8]}).", RestoredFrom: "the Wayback Machine");
         }
 
         return new FetchOutcome(FetchResult.NotAvailable, $"Deleted on {SiteConfig.Name} and not found at its sources or in the Wayback Machine.");

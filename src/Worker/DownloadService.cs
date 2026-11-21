@@ -57,6 +57,9 @@ public sealed class DownloadService : BackgroundService
             {
                 RefreshBlockedIfDirty();
 
+                // The deletion reasons of the posts on this device (shown on their pages): an API lookup, no file, so it also runs while downloads are paused.
+                await ResolveDeletionReasonsAsync(reasons, _store.LocalDeletedPostsNeedingReason, stoppingToken);
+
                 if (_settings.Get(WorkerSettingsKeys.DownloadEnabled) == "false")
                 {
                     EndSession(ref inSession, "Downloads are paused.");
@@ -65,7 +68,7 @@ public sealed class DownloadService : BackgroundService
                 }
 
                 var skipInferior = _settings.Get(WorkerSettingsKeys.DownloadSkipInferiorDeleted) == "true";
-                if (skipInferior) await ResolveDeletionReasonsAsync(reasons, stoppingToken);
+                if (skipInferior) await ResolveDeletionReasonsAsync(reasons, _store.PostsNeedingDeletionReason, stoppingToken);
 
                 var maxPerDay = int.TryParse(_settings.Get(WorkerSettingsKeys.DownloadMaxPerDay), out var configured) ? configured : DefaultMaxPerDay;
                 // 0 means no daily limit.
@@ -137,14 +140,14 @@ public sealed class DownloadService : BackgroundService
     /// deleted (50 per request, about one request a second). Posts whose reason is not known yet are held back, so a failed
     /// lookup never lets one through; it is tried again on the next pass.
     /// </summary>
-    private async Task ResolveDeletionReasonsAsync(DeletionReasonLookup lookup, CancellationToken cancellationToken)
+    private async Task ResolveDeletionReasonsAsync(DeletionReasonLookup lookup, Func<int, IReadOnlyList<long>> pick, CancellationToken cancellationToken)
     {
         var looked = 0;
         var recognised = 0;
         // A bounded number of requests per pass, so normal downloads are never kept waiting long.
         for (var round = 0; round < 40; round++)
         {
-            var ids = _store.PostsNeedingDeletionReason(DeletionReasonLookup.PostsPerRequest);
+            var ids = pick(DeletionReasonLookup.PostsPerRequest);
             if (ids.Count == 0) break;
 
             var found = await lookup.LookUpAsync(ids, cancellationToken);
@@ -153,7 +156,7 @@ public sealed class DownloadService : BackgroundService
             looked += found.Count;
         }
         if (looked > 0)
-            _logger.LogInformation("Looked up why {Count:N0} deleted post(s) were deleted: {Recognised:N0} inferior version(s) or low-effort edit(s) will be skipped.", looked, recognised);
+            _logger.LogInformation("Looked up why {Count:N0} deleted post(s) were deleted ({Recognised:N0} as an inferior version or a low-effort edit).", looked, recognised);
     }
 
     /// <summary>The "parallel downloads" setting, kept within 1-64 (default 3).</summary>
@@ -208,13 +211,13 @@ public sealed class DownloadService : BackgroundService
                     status = "downloaded";
                     break;
                 case FetchResult.Recovered:
-                    _store.MarkSaved(post, LocalPostStatus.Recovered);
+                    _store.MarkSaved(post, LocalPostStatus.Recovered, outcome.RestoredFrom);
                     _logger.LogInformation("Post {Id}: {Detail}", postId, outcome.Detail);
                     saved = true;
                     status = "recovered";
                     break;
                 case FetchResult.SampleOnly:
-                    _store.MarkSaved(post, LocalPostStatus.SampleOnly);
+                    _store.MarkSaved(post, LocalPostStatus.SampleOnly, outcome.RestoredFrom);
                     _logger.LogInformation("Post {Id}: {Detail}", postId, outcome.Detail);
                     saved = true;
                     status = "sample";

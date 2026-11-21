@@ -66,7 +66,7 @@ public sealed class DownloadedPostsRepository
         using var cmd = connection.CreateCommand();
         cmd.CommandText = """
             SELECT Id, Md5, FileExt, Rating, Score, ImageWidth, ImageHeight, FileSize, TagString, Description,
-                   ParentId, CreatedAt, SavedAt, Status, Duration
+                   ParentId, CreatedAt, SavedAt, Status, Duration, RestoredFrom
             FROM Posts WHERE Id = $id AND SavedAt IS NOT NULL;
             """;
         cmd.Parameters.AddWithValue("$id", id);
@@ -88,7 +88,8 @@ public sealed class DownloadedPostsRepository
             CreatedAt: DateTimeOffset.Parse(reader.GetString(11)),
             SavedAt: DateTimeOffset.Parse(reader.GetString(12)),
             Status: (LocalPostStatus)reader.GetInt32(13),
-            Duration: reader.IsDBNull(14) ? null : reader.GetDouble(14));
+            Duration: reader.IsDBNull(14) ? null : reader.GetDouble(14),
+            RestoredFrom: reader.IsDBNull(15) ? null : reader.GetString(15));
     }
 
     /// <summary>Ids of downloaded posts whose parent is the given post.</summary>
@@ -131,4 +132,5 @@ public sealed record DownloadedPostDetail(
     DateTimeOffset CreatedAt,
     DateTimeOffset SavedAt,
     LocalPostStatus Status,
-    double? Duration);
+    double? Duration,
+    string? RestoredFrom = null);

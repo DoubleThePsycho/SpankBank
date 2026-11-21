@@ -18,14 +18,34 @@ public class ShowModel : PageModel
     private readonly LocalTagCounts _localCounts;
     private IReadOnlyDictionary<string, int> _localCountsOfPost = new Dictionary<string, int>();
 
-    public ShowModel(DownloadedPostsRepository downloaded, PostsRepository catalog, TagsRepository tags, DownloadedPostSearch search, FavoritesRepository favorites, LocalTagCounts localCounts)
+    public ShowModel(DownloadedPostsRepository downloaded, PostsRepository catalog, TagsRepository tags, DownloadedPostSearch search, FavoritesRepository favorites, LocalTagCounts localCounts, DownloadStore downloads)
     {
+        _downloads = downloads;
         _localCounts = localCounts;
         _favorites = favorites;
         _search = search;
         _downloaded = downloaded;
         _catalog = catalog;
         _tags = tags;
+    }
+
+    private readonly DownloadStore _downloads;
+
+    /// <summary>Why the site deleted the post, as looked up by the worker (null when unknown); markup of the site's text removed.</summary>
+    public string? DeletionReason { get; private set; }
+
+    /// <summary>The post was deleted on the site, or what is shown here is a restored copy.</summary>
+    public bool ShowDeletedNotice => Extras?.IsDeleted == true || Post.Status is LocalPostStatus.Recovered or LocalPostStatus.SampleOnly;
+
+    /// <summary>"This post was deleted, restored the original from the Wayback Machine." and its shorter forms.</summary>
+    public string DeletedNotice
+    {
+        get
+        {
+            var version = Post.Status == LocalPostStatus.SampleOnly || ShowingSample ? "the sample" : Post.Status == LocalPostStatus.Recovered ? "the original" : null;
+            if (version is null) return "This post was deleted.";
+            return Post.RestoredFrom is { Length: > 0 } from ? $"This post was deleted, restored {version} from {from}." : $"This post was deleted, restored {version}.";
+        }
     }
 
     public DownloadedPostDetail Post { get; private set; } = null!;
@@ -59,6 +79,7 @@ public class ShowModel : PageModel
 
         Post = post;
         Extras = _catalog.GetExtras(id);
+        DeletionReason = Extras?.IsDeleted == true && _downloads.GetDeletionReason(id) is { Length: > 0 } reason ? DeletionReasons.PlainText(reason) : null;
         ChildIds = _downloaded.GetChildIds(id);
         ParentIsLocal = post.ParentId is { } parent && _downloaded.Exists(parent);
         PoolNav = _search.GetPoolNavigation(id, long.TryParse(Request.Query.ContainsKey("pool_id") ? Request.Query["pool_id"] : Request.Query["pool"], out var poolId) ? poolId : null);
