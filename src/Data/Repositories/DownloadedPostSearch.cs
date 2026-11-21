@@ -117,7 +117,7 @@ public sealed class DownloadedPostSearch
         {
             cmd.CommandText = $"""
                 SELECT d.Id, d.Rating, d.CreatedAt, d.UpdatedAt, d.Score, d.FileExt, d.Md5, COALESCE(s.FavCount, 0),
-                       COALESCE(d.Duration, s.Duration), COALESCE(s.TagString, d.TagString)
+                       COALESCE(d.Duration, s.Duration), COALESCE(s.TagString, d.TagString), COALESCE(s.IsDeleted, 0)
                 FROM Posts d LEFT JOIN srv.Posts s ON s.Id = d.Id
                 WHERE {where}
                 ORDER BY {orderBy}
@@ -140,7 +140,8 @@ public sealed class DownloadedPostSearch
                     Md5: reader.IsDBNull(6) ? null : reader.GetString(6),
                     FavCount: reader.GetInt32(7),
                     Duration: reader.IsDBNull(8) ? null : reader.GetDouble(8),
-                    TagString: reader.IsDBNull(9) ? null : reader.GetString(9)));
+                    TagString: reader.IsDBNull(9) ? null : reader.GetString(9),
+                    IsDeleted: reader.GetInt32(10) != 0));
             }
         }
 
@@ -158,7 +159,7 @@ public sealed class DownloadedPostSearch
         var placeholders = ids.Select((_, i) => $"$i{i}").ToList();
         cmd.CommandText = $"""
             SELECT d.Id, d.Rating, d.CreatedAt, d.UpdatedAt, d.Score, d.FileExt, d.Md5, COALESCE(s.FavCount, 0),
-                       COALESCE(d.Duration, s.Duration), COALESCE(s.TagString, d.TagString)
+                       COALESCE(d.Duration, s.Duration), COALESCE(s.TagString, d.TagString), COALESCE(s.IsDeleted, 0)
             FROM Posts d LEFT JOIN srv.Posts s ON s.Id = d.Id
             WHERE d.SavedAt IS NOT NULL AND d.Id IN ({string.Join(", ", placeholders)});
             """;
@@ -178,7 +179,8 @@ public sealed class DownloadedPostSearch
                 Md5: reader.IsDBNull(6) ? null : reader.GetString(6),
                 FavCount: reader.GetInt32(7),
                     Duration: reader.IsDBNull(8) ? null : reader.GetDouble(8),
-                    TagString: reader.IsDBNull(9) ? null : reader.GetString(9)));
+                    TagString: reader.IsDBNull(9) ? null : reader.GetString(9),
+                    IsDeleted: reader.GetInt32(10) != 0));
         }
         return items;
     }

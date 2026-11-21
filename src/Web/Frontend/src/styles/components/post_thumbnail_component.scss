@@ -148,6 +148,23 @@ article.thumbnail .thm-desc {
   }
 }
 
+// Deleted on the site (SpankBank): a trash cell on the left of the information bar, like the pencil and trash cells of
+// a favorites folder. Only an indicator, not a button.
+article.thumbnail .thm-desc.thm-desc-deleted {
+  grid-template-columns: 1.25rem auto 1.25rem;
+
+  .thm-deleted {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+
+    background-color: palette("background-red");
+    color: palette("text-white");
+    svg { width: 0.875rem; height: 0.875rem; }
+  }
+}
+
 // Post information badges (score, favs, comments)
 article.thumbnail .thm-desc-m {
   display: flex;
@@ -430,6 +447,8 @@ body:not([data-st-size="l"]) article.thumbnail {
       grid-template-columns: auto 0.75rem;
       .thm-comments { display: none; }
     }
+    // keeps its trash cell (the rule above would squeeze the three cells into two)
+    .thm-desc.thm-desc-deleted { grid-template-columns: 1rem auto 0.75rem; }
   }
 }
 

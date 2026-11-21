@@ -135,8 +135,15 @@ public sealed class PostSearchQuery
             if (name == "status")
             {
                 statusSpecified = true;
-                status = value switch { "deleted" => PostStatusMode.Deleted, "any" => PostStatusMode.Any, "active" => PostStatusMode.Active, _ => status };
-                if (value is not ("deleted" or "any" or "active")) error ??= $"Unsupported status:{value}";
+                var mode = value switch { "deleted" => PostStatusMode.Deleted, "any" => PostStatusMode.Any, "active" => PostStatusMode.Active, _ => (PostStatusMode?)null };
+                if (mode is null) { error ??= $"Unsupported status:{value}"; continue; }
+                if (negated)
+                {
+                    // Only two states exist, so excluding one is asking for the other; excluding every status matches nothing.
+                    mode = mode switch { PostStatusMode.Deleted => PostStatusMode.Active, PostStatusMode.Active => PostStatusMode.Deleted, _ => null };
+                    if (mode is null) { error ??= "-status:any would exclude every post."; continue; }
+                }
+                status = mode.Value;
                 continue;
             }
 

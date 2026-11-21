@@ -12,7 +12,9 @@ public sealed record PostListItem(
     string? Md5,
     int FavCount,
     double? Duration = null,
-    string? TagString = null
+    string? TagString = null,
+    /// <summary>Deleted on the site (the catalog says so); the file here is what is left of it. Shown as a trash icon on the thumbnail.</summary>
+    bool IsDeleted = false
 )
 {
     private static readonly string[] VideoExtensions = ["webm", "mp4", "swf"];

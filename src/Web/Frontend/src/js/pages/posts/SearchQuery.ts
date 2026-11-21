@@ -436,9 +436,15 @@ export default class SearchQuery {
 
   // SpankBank's own (e621ng's toggles stop at inpool / ischild / isparent): active, deleted, or any (the default).
   private static parseStatusToken (text: string): string | null {
-    const match = text.match(/^status:(active|deleted|any)$/i);
+    const match = text.match(/^(-?)status:(active|deleted|any)$/i);
     if (!match) return null;
-    return match[1].toLowerCase();
+
+    const value = match[2].toLowerCase();
+    if (!match[1]) return value;
+    // -status:deleted is the same as status:active (and the other way round); -status:any means nothing and is left alone.
+    if (value === "deleted") return "active";
+    if (value === "active") return "deleted";
+    return null;
   }
 
   private static parseIschildToken (text: string): string | null {

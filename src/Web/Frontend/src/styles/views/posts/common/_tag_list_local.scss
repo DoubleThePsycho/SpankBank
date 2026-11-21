@@ -1,31 +1,47 @@
-// SpankBank: a tag row is "name  local  online" (muted online count, tooltips with the exact numbers) instead of "name 1.2k".
-// Imported after the upstream tag list styles (and, on desktop, after their desktop overrides) so it wins.
-$tag-count-column: 3.1rem;
+// SpankBank: a tag row is "? + – name  local  online" (muted online count, tooltips with the exact numbers) instead of
+// "name 1.2k". Imported after the upstream tag list styles (and, on desktop, after their desktop overrides) so it wins.
+//
+// Each category list is a table in all but name: the list is a grid, every row is a subgrid of it, so the columns
+// (the controls, the name, the local count, the online count) are as wide as their widest cell and line up from row to
+// row, with no widths written down. The rows keep their own look (pill, border, background) because they are still
+// elements of their own, which a real <table> row could not do (no rounded corners or borders per row).
+ul.tag-list {
+  display: grid;
+  grid-template-columns: auto auto auto minmax(0, 1fr) auto auto; // ? + – name local online
 
-ul.tag-list .tag-list-search {
-  display: flex;
-  flex: 1 1 auto;
-  min-width: 0;
-  align-items: baseline;
-
-  .tag-list-name {
-    flex: 1 1 auto;
-    min-width: 0;
-    overflow-wrap: anywhere;
+  li {
+    display: grid;
+    grid-column: 1 / -1;
+    grid-template-columns: subgrid;
+    align-items: baseline;
+    width: auto;
   }
 
-  .tag-list-count {
-    flex: 0 0 $tag-count-column;
+  .tag-list-wiki { grid-column: 1; }
+  .tag-list-inc { grid-column: 2; }
+  .tag-list-exl { grid-column: 3; }
+
+  // The link around name and counts has no box of its own: its three spans are cells of the row, and still one link.
+  .tag-list-search { display: contents; }
+
+  .tag-list-search .tag-list-name {
+    grid-column: 4;
+    min-width: 0;
+    overflow-wrap: anywhere;
+    border: 0; // no column separators
+  }
+
+  .tag-list-search .tag-list-count {
     display: block;
     text-align: right;
+    white-space: nowrap;
     font-variant-numeric: tabular-nums;
     padding-right: 0;
   }
-  .tag-list-count-local.none { opacity: 0.45; }
-}
+  .tag-list-search .tag-list-count-local { grid-column: 5; }
+  .tag-list-search .tag-list-count-online { grid-column: 6; }
+  .tag-list-search .tag-list-count-local.none { opacity: 0.45; }
 
-// On narrow screens the upstream rows are only as wide as their content, which squeezes the name into a column of
-// single letters. Let them take the full width instead; the look of a row stays the same.
-@include window-smaller-than(50rem) {
-  ul.tag-list li { width: 100%; }
+  // The link has no box to draw a focus ring on, so its name does.
+  .tag-list-search:focus-visible .tag-list-name { outline: 2px solid themed("color-link"); outline-offset: 1px; border-radius: 0.125rem; }
 }

@@ -22,7 +22,8 @@
     </picture>
     @if (post.DurationText is { } duration) { <span class="thm-duration">@duration</span> }
   </a>
-  <div class="thm-desc thm-rating-@ratingLetter">
+  <div class="thm-desc thm-rating-@ratingLetter@(post.IsDeleted ? " thm-desc-deleted" : "")">
+    @if (post.IsDeleted) { <span class="thm-desc-b thm-deleted" title="Deleted on @SpankBank.Core.SiteConfig.Name" aria-label="Deleted on @SpankBank.Core.SiteConfig.Name"><svg-icon name="trash" width="14" height="14" /></span> }
     <span class="thm-desc-a">
       <span class="thm-desc-m thm-score thm-score-@scoreClass">
         <svg-icon name="@scoreIcon" width="16" height="16" />
