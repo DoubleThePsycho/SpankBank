@@ -43,6 +43,7 @@ export default defineConfig({
         posts: `${root}src/posts.ts`,
         watches: `${root}src/watches.ts`,
         status: `${root}src/status.ts`,
+        settings: `${root}src/settings.ts`,
         flash: `${root}src/flash.ts`,
       },
       output: {

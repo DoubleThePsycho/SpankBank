@@ -21,11 +21,11 @@ public sealed class BlacklistRepository
         return entries;
     }
 
-    /// <summary>Replaces the whole list. Lines are trimmed, blank ones dropped, repeats (ignoring case) collapsed.</summary>
-    /// <returns>The first problem found as "line: message", or null when saved.</returns>
-    public string? SetAll(IEnumerable<string> lines)
+    /// <summary>The lines as they would be stored (trimmed, blank ones dropped, repeats ignoring case collapsed) and the first problem found.</summary>
+    /// <returns>The first problem as "line: message", or null when every line is valid.</returns>
+    public static string? Normalize(IEnumerable<string> lines, out List<string> entries)
     {
-        var entries = new List<string>();
+        entries = [];
         var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         foreach (var raw in lines)
         {
@@ -34,6 +34,14 @@ public sealed class BlacklistRepository
             if (BlacklistRules.Validate(line) is { } problem) return $"\"{line}\": {problem}";
             entries.Add(line);
         }
+        return null;
+    }
+
+    /// <summary>Replaces the whole list. Lines are trimmed, blank ones dropped, repeats (ignoring case) collapsed.</summary>
+    /// <returns>The first problem found as "line: message", or null when saved.</returns>
+    public string? SetAll(IEnumerable<string> lines)
+    {
+        if (Normalize(lines, out var entries) is { } problem) return problem;
 
         using var connection = new SqliteConnection(_connectionString);
         connection.Open();

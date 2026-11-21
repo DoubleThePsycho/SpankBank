@@ -1,11 +1,17 @@
+// Settings page. Ported from e621ng app/javascript/src/styles/views/users/edit/_edit.scss (BSD-2, see THIRD-PARTY-NOTICES.md)
+// at the state of e621ng pull request 2834 (settings sidebar styled like the posts#index sidebar, by the SpankBank author).
+// SpankBank differences: `themed("color-x")` instead of `theme.color("x")`, the sidebar is 19rem wide like ours on posts#index,
+// the sections are the ones of this app (Downloads, Library, Blacklist, Theme) and the form is a plain post form.
 #c-users #a-edit {
 
-  form.simple_form {
-    background: unset;
-    padding: unset;
+  // Rows and groups set their own display, which would otherwise override [hidden]
+  [hidden] { display: none !important; }
+
+  // Background and padding come from .settings-content
+  form.settings-content {
     margin: unset;
 
-    input[type="text"], input[type="number"], textarea, select {
+    input[type="text"], input[type="number"], input[type="time"], textarea, select {
       width: 100%;
       max-width: unset;
       box-sizing: border-box;
@@ -15,86 +21,132 @@
     }
   }
 
-  #settings-account-buttons tab-body {
+  // Fix for e621ng #2573.
+  #settings-blacklist textarea {
+    resize: vertical;
+  }
+
+
+  // Layout, mirroring the posts#index sidebar
+  .settings-layout {
     display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 0.5rem;
+    grid-template-areas:
+      "sidebar"
+      "content";
+    grid-template-columns: 1fr;
+    grid-template-rows: min-content 1fr;
 
-    .st-button {
-      white-space: nowrap;
-      justify-content: center;
-    }
+    flex: 1; // See the page shell below
   }
 
-  tab-submit {
-    input[type="submit"] {
-      background: themed("color-tag-artist");
-      font-size: 1.25rem;
-      padding: 0.25rem 1rem;
-      margin: 0.5rem;
+  // Spans the full height, so the separator reaches the bottom; the nav inside it is what sticks
+  .settings-sidebar {
+    grid-area: sidebar;
+
+    padding: 0.5rem 0.75rem;
+    box-shadow: inset 0px -0.25rem 0.25rem -0.25rem themed("color-background");
+  }
+
+  .settings-nav {
+    display: flex;
+    flex-flow: column;
+    gap: 1em;
+
+    h1 {
+      font-size: 1.16667em;
+      line-height: 1.5rem;
+    }
+
+    // Match the posts searchbox
+    input[name="find"] {
+      width: 100%;
+      box-sizing: border-box;
+      border: unset;
       border-radius: 0.25rem;
+      padding: 0.5rem;
+      font-family: inherit;
+      font-size: 1rem;
+      line-height: 1rem;
+      height: 2rem; // Inputs ignore line-height below the font's natural height; posts uses a textarea
+    }
 
-      &:hover, &:active { background: themed("color-tag-artist-alt"); }
+    // Match the posts mode menu
+    select {
+      width: 100%;
+      box-sizing: border-box;
+      border-radius: 0.25rem;
+      padding: 0.5em;
+      font-family: inherit;
+      font-size: 1.05em;
     }
   }
-}
 
+  .settings-nav-list {
+    display: none;
+    flex-flow: column;
+    list-style: none;
+    margin: 0;
 
+    a {
+      display: block;
+      padding: 0.5rem 0.75rem;
+      border-radius: 0.25rem;
+      font-size: 1rem;
+      line-height: 1rem;
 
-
-// Tabs section
-tabs-menu {
-  margin-top: 0.5rem;
-  display: flex;
-  width: 100%;
-  max-width: 50rem;
-  flex-wrap: wrap;
-
-  // TODO Smooth drag when overflowing
-  overflow: auto;
-
-  & > button {
-    background: unset;
-    color: themed("color-link");
-    padding: 0.5rem 1rem;
-    border-bottom: 2px solid themed("color-section");
-    font-size: 1rem;
-    line-height: 1rem;
-
-    &.active {
-      background: themed("color-section");
-      border-radius: 0.25rem 0.25rem 0 0;
-      &:first-child {
-        border-bottom-left-radius: 0.25rem;
+      &[aria-current="true"] {
+        background: themed("color-section");
+        color: themed("color-text");
       }
     }
   }
 
-  span.spacer {
-    flex: 1;
-    border-bottom: 2px solid themed("color-section");
+  .settings-nav-select {
+    display: flex;
+    gap: 0.5rem;
   }
 
-  input[name="search"] {
-    border-radius: 0 0 0.25rem 0.25rem;
-    font-size: 1rem;
-    line-height: 1rem;
-    padding: 0.25rem;
-    width: 100%;
-    box-sizing: border-box;
+  .settings-content {
+    grid-area: content;
+
+    display: flex;
+    flex-flow: column;
+
+    // Imported from #page, same as the posts#index content area
+    padding: 0.5rem 0.25rem themed("content-padding-bottom");
+    background-color: themed("color-foreground");
+    background-image: themed("image-foreground");
+    background-position: themed("image-foreground-position");
+    background-repeat: themed("image-foreground-repeat");
+    background-size: themed("image-foreground-size");
+
+    & > * { max-width: 50rem; }
   }
-}
+
+  .settings-section {
+    display: flex;
+    flex-flow: column;
+  }
+
+  // Saved / refused (SpankBank's own: e621ng reports these elsewhere)
+  .notice {
+    max-width: 50rem;
+    margin: 0 0 0.5rem;
+    padding: 0.5rem 0.75rem;
+    border-radius: 0.25rem;
+    background: themed("color-section");
+    &.notice-error { background: palette("background-red"); color: palette("text-white"); }
+  }
+
+  .settings-no-results {
+    padding: 0.5rem;
+    color: themed("color-text-muted");
+  }
 
 
-// Tabs structure
-tabs-content {
-  display: flex;
-  flex-flow: column;
-  max-width: 50rem;
-
-  tab-group {
-    display: none;
-    &.active { display: flex; }
+  // Rows
+  settings-group {
+    display: flex;
 
     font-size: 1rem;
     line-height: 1rem;
@@ -105,10 +157,8 @@ tabs-content {
     border-radius: 0.25rem 0.25rem 0 0;
   }
 
-  tab-entry {
-    display: none !important;
-    &.active { display: grid !important; }
-    &.flex.active { display: flex !important; }
+  settings-entry {
+    display: grid;
     grid-template-areas: "head" "body" "hint";
     grid-template-columns: 1fr;
 
@@ -117,8 +167,8 @@ tabs-content {
 
     background: themed("color-section");
     padding: 0.5rem;
-    
-    tab-head {
+
+    settings-head {
       grid-area: head;
       margin-left: 0.25em;
       font-size: 0.85rem;
@@ -126,11 +176,11 @@ tabs-content {
       label { font-weight: normal; }
     }
 
-    tab-body {
+    settings-body {
       grid-area: body;
     }
 
-    tab-hint {
+    settings-hint {
       grid-area: hint;
 
       font-size: 90%;
@@ -141,68 +191,93 @@ tabs-content {
       grid-template-areas: "head body" "hint hint";
       grid-template-columns: 2fr 1fr;
 
-      tab-body { justify-self: end; }
-    }
-
-    &.blocky {
-      grid-template-areas: "body";
-      grid-template-columns: 1fr;
+      settings-body { justify-self: end; }
     }
 
     &.bigtext {
       grid-template-columns: 1fr;
       grid-template-areas: "head" "body" "hint";
     }
-
-    &.with-button tab-body {
-      display: grid;
-      grid-template-columns: 1fr;
-      a.st-button {
-        justify-content: center;
-      }
-    }
-
-    &.with-buttons tab-body {
-      display: grid;
-      grid-template-columns: 1fr 4rem;
-
-      input[type="text"] { border-radius: 0.25rem 0 0 0.25rem !important; }
-      input[disabled] { cursor: not-allowed; }
-      a.st-button {
-        border-radius: 0 0.25rem 0.25rem 0 !important;
-        justify-content: center;
-      }
-    }
   }
-}
 
-tab-submit {
-  position: sticky;
-  bottom: 0;
+  settings-submit {
+    position: sticky;
+    bottom: 0;
 
-  background: themed("color-section");
-  border-radius: 0.25rem;
-  width: min-content;
-  margin-top: 0.5rem;
-}
+    background: themed("color-section");
+    border-radius: 0.25rem;
+    width: min-content;
+    margin-top: 0.5rem;
 
-@include window-larger-than(50rem) {
-  tabs-menu {
-    input[name="search"] {
-      width: unset;
-      border-radius: 0.25rem 0.25rem 0.25rem 0;
-      border-bottom: 2px solid themed("color-section");
+    button[type="submit"] {
+      background: themed("color-tag-artist");
+      color: inherit;
+      font-size: 1.25rem;
+      padding: 0.25rem 1rem;
+      margin: 0.5rem;
+      border-radius: 0.25rem;
+      white-space: nowrap;
+
+      &:hover, &:active { background: themed("color-tag-artist-alt"); }
     }
   }
 
-  tabs-content {
-    tab-entry {
+
+  @include window-larger-than(50rem) {
+    .settings-layout {
+      grid-template-areas: "sidebar content";
+      grid-template-columns: 19rem minmax(0, 1fr);
+      grid-template-rows: 1fr;
+    }
+
+    .settings-sidebar {
+      box-shadow: inset -0.25rem 0px 0.25rem -0.25rem themed("color-background");
+      padding: 0.25rem 0.75rem 0.5rem 0.5rem;
+    }
+
+    // Unlike posts#index, the navigation stays in view while scrolling
+    .settings-nav {
+      position: sticky;
+      top: 0.25rem;
+    }
+
+    .settings-content {
+      border-radius: 0 0.25rem 0.25rem 0;
+      padding: 0.5rem 0.75rem themed("content-padding-bottom");
+    }
+
+    .settings-nav-list { display: flex; }
+    .settings-nav-select { display: none; }
+
+    settings-entry {
       grid-template-areas: "head body" ". hint";
       grid-template-columns: 1fr 1fr;
       &.inline {
         grid-template-areas: "head hint body";
         grid-template-columns: 8fr 7fr 1fr;
       }
+      &.bigtext {
+        grid-template-columns: 1fr;
+        grid-template-areas: "head" "body" "hint";
+      }
     }
   }
+}
+
+// Page shell, copied from posts#index: the theme's foreground is projected
+// onto the content area, leaving the sidebar on a flat background.
+body.c-users.a-edit {
+  #page {
+    background: themed("color-foreground");
+    padding: 0;
+  }
+
+  // Makes the content area take up the full height of the page
+  #page, #c-users, #a-edit {
+    display: flex;
+    flex-flow: column;
+    flex: 1;
+  }
+
+  #page #news { margin: 0; }
 }

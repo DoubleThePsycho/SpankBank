@@ -1,49 +1,175 @@
 @page "/settings"
 @model SpankBank.Web.Pages.SettingsModel
+@* Structure after e621ng app/views/users/edit.html.erb at pull request 2834 (BSD-2, see THIRD-PARTY-NOTICES.md): a sidebar with the
+   search box and the sections, and one form whose sections are shown one at a time (js/pages/SettingsNav.ts). *@
 @{
     ViewData["Title"] = "Settings";
+    ViewData["BodyClass"] = "c-users a-edit";
+    string Hidden(string key) => key == Model.Tab ? "" : "hidden";
 }
-<div id="c-settings" class="container"><div id="a-index">
-  <h1>Settings</h1>
-  @await Html.PartialAsync("_SettingsPills")
+<div id="c-users"><div id="a-edit">
+  <div class="settings-layout">
+    <div class="settings-sidebar"><nav class="settings-nav" aria-label="Settings sections">
+      <section class="settings-nav-search">
+        <h1><label for="settings-find">Settings</label></h1>
+        <input type="search" id="settings-find" name="find" value="@Model.Find" placeholder="Search settings" autocomplete="off">
+      </section>
 
-  @if (Model.Message is not null) { <div class="notice notice-info">@Model.Message</div> }
-  @if (Model.Error is not null) { <div class="notice notice-error">@Model.Error</div> }
+      <ul class="settings-nav-list">
+        @foreach (var (key, label) in SettingsModel.Sections)
+        {
+          <li><a href="/settings@(key == SettingsModel.Sections[0].Key ? "" : "?tab=" + key)" data-section="@key" aria-current="@(key == Model.Tab && Model.Find.Length == 0 ? "true" : null)">@label</a></li>
+        }
+      </ul>
 
-  <form method="post" class="settings-form">
-    <section class="box-section">
-      <h2>Updates</h2>
-      <div class="input">
-        <label for="dailyRunTime">Update from @SpankBank.Core.SiteConfig.Name every day at (UTC)</label>
-        <input type="time" id="dailyRunTime" name="dailyRunTime" value="@Model.DailyRunTimeUtc" required>
-        <p class="hint">Downloads the new export files, imports them and re-matches your watches.</p>
-      </div>
-    </section>
+      <form class="settings-nav-select" method="get" action="/settings">
+        <select name="tab" aria-label="Settings section">
+          @foreach (var (key, label) in SettingsModel.Sections)
+          {
+            <option value="@key" selected="@(key == Model.Tab)">@label</option>
+          }
+        </select>
+        <noscript><button type="submit" class="st-button">Go</button></noscript>
+      </form>
+    </nav></div>
 
-    <section class="box-section">
-      <h2>Downloads</h2>
-      <div class="input">
-        <label><input type="checkbox" name="downloadsEnabled" value="true" @(Model.DownloadsEnabled ? "checked" : null)> Download the posts your watches match</label>
+    <form method="post" class="settings-content">
+      @if (Model.Message is not null) { <div class="notice notice-info">@Model.Message</div> }
+      @if (Model.Error is not null) { <div class="notice notice-error">@Model.Error</div> }
+
+      <section class="settings-section" id="settings-downloads" data-section="downloads" @Hidden("downloads")>
+        <settings-group name="updates">Updates</settings-group>
+
+        <settings-entry group="updates" search="update updates daily time export refresh import catalog schedule utc">
+          <settings-head><label for="dailyRunTime">Update from @SpankBank.Core.SiteConfig.Name every day at (UTC)</label></settings-head>
+          <settings-body><input type="time" id="dailyRunTime" name="dailyRunTime" value="@Model.DailyRunTimeUtc" required></settings-body>
+          <settings-hint>Downloads the new export files, imports them and re-matches your watches.</settings-hint>
+        </settings-entry>
+
+        <settings-group name="downloads">Downloads</settings-group>
+
+        <settings-entry group="downloads" class="inline" search="download downloads watched posts matches enable disable pause freeze">
+          <settings-head><label for="downloadsEnabled">Download watched posts</label></settings-head>
+          <settings-body>
+            <input type="checkbox" class="st-toggle" id="downloadsEnabled" name="downloadsEnabled" value="true" @(Model.DownloadsEnabled ? "checked" : null)>
+        <label class="st-toggle" for="downloadsEnabled" role="switch">!</label>
         <input type="hidden" name="downloadsEnabled" value="false">
-      </div>
-      <div class="input">
-        <label for="dailyLimit">Most files per day (0 = no limit)</label>
-        <input type="number" id="dailyLimit" name="dailyLimit" min="0" max="100000" value="@Model.DailyLimit" required>
-        <p class="hint">With a limit, a new watch with thousands of posts is spread over several days (the day ends at 00:00 UTC). 0 downloads everything as fast as it can.</p>
-      </div>
-      <div class="input">
-        <label for="parallelism">Parallel downloads</label>
-        <input type="number" id="parallelism" name="parallelism" min="1" max="64" value="@Model.Parallelism" required>
-        <p class="hint">How many files are fetched at the same time (1-64). More is faster when each connection is slow, but is harder on @SpankBank.Core.SiteConfig.Name's servers. Takes effect from the next batch.</p>
-      </div>
-      <div class="input">
-        <label><input type="checkbox" name="skipInferiorDeleted" value="true" @(Model.SkipInferiorDeleted ? "checked" : null)> Skip posts deleted as an inferior version or a low-effort edit</label>
-        <input type="hidden" name="skipInferiorDeleted" value="false">
-        <p class="hint">For posts @SpankBank.Core.SiteConfig.Name has deleted, the deletion reason is looked up (one request for 50 posts, about one a second) and posts deleted as a &ldquo;duplicate or inferior version of another post&rdquo; or as a &ldquo;trivial or low quality edit&rdquo; are not recovered. Deleted posts with another reason are still recovered, and posts already on this device stay. Turn it off again to recover the skipped ones too.
-          @if (Model.Recognised.Inferior + Model.Recognised.LowEffortEdits > 0) { <text>Recognised so far: @Model.Recognised.Inferior.ToString("N0") inferior version(s), @Model.Recognised.LowEffortEdits.ToString("N0") low-effort edit(s).</text> }</p>
-      </div>
-    </section>
+          </settings-body>
+          <settings-hint>Fetch the posts your watches match.</settings-hint>
+        </settings-entry>
 
-    <button type="submit" class="st-button">Save</button>
-  </form>
+        <settings-entry group="downloads" search="download downloads limit daily day maximum files">
+          <settings-head><label for="dailyLimit">Most files per day (0 = no limit)</label></settings-head>
+          <settings-body><input type="number" id="dailyLimit" name="dailyLimit" min="0" max="100000" value="@Model.DailyLimit" required></settings-body>
+          <settings-hint>With a limit, a new watch with thousands of posts is spread over several days (the day ends at 00:00 UTC). 0 downloads everything as fast as it can.</settings-hint>
+        </settings-entry>
+
+        <settings-entry group="downloads" search="download downloads parallel simultaneous connections speed threads">
+          <settings-head><label for="parallelism">Parallel downloads</label></settings-head>
+          <settings-body><input type="number" id="parallelism" name="parallelism" min="1" max="64" value="@Model.Parallelism" required></settings-body>
+          <settings-hint>How many files are fetched at the same time (1-64). More is faster when each connection is slow, but is harder on @SpankBank.Core.SiteConfig.Name's servers. Takes effect from the next batch.</settings-hint>
+        </settings-entry>
+
+        <settings-entry group="downloads" class="inline" search="download deleted posts skip inferior version duplicate low effort edit trivial recover wayback">
+          <settings-head><label for="skipInferiorDeleted">Skip inferior versions and low-effort edits</label></settings-head>
+          <settings-body>
+            <input type="checkbox" class="st-toggle" id="skipInferiorDeleted" name="skipInferiorDeleted" value="true" @(Model.SkipInferiorDeleted ? "checked" : null)>
+        <label class="st-toggle" for="skipInferiorDeleted" role="switch">!</label>
+        <input type="hidden" name="skipInferiorDeleted" value="false">
+          </settings-body>
+          <settings-hint>For posts @SpankBank.Core.SiteConfig.Name has deleted, the deletion reason is looked up (one request for 50 posts, about one a second) and posts deleted as a &ldquo;duplicate or inferior version of another post&rdquo; or as a &ldquo;trivial or low quality edit&rdquo; are not recovered. Other deleted posts are still recovered and posts already on this device stay. Turn it off again to recover the skipped ones too.
+            @if (Model.Recognised.Inferior + Model.Recognised.LowEffortEdits > 0) { <text>Recognised so far: @Model.Recognised.Inferior.ToString("N0") inferior version(s), @Model.Recognised.LowEffortEdits.ToString("N0") low-effort edit(s).</text> }</settings-hint>
+        </settings-entry>
+      </section>
+
+      <section class="settings-section" id="settings-library" data-section="library" @Hidden("library")>
+        <settings-group name="lists">Lists</settings-group>
+
+        <settings-entry group="lists" search="lists rows page size artists pools paging pagination">
+          <settings-head><label for="listPageSize">Rows per page in the artist and pool lists</label></settings-head>
+          <settings-body><input type="number" id="listPageSize" name="listPageSize" min="10" max="1000" value="@Model.ListPageSize" required></settings-body>
+        </settings-entry>
+
+        <settings-group name="pools">Pools</settings-group>
+
+        <settings-entry group="pools" class="inline" search="pools artist automatic automatically add watch">
+          <settings-head><label for="poolsAutoAdd">Add an artist's pools automatically</label></settings-head>
+          <settings-body>
+            <input type="checkbox" class="st-toggle" id="poolsAutoAdd" name="poolsAutoAdd" value="true" @(Model.PoolsAutoAdd ? "checked" : null)>
+        <label class="st-toggle" for="poolsAutoAdd" role="switch">!</label>
+        <input type="hidden" name="poolsAutoAdd" value="false">
+          </settings-body>
+        </settings-entry>
+
+        <settings-entry group="pools" search="pools share percent percentage limit threshold artist posts belong">
+          <settings-head><label for="poolsPercent">Add a pool when at least this share of its posts belong to the artist (%)</label></settings-head>
+          <settings-body><input type="number" id="poolsPercent" name="poolsPercent" min="1" max="100" value="@Model.PoolsPercent" required></settings-body>
+          <settings-hint>Pools below the limit are listed under Pools &rarr; Local to review. Sub-pools of a larger pool are never added automatically.</settings-hint>
+        </settings-entry>
+
+        <settings-group name="deleting">Deleting</settings-group>
+
+        <settings-entry group="deleting" class="inline" search="delete deleting mode bin rubbish trash remove posts">
+          <settings-head><label for="deleteMode">Allow delete mode</label></settings-head>
+          <settings-body>
+            <input type="checkbox" class="st-toggle" id="deleteMode" name="deleteMode" value="true" @(Model.DeleteMode ? "checked" : null)>
+        <label class="st-toggle" for="deleteMode" role="switch">!</label>
+        <input type="hidden" name="deleteMode" value="false">
+          </settings-body>
+          <settings-hint>Adds a Delete entry to the Mode menu on the posts pages and a Delete button on post pages. Deleted posts go to the <a href="/bin">rubbish bin</a>, are never downloaded again, and their files are removed for good after 30 days (or when you empty the bin).</settings-hint>
+        </settings-entry>
+      </section>
+
+      <section class="settings-section" id="settings-blacklist" data-section="blacklist" @Hidden("blacklist")>
+        <settings-group name="blacklist">Blacklist</settings-group>
+
+        <settings-entry group="blacklist" class="bigtext" search="blacklist blacklisted tags posts filter hide block never download searches">
+          <settings-head><label for="entries">Blacklisted searches</label></settings-head>
+          <settings-body><textarea id="entries" name="entries" rows="14" spellcheck="false" autocomplete="off">@Model.Entries</textarea></settings-body>
+          <settings-hint>Posts that match any line are <strong>never downloaded</strong> and are hidden in your listings. One search per line, written like a post search:
+            tags, <code>-tag</code>, <code>~tag</code>, <code>*</code> wildcards, <code>rating:e</code>, <code>score:&lt;0</code>. A line matches only posts that satisfy all of it, so
+            <code>gore -comic</code> blocks gore posts that are not comics. Posts you already have stay on disk and can be shown with <code>blacklisted:true</code> in a search.
+            Currently blocked: @Model.BlockedPending.ToString("N0") waiting posts that will not be downloaded, @Model.BlockedLocal.ToString("N0") posts already on this device (hidden).
+            A watch can opt out from its own settings (&ldquo;Ignore blacklist&rdquo;). Changes apply within a few seconds.</settings-hint>
+        </settings-entry>
+      </section>
+
+      <section class="settings-section" id="settings-theme" data-section="theme" @Hidden("theme")>
+        <settings-group name="theme">Theme</settings-group>
+
+        <settings-entry group="theme" search="theme themes colors colours appearance look dark light hexagon pony bloodlust serpent hotdog forest">
+          <settings-head><label for="theme">Theme</label></settings-head>
+          <settings-body>
+            <select id="theme" name="theme" data-theme-preview="main">
+              @foreach (var (value, label, _) in SpankBank.Data.ThemeSettings.Themes)
+              {
+                <option value="@value" selected="@(value == Model.Theme)">@label</option>
+              }
+            </select>
+          </settings-body>
+        </settings-entry>
+
+        <settings-entry group="theme" search="embellishments extras decorations images theme hexagon autumn winter spring fennec aurora space stars scales none">
+          <settings-head><label for="extra">Embellishments</label></settings-head>
+          <settings-body>
+            <select id="extra" name="extra" data-theme-preview="extra">
+              @foreach (var (value, label) in SpankBank.Data.ThemeSettings.Extras)
+              {
+                <option value="@value" selected="@(value == Model.Extra)">@label</option>
+              }
+            </select>
+          </settings-body>
+          <settings-hint>The picture drawn over the top (and sometimes the bottom) of every page. The choice is saved with this instance and applies to every browser; the page shows it as soon as you pick.</settings-hint>
+        </settings-entry>
+      </section>
+
+      <p class="settings-no-results" hidden>No settings found.</p>
+      <settings-submit>
+        <button type="submit">Save Settings</button>
+      </settings-submit>
+    </form>
+  </div>
 </div></div>
+@section Scripts {
+  <script type="module" src="~/dist/settings.js" asp-append-version="true"></script>
+}
