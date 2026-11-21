@@ -23,7 +23,7 @@
         <tr><th>Posts local:</th><td>@Model.DownloadedCount.ToString("N0") @if (Model.DownloadedCount > 0) { <text>(<a href="/posts?tags=@Uri.EscapeDataString(artist.Name)">view</a>)</text> }</td></tr>
         @if (Model.Watch is { } statsWatch)
         {
-          <tr>
+          <tr class="post-stats-row">
             <th>Post stats:</th>
             <td>
               <span class="post-stats">

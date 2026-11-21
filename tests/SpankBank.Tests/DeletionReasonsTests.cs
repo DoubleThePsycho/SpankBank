@@ -50,6 +50,9 @@ public class DeletionReasonsTests
     [InlineData("Young [[human]]-[[humanoid|like]] character in an explicit situation", "Young human-like character in an explicit situation")]
     [InlineData("[[conditional_dnp|Conditional DNP]] (Only the artist)", "Conditional DNP (Only the artist)")]
     [InlineData("Duplicate or inferior version of another post (post #6863643)", "Duplicate or inferior version of another post (post #6863643)")]
+    [InlineData("takedown #28134: Artist requested removal", "Artist requested removal")]
+    [InlineData("Takedown #7: [[conditional_dnp|Conditional DNP]]", "Conditional DNP")]
+    [InlineData("Previously deleted by a takedown #5: not at the start", "Previously deleted by a takedown #5: not at the start")]
     public void The_sites_link_markup_is_removed_from_a_reason_shown_on_the_post_page(string reason, string expected)
         => Assert.Equal(expected, DeletionReasons.PlainText(reason));
 }

@@ -25,9 +25,12 @@ public static partial class DeletionReasons
         return DeletionKind.Other;
     }
 
-    /// <summary>A reason as plain words: the site's [[tag|text]] and [[tag]] links become their text.</summary>
+    /// <summary>
+    /// A reason as plain words: the site's [[tag|text]] and [[tag]] links become their text, and the "takedown #123: " it
+    /// starts with for a takedown is dropped (the number means nothing here).
+    /// </summary>
     public static string PlainText(string reason)
-        => WikiLink().Replace(reason, m => m.Groups[2].Success ? m.Groups[2].Value : m.Groups[3].Value.Replace('_', ' ')).Trim();
+        => TakedownPrefix().Replace(WikiLink().Replace(reason, m => m.Groups[2].Success ? m.Groups[2].Value : m.Groups[3].Value.Replace('_', ' ')).Trim(), "");
 
     /// <summary>The value stored in <c>DeletionReasons.Kind</c>: null for <see cref="DeletionKind.Other"/>.</summary>
     public static string? StoredKind(DeletionKind kind) => kind switch
@@ -70,6 +73,9 @@ public static partial class DeletionReasons
 
     [GeneratedRegex(@"\[\[([^\]|]*)\|([^\]]*)\]\]|\[\[([^\]]*)\]\]")]
     private static partial Regex WikiLink();
+
+    [GeneratedRegex(@"^takedown\s*#\d+:\s*", RegexOptions.IgnoreCase)]
+    private static partial Regex TakedownPrefix();
 
     [GeneratedRegex(@"inferior version", RegexOptions.IgnoreCase)]
     private static partial Regex InferiorVersion();
