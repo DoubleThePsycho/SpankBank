@@ -41,6 +41,7 @@ public sealed class DownloadService : BackgroundService
     {
         Directory.CreateDirectory(SpankBankPaths.Current.MediaDir);
         using var fetcher = new PostFetcher { Notice = message => _logger.LogWarning("{Message}", message) };
+        using var reasons = new DeletionReasonLookup { Notice = message => _logger.LogWarning("{Message}", message) };
         if (_settings.Get(WorkerSettingsKeys.SourcesRetried) != "true")
         {
             var again = _store.RetryLostWithSources(DateTimeOffset.UtcNow);
@@ -63,13 +64,16 @@ public sealed class DownloadService : BackgroundService
                     continue;
                 }
 
+                var skipInferior = _settings.Get(WorkerSettingsKeys.DownloadSkipInferiorDeleted) == "true";
+                if (skipInferior) await ResolveDeletionReasonsAsync(reasons, stoppingToken);
+
                 var maxPerDay = int.TryParse(_settings.Get(WorkerSettingsKeys.DownloadMaxPerDay), out var configured) ? configured : DefaultMaxPerDay;
                 // 0 means no daily limit.
                 var room = maxPerDay <= 0 ? int.MaxValue : maxPerDay - _store.SavedToday();
                 var parallelism = ReadParallelism();
                 // While the Wayback Machine is backing us off, deleted posts would only be deferred one after another: leave them.
                 var waybackOpen = fetcher.WaybackBlockedUntil <= DateTimeOffset.UtcNow;
-                var batch = room > 0 ? _store.NextPending(Math.Min(Math.Max(24, parallelism * 8), room), DateTimeOffset.UtcNow, includeDeleted: waybackOpen) : [];
+                var batch = room > 0 ? _store.NextPending(Math.Min(Math.Max(24, parallelism * 8), room), DateTimeOffset.UtcNow, includeDeleted: waybackOpen, skipInferiorDeleted: skipInferior) : [];
 
                 if (batch.Count == 0)
                 {
@@ -93,7 +97,7 @@ public sealed class DownloadService : BackgroundService
                 if (!inSession)
                 {
                     inSession = true;
-                    _progress.DownloadSessionStarted(Math.Min(_store.CountPending(DateTimeOffset.UtcNow), room));
+                    _progress.DownloadSessionStarted(Math.Min(_store.CountPending(DateTimeOffset.UtcNow, skipInferior), room));
                 }
 
                 await Parallel.ForEachAsync(batch,
@@ -126,6 +130,30 @@ public sealed class DownloadService : BackgroundService
         var count = _blocked.Refresh();
         _settings.Replace(WorkerSettingsKeys.BlacklistDirty, "running", "false");
         _logger.LogInformation("Blacklist applied: {Count:N0} post(s) blocked.", count);
+    }
+
+    /// <summary>
+    /// For the "skip inferior versions and low-effort edits" setting: finds out why the deleted posts that are waiting were
+    /// deleted (50 per request, about one request a second). Posts whose reason is not known yet are held back, so a failed
+    /// lookup never lets one through; it is tried again on the next pass.
+    /// </summary>
+    private async Task ResolveDeletionReasonsAsync(DeletionReasonLookup lookup, CancellationToken cancellationToken)
+    {
+        var looked = 0;
+        var recognised = 0;
+        // A bounded number of requests per pass, so normal downloads are never kept waiting long.
+        for (var round = 0; round < 40; round++)
+        {
+            var ids = _store.PostsNeedingDeletionReason(DeletionReasonLookup.PostsPerRequest);
+            if (ids.Count == 0) break;
+
+            var found = await lookup.LookUpAsync(ids, cancellationToken);
+            if (found is null) break;
+            recognised += _store.SaveDeletionReasons(found);
+            looked += found.Count;
+        }
+        if (looked > 0)
+            _logger.LogInformation("Looked up why {Count:N0} deleted post(s) were deleted: {Recognised:N0} inferior version(s) or low-effort edit(s) will be skipped.", looked, recognised);
     }
 
     /// <summary>The "parallel downloads" setting, kept within 1-64 (default 3).</summary>

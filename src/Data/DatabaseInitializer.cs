@@ -296,6 +296,18 @@ public static class DatabaseInitializer
         // removed with their posts) leaves no trace after the purge, so adding the artist again downloads them again.
         EnsureColumn(connection, "DeletedPosts", "Reason", "TEXT NOT NULL DEFAULT 'user'");
 
+        // Why e621 deleted a post (its latest deletion flag), looked up through the API for deleted posts the downloader would
+        // otherwise try to recover. Kind says what the reason means to the "skip inferior versions and low-effort edits"
+        // setting: 'inferior' or 'edit', empty for any other reason (or none found).
+        Execute(connection, """
+            CREATE TABLE IF NOT EXISTS DeletionReasons (
+                PostId    INTEGER PRIMARY KEY,
+                Reason    TEXT,
+                Kind      TEXT,
+                CheckedAt TEXT NOT NULL
+            );
+            """);
+
         Execute(connection, """
             CREATE TABLE IF NOT EXISTS BlockedPosts (
                 PostId INTEGER PRIMARY KEY

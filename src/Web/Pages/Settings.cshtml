@@ -36,6 +36,12 @@
         <input type="number" id="parallelism" name="parallelism" min="1" max="64" value="@Model.Parallelism" required>
         <p class="hint">How many files are fetched at the same time (1-64). More is faster when each connection is slow, but is harder on @SpankBank.Core.SiteConfig.Name's servers. Takes effect from the next batch.</p>
       </div>
+      <div class="input">
+        <label><input type="checkbox" name="skipInferiorDeleted" value="true" @(Model.SkipInferiorDeleted ? "checked" : null)> Skip posts deleted as an inferior version or a low-effort edit</label>
+        <input type="hidden" name="skipInferiorDeleted" value="false">
+        <p class="hint">For posts @SpankBank.Core.SiteConfig.Name has deleted, the deletion reason is looked up (one request for 50 posts, about one a second) and posts deleted as a &ldquo;duplicate or inferior version of another post&rdquo; or as a &ldquo;trivial or low quality edit&rdquo; are not recovered. Deleted posts with another reason are still recovered, and posts already on this device stay. Turn it off again to recover the skipped ones too.
+          @if (Model.Recognised.Inferior + Model.Recognised.LowEffortEdits > 0) { <text>Recognised so far: @Model.Recognised.Inferior.ToString("N0") inferior version(s), @Model.Recognised.LowEffortEdits.ToString("N0") low-effort edit(s).</text> }</p>
+      </div>
     </section>
 
     <button type="submit" class="st-button">Save</button>

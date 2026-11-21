@@ -35,6 +35,9 @@ public static class WorkerSettingsKeys
     /// <summary>Files fetched at the same time (1-64, default 3); read before every batch, so a change applies without a restart.</summary>
     public const string DownloadParallelism = "Download.Parallelism";
 
+    /// <summary>"true" leaves posts alone that e621 deleted as an inferior version of another post or as a trivial / low-effort edit (default: off).</summary>
+    public const string DownloadSkipInferiorDeleted = "Download.SkipInferiorDeleted";
+
     /// <summary>"false" turns off adding an artist's pools automatically (default: on).</summary>
     public const string PoolsAutoAddEnabled = "Pools.AutoAddEnabled";
     /// <summary>A pool is added automatically when at least this percent of its posts are the artist's (default 90).</summary>

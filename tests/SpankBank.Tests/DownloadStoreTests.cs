@@ -48,6 +48,47 @@ public class DownloadStoreTests : IDisposable
         Assert.Equal(2, _store.NextPending(2, Now).Count);
     }
 
+    private void MarkDeletedInExport(params int[] ids)
+    {
+        foreach (var id in ids)
+            _db.Execute(_db.Paths.ServerDatabasePath, $"INSERT INTO Posts (Id, CreatedAt, UpdatedAt, Md5, FileExt, IsDeleted) VALUES ({id}, '2026-01-01', '2026-01-01', '{new string('a', 32)}', 'png', 1);");
+    }
+
+    [Fact]
+    public void The_skip_setting_holds_back_deleted_posts_until_their_reason_is_known_and_drops_inferior_ones()
+    {
+        MarkDeletedInExport(1, 2);
+
+        // Off: deleted posts are tried like before, whatever the reason.
+        Assert.Equal([1L, 2L, 3L], _store.NextPending(10, Now).Order().ToArray());
+        Assert.Equal([1L, 2L], _store.PostsNeedingDeletionReason(10).Order().ToArray());
+
+        // On, reasons unknown: only the normal post goes ahead.
+        Assert.Equal([3L], _store.NextPending(10, Now, skipInferiorDeleted: true));
+
+        var recognised = _store.SaveDeletionReasons(new Dictionary<long, string?> { [1] = "Duplicate or inferior version of another post (post #9)", [2] = "Paysite, commercial, or subscription content" });
+
+        Assert.Equal(1, recognised);
+        Assert.Empty(_store.PostsNeedingDeletionReason(10));
+        Assert.Equal([2L, 3L], _store.NextPending(10, Now, skipInferiorDeleted: true).Order().ToArray());
+        Assert.Equal(2, _store.CountPending(Now, skipInferiorDeleted: true));
+        Assert.Equal((1, 0), _store.CountRecognisedDeletions());
+
+        // Off again: the skipped post is eligible again.
+        Assert.Equal([1L, 2L, 3L], _store.NextPending(10, Now).Order().ToArray());
+        Assert.Equal(3, _store.CountPending(Now));
+    }
+
+    [Fact]
+    public void A_deleted_post_without_any_reason_is_still_recovered_and_low_effort_edits_are_skipped()
+    {
+        MarkDeletedInExport(1, 2);
+        _store.SaveDeletionReasons(new Dictionary<long, string?> { [1] = null, [2] = "Does not meet minimum quality standards (Trivial or low quality edit)" });
+
+        Assert.Equal([1L, 3L], _store.NextPending(10, Now, skipInferiorDeleted: true).Order().ToArray());
+        Assert.Equal((0, 1), _store.CountRecognisedDeletions());
+    }
+
     [Fact]
     public void Lost_posts_with_a_source_to_try_are_queued_again_but_others_stay_lost()
     {

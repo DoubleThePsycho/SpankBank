@@ -2,6 +2,7 @@ using System.Globalization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using SpankBank.Data;
+using SpankBank.Data.Downloads;
 using SpankBank.Data.Repositories;
 using SpankBank.Web.Services;
 
@@ -12,10 +13,12 @@ public class SettingsModel : PageModel
 {
     private readonly SettingsRepository _settings;
     private readonly WorkerClient _worker;
+    private readonly DownloadStore _downloads;
 
-    public SettingsModel(SettingsRepository settings, WorkerClient worker)
+    public SettingsModel(SettingsRepository settings, WorkerClient worker, DownloadStore downloads)
     {
         _settings = settings;
+        _downloads = downloads;
         _worker = worker;
     }
 
@@ -26,6 +29,8 @@ public class SettingsModel : PageModel
     public bool DownloadsEnabled { get; private set; } = true;
     public int DailyLimit { get; private set; } = 2000;
     public int Parallelism { get; private set; } = 3;
+    public bool SkipInferiorDeleted { get; private set; }
+    public (int Inferior, int LowEffortEdits) Recognised { get; private set; }
 
     public void OnGet()
     {
@@ -33,9 +38,11 @@ public class SettingsModel : PageModel
         DownloadsEnabled = _settings.Get(WorkerSettingsKeys.DownloadEnabled) != "false";
         DailyLimit = int.TryParse(_settings.Get(WorkerSettingsKeys.DownloadMaxPerDay), out var limit) ? limit : 2000;
         Parallelism = int.TryParse(_settings.Get(WorkerSettingsKeys.DownloadParallelism), out var parallel) ? Math.Clamp(parallel, 1, 64) : 3;
+        SkipInferiorDeleted = _settings.Get(WorkerSettingsKeys.DownloadSkipInferiorDeleted) == "true";
+        Recognised = _downloads.CountRecognisedDeletions();
     }
 
-    public async Task<IActionResult> OnPostAsync(string? dailyRunTime, bool downloadsEnabled, int dailyLimit, int parallelism)
+    public async Task<IActionResult> OnPostAsync(string? dailyRunTime, bool downloadsEnabled, int dailyLimit, int parallelism, bool skipInferiorDeleted)
     {
         if (!TimeOnly.TryParseExact(dailyRunTime, "HH:mm", CultureInfo.InvariantCulture, DateTimeStyles.None, out _))
             return Fail("The daily update time must look like 04:00.");
@@ -48,6 +55,8 @@ public class SettingsModel : PageModel
         _settings.Set(WorkerSettingsKeys.DownloadEnabled, downloadsEnabled ? "true" : "false");
         _settings.Set(WorkerSettingsKeys.DownloadMaxPerDay, dailyLimit.ToString(CultureInfo.InvariantCulture));
         _settings.Set(WorkerSettingsKeys.DownloadParallelism, parallelism.ToString(CultureInfo.InvariantCulture));
+
+        _settings.Set(WorkerSettingsKeys.DownloadSkipInferiorDeleted, skipInferiorDeleted ? "true" : "false");
 
         await _worker.NotifyAsync("settings");
         Message = "Saved.";

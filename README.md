@@ -182,6 +182,7 @@ set on the **Settings** pages of the site and stored in the database. The defaul
 | Download the posts your watches match | on |
 | Most files per day (0 = no limit) | 2000 |
 | Parallel downloads (1–64) | 3 |
+| Skip posts deleted as an inferior version or a low-effort edit | off |
 | Rows per page in the artist and pool lists | 100 |
 | Allow delete mode | off |
 | Add an artist's pools automatically when at least this share of their posts is the artist's | on, 90 % |
@@ -285,6 +286,14 @@ A file is accepted only if its MD5 equals the catalog's (the Wayback *sample* is
 five seconds and backs off for up to an hour when it refuses; while it is backed off, deleted posts are left alone and
 normal posts keep downloading.
 
+**Skipping inferior versions and low-effort edits.** Many deleted posts were removed as a duplicate or inferior version
+of another post, or as a trivial edit of someone else's work, and are not worth recovering. With **Settings → Downloads →
+Skip posts deleted as an inferior version or a low-effort edit** switched on, the worker looks up why each waiting deleted
+post was deleted (the site's `post_flags.json`: one request for 50 posts, about one a second, with a back-off when the
+site refuses) and leaves those two kinds alone. Deleted posts with any other reason are still recovered, posts already
+on the device stay, and a deleted post whose reason cannot be looked up yet waits instead of slipping through. The
+reasons are remembered (table `DeletionReasons`), and switching the setting off makes the skipped posts eligible again.
+
 ### Flash
 
 `.swf` posts play with Ruffle, which is bundled and served by the site itself (no external requests); links inside a
@@ -297,7 +306,7 @@ headless exporter. Files it cannot render get a `.nopreview` marker beside the p
 |---|---|
 | **Status** | Last update, posts in the catalog, strays, import history, the *Update now* button, and live progress. |
 | **Posts → Downloads** | The download queue: progress, speed, ETA and the posts that failed. |
-| **Settings → Downloads** | Daily update time, download switch / daily limit / parallelism. |
+| **Settings → Downloads** | Daily update time, download switch / daily limit / parallelism, skipping deleted inferior versions and low-effort edits. |
 | **Settings → Library** | List size, pool auto-adding, delete mode. |
 | **Settings → Blacklist** | The global blacklist. |
 | **Settings → Theme** | The theme and the embellishments (stored with the instance, so every browser sees them). |

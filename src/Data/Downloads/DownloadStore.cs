@@ -16,19 +16,23 @@ public sealed class DownloadStore
     /// Wayback Machine, which is slow and rate-limited, so they only get a few places per batch and never hold up the files e621 serves.
     /// </summary>
     /// <param name="includeDeleted">False while the Wayback Machine is off limits: deleted posts can only come from there (or their sources).</param>
-    public IReadOnlyList<long> NextPending(int limit, DateTimeOffset now, bool includeDeleted = true)
+    /// <param name="skipInferiorDeleted">
+    /// True for the "skip inferior versions and low-effort edits" setting: deleted posts only qualify once their deletion
+    /// reason is known (<see cref="PostsNeedingDeletionReason"/>) and is neither of those.
+    /// </param>
+    public IReadOnlyList<long> NextPending(int limit, DateTimeOffset now, bool includeDeleted = true, bool skipInferiorDeleted = false)
     {
         using var connection = OpenAttached();
         var reserved = limit >= 6 ? limit / 6 : 0;
-        var ids = QueryPending(connection, limit - reserved, now, PendingKind.NotDeleted);
+        var ids = QueryPending(connection, limit - reserved, now, PendingKind.NotDeleted, skipInferiorDeleted);
         // Room the normal posts did not fill goes to the deleted ones too.
-        if (includeDeleted) ids.AddRange(QueryPending(connection, limit - ids.Count, now, PendingKind.Deleted));
+        if (includeDeleted) ids.AddRange(QueryPending(connection, limit - ids.Count, now, PendingKind.Deleted, skipInferiorDeleted));
         return ids;
     }
 
     private enum PendingKind { NotDeleted, Deleted }
 
-    private static List<long> QueryPending(SqliteConnection connection, int limit, DateTimeOffset now, PendingKind kind)
+    private static List<long> QueryPending(SqliteConnection connection, int limit, DateTimeOffset now, PendingKind kind, bool skipInferiorDeleted)
     {
         if (limit <= 0) return [];
 
@@ -43,6 +47,7 @@ public sealed class DownloadStore
               AND NOT EXISTS (SELECT 1 FROM BlockedPosts b WHERE b.PostId = m.PostId)
               AND NOT EXISTS (SELECT 1 FROM DeletedPosts x WHERE x.PostId = m.PostId)
               AND COALESCE(p.IsDeleted, 0) {(kind == PendingKind.Deleted ? "= 1" : "= 0")}
+              {(kind == PendingKind.Deleted && skipInferiorDeleted ? "AND EXISTS (SELECT 1 FROM DeletionReasons r WHERE r.PostId = m.PostId AND r.Kind IS NULL)" : "")}
             LIMIT $limit;
             """;
         cmd.Parameters.AddWithValue("$now", now.ToString("o"));
@@ -92,7 +97,7 @@ public sealed class DownloadStore
         return retry.Count;
     }
 
-    public int CountPending(DateTimeOffset now)
+    public int CountPending(DateTimeOffset now, bool skipInferiorDeleted = false)
     {
         using var connection = OpenAttached();
         using var cmd = connection.CreateCommand();
@@ -103,10 +108,79 @@ public sealed class DownloadStore
             WHERE NOT EXISTS (SELECT 1 FROM dev.Posts d WHERE d.Id = m.PostId AND d.SavedAt IS NOT NULL)
               AND NOT EXISTS (SELECT 1 FROM DownloadAttempts a WHERE a.PostId = m.PostId AND a.NextAttemptAt > $now)
               AND NOT EXISTS (SELECT 1 FROM BlockedPosts b WHERE b.PostId = m.PostId)
-              AND NOT EXISTS (SELECT 1 FROM DeletedPosts x WHERE x.PostId = m.PostId);
+              AND NOT EXISTS (SELECT 1 FROM DeletedPosts x WHERE x.PostId = m.PostId)
+              AND ($skip = 0 OR NOT EXISTS (SELECT 1 FROM DeletionReasons r WHERE r.PostId = m.PostId AND r.Kind IS NOT NULL));
             """;
         cmd.Parameters.AddWithValue("$now", now.ToString("o"));
+        cmd.Parameters.AddWithValue("$skip", skipInferiorDeleted ? 1 : 0);
         return Convert.ToInt32(cmd.ExecuteScalar());
+    }
+
+    /// <summary>
+    /// Pending posts the export marks deleted whose deletion reason has not been looked up yet (same conditions as
+    /// <see cref="NextPending"/>, except that a retry delay does not matter: the lookup is cheap and keeps no attempt).
+    /// </summary>
+    public IReadOnlyList<long> PostsNeedingDeletionReason(int limit)
+    {
+        using var connection = OpenAttached();
+        using var cmd = connection.CreateCommand();
+        cmd.CommandText = """
+            SELECT DISTINCT m.PostId
+            FROM WatchMatches m
+            JOIN WatchedItems w ON w.Id = m.WatchedItemId AND w.Enabled = 1
+            JOIN srv.Posts p ON p.Id = m.PostId AND p.IsDeleted = 1
+            WHERE NOT EXISTS (SELECT 1 FROM dev.Posts d WHERE d.Id = m.PostId AND d.SavedAt IS NOT NULL)
+              AND NOT EXISTS (SELECT 1 FROM BlockedPosts b WHERE b.PostId = m.PostId)
+              AND NOT EXISTS (SELECT 1 FROM DeletedPosts x WHERE x.PostId = m.PostId)
+              AND NOT EXISTS (SELECT 1 FROM DeletionReasons r WHERE r.PostId = m.PostId)
+            LIMIT $limit;
+            """;
+        cmd.Parameters.AddWithValue("$limit", limit);
+        using var reader = cmd.ExecuteReader();
+        var ids = new List<long>();
+        while (reader.Read()) ids.Add(reader.GetInt64(0));
+        return ids;
+    }
+
+    /// <summary>Remembers the deletion reasons found (null for a post without one), with what each means for the skip setting.</summary>
+    /// <returns>How many of them are inferior versions or low-effort edits.</returns>
+    public int SaveDeletionReasons(IReadOnlyDictionary<long, string?> reasons)
+    {
+        var now = DateTimeOffset.UtcNow.ToString("o");
+        var recognised = 0;
+        using var connection = new SqliteConnection($"Data Source={_paths.AppDatabasePath}");
+        connection.Open();
+        using var transaction = connection.BeginTransaction();
+        foreach (var (id, reason) in reasons)
+        {
+            var kind = DeletionReasons.StoredKind(DeletionReasons.Classify(reason));
+            if (kind is not null) recognised++;
+            using var cmd = connection.CreateCommand();
+            cmd.Transaction = transaction;
+            cmd.CommandText = """
+                INSERT INTO DeletionReasons (PostId, Reason, Kind, CheckedAt) VALUES ($id, $reason, $kind, $now)
+                ON CONFLICT(PostId) DO UPDATE SET Reason = $reason, Kind = $kind, CheckedAt = $now;
+                """;
+            cmd.Parameters.AddWithValue("$id", id);
+            cmd.Parameters.AddWithValue("$reason", (object?)reason ?? DBNull.Value);
+            cmd.Parameters.AddWithValue("$kind", (object?)kind ?? DBNull.Value);
+            cmd.Parameters.AddWithValue("$now", now);
+            cmd.ExecuteNonQuery();
+        }
+        transaction.Commit();
+        return recognised;
+    }
+
+    /// <summary>How many posts looked up so far were deleted as an inferior version, and how many as a low-effort edit.</summary>
+    public (int Inferior, int LowEffortEdits) CountRecognisedDeletions()
+    {
+        using var connection = new SqliteConnection($"Data Source={_paths.AppDatabasePath}");
+        connection.Open();
+        using var cmd = connection.CreateCommand();
+        cmd.CommandText = "SELECT COALESCE(SUM(Kind = 'inferior'), 0), COALESCE(SUM(Kind = 'edit'), 0) FROM DeletionReasons;";
+        using var reader = cmd.ExecuteReader();
+        reader.Read();
+        return (reader.GetInt32(0), reader.GetInt32(1));
     }
 
     public CatalogPost? GetCatalogPost(long id)
