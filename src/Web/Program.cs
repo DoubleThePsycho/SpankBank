@@ -43,6 +43,8 @@ var watchesRepository = new WatchesRepository(paths.AppDatabasePath, paths.Serve
 builder.Services.AddSingleton(watchesRepository);
 builder.Services.AddSingleton(new DownloadStore(paths));
 builder.Services.AddSingleton(sp => new SpankBank.Data.Downloads.LocalImportStore(paths, sp.GetRequiredService<DownloadStore>()));
+builder.Services.AddSingleton(new ImportChecker(paths));
+builder.Services.AddSingleton<DeletionReasonLookup>(); // the importer's check asks the site why deleted posts were deleted
 var settingsRepository = new SettingsRepository(paths.AppDatabasePath);
 builder.Services.AddSingleton(settingsRepository);
 builder.Services.AddSingleton(new ThemeSettings(settingsRepository));
@@ -119,32 +121,42 @@ app.MapDelete("/posts/{id:long}", async (long id, SettingsRepository settings, S
     return Results.Ok(new { deleted = true });
 });
 
-// Missing posts: one uploaded file (the raw request body) for a lost or pending post of the artist. The body is staged under
-// <data>/uploads with its MD5 worked out on the way; the worker files it under the media root (the web app never writes there).
-app.MapPost("/artist/{name}/missing/{id:long}", async (string name, long id, HttpRequest request, WatchesRepository watches, LocalImportStore imports, WorkerClient worker, CancellationToken cancel) =>
+// Importing files from the user's PC (Status > Downloads). First the page sends the ids it parsed from the file names and
+// gets a verdict for each, so only wanted files are uploaded: a post is wanted when the site deleted it (or it is lost) and
+// this device does not have it. With "skip inferior versions" on, deleted posts whose reason is not stored yet are looked up first.
+app.MapPost("/status/downloads/check", async (ImportCheckRequest body, ImportChecker checker, SettingsRepository settings, DeletionReasonLookup lookup, DownloadStore store, CancellationToken cancel) =>
 {
-    var watch = SpankBank.Web.Pages.Artists.MissingModel.FindWatch(watches, name);
-    if (watch is null) return Results.NotFound();
+    var ids = (body.Ids ?? []).Distinct().Take(500).ToList();
+    var skipInferior = settings.Get(WorkerSettingsKeys.DownloadSkipInferiorDeleted) == "true";
+    var results = checker.Check(ids, skipInferior);
 
+    if (skipInferior)
+    {
+        var unknown = results.Values.Where(r => r.Verdict == ImportVerdict.ReasonUnknown).Select(r => r.PostId).ToList();
+        foreach (var batch in unknown.Chunk(DeletionReasonLookup.PostsPerRequest))
+        {
+            var found = await lookup.LookUpAsync(batch, cancel);
+            if (found is null) break; // the site asked us to wait: those stay "reason not known yet" and are left out
+            store.SaveDeletionReasons(found);
+        }
+        if (unknown.Count > 0) results = checker.Check(ids, skipInferior);
+    }
+
+    return Results.Ok(new { results = results.Values.Select(r => new { id = r.PostId, verdict = r.Verdict.ToString(), message = r.Message }) });
+});
+
+// One uploaded file (the raw request body) for a post the check called wanted. The body is staged under <data>/uploads with its
+// MD5 worked out on the way; the worker files it under the media root (the web app never writes there).
+app.MapPost("/status/downloads/import/{id:long}", async (long id, HttpRequest request, ImportChecker checker, SettingsRepository settings, LocalImportStore imports, WorkerClient worker, CancellationToken cancel) =>
+{
     var fileName = Uri.UnescapeDataString(request.Headers["X-File-Name"].ToString());
     var ext = LocalImportStore.NormalizeExtension(fileName);
     if (ext is null) return Results.Json(new { error = "Not a file type " + SiteConfig.Name + " hosts (jpg, png, gif, webp, webm, mp4, swf)." }, statusCode: 400);
 
-    var (state, catalogMd5) = watches.CheckMissing(watch.Id, id);
-    if (state == MissingState.Missing && catalogMd5.Length != 32) state = MissingState.NotInCatalog;
-    if (state != MissingState.Missing)
-        return Results.Json(new
-        {
-            reason = state.ToString(),
-            error = state switch
-            {
-                MissingState.AlreadyLocal => "already on this device",
-                MissingState.NotListed => "not matched by this artist (another artist's post, or not matched at all)",
-                MissingState.NotInCatalog => "not in the catalog",
-                MissingState.Binned => "in the rubbish bin (restore it there)",
-                _ => "hidden by the blacklist, so it is not on the pending list",
-            },
-        }, statusCode: 409);
+    var check = checker.Check([id], settings.Get(WorkerSettingsKeys.DownloadSkipInferiorDeleted) == "true")[id];
+    if (check.Verdict != ImportVerdict.Wanted)
+        return Results.Json(new { verdict = check.Verdict.ToString(), error = check.Message }, statusCode: 409);
+    var catalogMd5 = check.Md5;
 
     if (request.HttpContext.Features.Get<Microsoft.AspNetCore.Http.Features.IHttpMaxRequestBodySizeFeature>() is { IsReadOnly: false } limit)
         limit.MaxRequestBodySize = null; // videos are big
@@ -245,6 +257,8 @@ _ = Task.Run(() => app.Services.GetRequiredService<LocalTagCounts>().Warm());
 app.Run();
 
 /// <summary>The JSON body of the folder endpoints; each endpoint reads the fields it needs.</summary>
+internal sealed record ImportCheckRequest(long[]? Ids);
+
 internal sealed record FolderRequest(
     [property: System.Text.Json.Serialization.JsonPropertyName("name")] string? Name = null,
     [property: System.Text.Json.Serialization.JsonPropertyName("parent_id")] long? ParentId = null,

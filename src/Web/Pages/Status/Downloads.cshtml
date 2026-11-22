@@ -1,11 +1,11 @@
-@page "/posts/downloads"
-@model SpankBank.Web.Pages.Posts.DownloadsModel
+@page "/status/downloads"
+@model SpankBank.Web.Pages.Status.DownloadsModel
 @{
     ViewData["Title"] = "Downloads";
     ViewData["BodyClass"] = "c-status";
 }
 @section SecondaryNav {
-  <partial name="_AreaNav" model='"posts"' />
+  <partial name="_AreaNav" model='"status"' />
 }
 <div id="c-status" class="container"><div id="a-index">
   <h1>Downloads</h1>
@@ -22,6 +22,25 @@
       <tr><th>Saved today</th><td>@Model.SavedToday.ToString("N0")@(Model.DailyLimit > 0 ? $" of {Model.DailyLimit:N0}" : " (no daily limit)") <span class="hint">(the limit and the pause switch are in <a href="/settings">Settings</a>)</span></td></tr>
     </tbody>
   </table>
+
+  <h2 style="margin-top: 1.5rem;">Add files from this PC</h2>
+  <section class="file-import" id="importer" data-check-url="/status/downloads/check" data-upload-url="/status/downloads/import">
+    <div class="file-import-drop" tabindex="0">
+      <p>Drop files or folders here, or
+        <label class="st-button"><input type="file" multiple hidden data-pick="files"> Choose files</label>
+        <label class="st-button"><input type="file" multiple webkitdirectory hidden data-pick="folder"> Choose a folder</label>
+      </p>
+      <p class="hint">
+        File names are matched to posts by id: <code>03469863.jpg</code>, <code>[001] 03469863.jpg</code> or <code>03469863.raw.jpg</code>.
+        Only posts @SiteConfig.Name has deleted (or that were lost) and this device does not have are taken, so files you already have, or that
+        the site still serves, are not uploaded. A file whose MD5 is the post's is filed as the original; any other is kept as your own
+        edited version (marked custom). When an id has a <code>.raw</code> file, that one is used.
+        @if (Model.SkipInferior) { <text>Posts deleted as an inferior version or a low-effort edit are skipped too (Settings &gt; Downloads); their reasons are looked up first.</text> }
+      </p>
+    </div>
+    <div class="file-import-summary" hidden></div>
+    <ul class="file-import-log"></ul>
+  </section>
 
   <h2 style="margin-top: 1.5rem;">Could not be saved</h2>
   @if (Model.Problems.Count == 0)
@@ -49,3 +68,4 @@
   }
 </div></div>
 <script type="module" src="~/dist/status.js" asp-append-version="true"></script>
+<script type="module" src="~/dist/importer.js" asp-append-version="true"></script>

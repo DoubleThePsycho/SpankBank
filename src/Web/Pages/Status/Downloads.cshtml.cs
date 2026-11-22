@@ -3,7 +3,7 @@ using SpankBank.Data;
 using SpankBank.Data.Downloads;
 using SpankBank.Data.Repositories;
 
-namespace SpankBank.Web.Pages.Posts;
+namespace SpankBank.Web.Pages.Status;
 
 /// <summary>What the downloader is doing and has done: live progress, counters and the posts it could not fetch.</summary>
 public class DownloadsModel : PageModel
@@ -24,6 +24,7 @@ public class DownloadsModel : PageModel
     public int SavedToday { get; private set; }
     public int DailyLimit { get; private set; } = 2000;
     public bool Paused { get; private set; }
+    public bool SkipInferior { get; private set; }
     public int ProblemCount { get; private set; }
     public IReadOnlyList<DownloadProblem> Problems { get; private set; } = [];
 
@@ -34,6 +35,7 @@ public class DownloadsModel : PageModel
         SavedToday = _store.SavedToday();
         DailyLimit = int.TryParse(_settings.Get(WorkerSettingsKeys.DownloadMaxPerDay), out var limit) ? limit : 2000;
         Paused = _settings.Get(WorkerSettingsKeys.DownloadEnabled) == "false";
+        SkipInferior = _settings.Get(WorkerSettingsKeys.DownloadSkipInferiorDeleted) == "true";
         ProblemCount = _store.CountProblems();
         Problems = _store.GetProblems(50);
     }

@@ -32,7 +32,7 @@ public sealed partial class WatchesRepository
     public const int DefaultListPageSize = 100;
 
     // Failures the downloader records for a post that e621 deleted and no archive has.
-    private const string LostCondition = "(x.LastError LIKE 'Deleted on % and not found%' OR x.LastError LIKE 'The catalog has no file%')";
+    internal const string LostCondition = "(x.LastError LIKE 'Deleted on % and not found%' OR x.LastError LIKE 'The catalog has no file%')";
 
     /// <summary>
     /// Per watch of a type: how many of its matched posts are downloaded, restored (Wayback) or lost. One pass over the matches.

@@ -204,7 +204,7 @@ Run `docker compose config` to see the final, merged configuration.
      and suggestions for the misspelled ones.
    - You can also find artists in **Artists → Online** (the whole site) and press *Watch this artist* on their page.
 3. **Let it download.** Matched posts are queued and fetched in the background; follow it on
-   **Posts → Downloads** (progress, speed, ETA, and the posts that could not be saved). With the default limit of 2000
+   **Status → Downloads** (progress, speed, ETA, and the posts that could not be saved). With the default limit of 2000
    files per UTC day, a big new watch is spread over several days; set the limit to `0` in Settings to download as fast
    as it can.
 4. **Browse.** **Posts** lists what you have locally. Everything else (favorites, tags, pools) builds on that.
@@ -294,6 +294,16 @@ site refuses) and leaves those two kinds alone. Deleted posts with any other rea
 on the device stay, and a deleted post whose reason cannot be looked up yet waits instead of slipping through. The
 reasons are remembered (table `DeletionReasons`), and switching the setting off makes the skipped posts eligible again.
 
+**Adding files from your own PC.** On **Status → Downloads** you can drop files or whole folders (it recurses) for posts that
+the site has deleted or that were lost. File names are matched to posts by id: `03469863.jpg`, `[001] 03469863.jpg` and
+`03469863.raw.jpg` all work, and when an id has a `.raw` file the others for it are ignored. The ids are checked before
+anything is uploaded, so files whose post is already on the device, is still served by the site (the downloader fetches the
+real original), is in the rubbish bin or hidden by the blacklist are skipped without being sent. With the skip setting above
+switched on, posts deleted as an inferior version or a low-effort edit are skipped as well (their reasons are looked up
+first). A file whose MD5 is the post's is filed as the original; any other is kept as your own edited version and shown as
+a manual upload on the post page. The web app stages the upload in `<data>/uploads` and the worker files it under the media
+root. An artist's page links its *lost* and *pending* counts to `/artist/<name>/missing`, which lists those posts.
+
 ### Flash
 
 `.swf` posts play with Ruffle, which is bundled and served by the site itself (no external requests); links inside a
@@ -305,7 +315,7 @@ headless exporter. Files it cannot render get a `.nopreview` marker beside the p
 | Page | What it is for |
 |---|---|
 | **Status** | Last update, posts in the catalog, strays, import history, the *Update now* button, and live progress. |
-| **Posts → Downloads** | The download queue: progress, speed, ETA and the posts that failed. |
+| **Status → Downloads** | The download queue: progress, speed, ETA and the posts that failed. |
 | **Settings → Downloads** | Daily update time, download switch / daily limit / parallelism, skipping deleted inferior versions and low-effort edits. |
 | **Settings → Library** | List size, pool auto-adding, delete mode. |
 | **Settings → Blacklist** | The global blacklist. |
@@ -509,7 +519,7 @@ configuration.
 | Status says "The worker is not reachable" | `WORKER_URL` of the web service is missing or names another service, or the worker is not running or still starting: `docker compose ps`, `docker compose logs worker`. |
 | Tags, artists and pools are empty | The catalog has not been imported yet: press *Update from e621 now* on **Status** and wait for it to finish. |
 | Pages such as Status are very slow | The databases are on a slow disk or a network share. Move the `/data` folder to an SSD. |
-| Nothing is downloading | Check **Settings** (downloads on, daily limit reached?), that a watch is *enabled*, and **Posts → Downloads** for errors. |
+| Nothing is downloading | Check **Settings** (downloads on, daily limit reached?), that a watch is *enabled*, and **Status → Downloads** for errors. |
 | Wayback / Inkbunny recovery does nothing | They may not be reachable from your network or may be rate-limiting you; the worker backs off (up to an hour) and the log says so. |
 | A form submit fails with a 400 after a redeploy | The browser holds an antiforgery token from the old key ring; reload the page. Keep the `/data` folder persistent so it does not happen. |
 

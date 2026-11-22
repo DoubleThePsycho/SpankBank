@@ -3,6 +3,9 @@
 @{
     ViewData["Title"] = "Status";
 }
+@section SecondaryNav {
+  <partial name="_AreaNav" model='"status"' />
+}
 <div id="c-status" class="container"><div id="a-index">
   <h1>Status</h1>
 
@@ -15,8 +18,6 @@
     <div class="status-offline" hidden>The worker is not reachable.</div>
     <div class="status-run" hidden></div>
   </section>
-
-  <p>Downloads of posts have their own page: <a href="/posts/downloads">Posts → Downloads</a>.</p>
 
   <form method="post" class="status-actions">
     <button type="submit" class="st-button">Update from @SiteConfig.Name now</button>

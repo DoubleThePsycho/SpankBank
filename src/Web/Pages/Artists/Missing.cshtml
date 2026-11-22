@@ -8,9 +8,6 @@
 @section SecondaryNav {
   <partial name="_AreaNav" model='"artists"' />
 }
-@section Scripts {
-  <script type="module" src="~/dist/missing.js" asp-append-version="true"></script>
-}
 <div id="c-artists" class="container-fluid">
   <div id="a-missing">
     <h1 class="category-1"><a href="@artistUrl">@Model.Name.Replace('_', ' ')</a></h1>
@@ -18,25 +15,8 @@
     <p class="hint">
       <span class="count-lost"><svg-icon name="skull" width="16" height="16" /> <strong>@Model.Stats.Lost.ToString("N0") lost</strong></span>: deleted on @SiteConfig.Name and no archive or source has the file.
       <span class="count-pending"><svg-icon name="hourglass" width="16" height="16" /> <strong>@Model.Stats.Pending.ToString("N0") pending</strong></span>: not downloaded yet or waiting for a retry; when deleted and not found anywhere they become lost.
-      Files you have on your PC can be added below.
+      Files you have on your PC can be added on <a href="/status/downloads">Status &rarr; Downloads</a>.
     </p>
-
-    <section class="missing-upload" id="missing-upload" data-url="@artistUrl/missing">
-      <h2>Add files from this PC</h2>
-      <div class="missing-drop" tabindex="0">
-        <p>Drop files or folders here, or
-          <label class="st-button"><input type="file" multiple hidden data-pick="files"> Choose files</label>
-          <label class="st-button"><input type="file" multiple webkitdirectory hidden data-pick="folder"> Choose a folder</label>
-        </p>
-        <p class="hint">
-          File names are matched to the posts by id: <code>03469863.jpg</code>, <code>[001] 03469863.jpg</code> or <code>03469863.raw.jpg</code>.
-          A file whose MD5 is the post's is filed as the original; any other is kept as your own edited version (marked custom).
-          Files for posts that are not on this list are skipped, and the reason is shown. When an id has a <code>.raw</code> file, that one is used.
-        </p>
-      </div>
-      <div class="missing-summary" hidden></div>
-      <ul class="missing-log"></ul>
-    </section>
 
     @if (Model.Posts.Total == 0)
     {

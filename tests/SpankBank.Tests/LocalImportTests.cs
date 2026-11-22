@@ -68,13 +68,50 @@ public class LocalImportTests : IDisposable
         var missing = _watches.GetMissingPosts(_watch, 1, 50).Items;
         Assert.Equal([2L, 1L], missing.Select(p => p.Id).ToArray());
         Assert.Equal([false, true], missing.Select(p => p.IsLost).ToArray());
-        Assert.Equal(MissingState.Missing, _watches.CheckMissing(_watch, 1).State);
-        Assert.Equal(MissingState.Missing, _watches.CheckMissing(_watch, 2).State);
-        Assert.Equal(MissingState.AlreadyLocal, _watches.CheckMissing(_watch, 3).State);
-        Assert.Equal(MissingState.NotInCatalog, _watches.CheckMissing(_watch, 99).State);
+    }
 
-        _db.Execute(_db.Paths.ServerDatabasePath, $"INSERT INTO Posts (Id, CreatedAt, UpdatedAt, Md5, FileExt) VALUES (50, '2026-01-01', '2026-01-01', '{new string('9', 32)}', 'png');");
-        Assert.Equal(MissingState.NotListed, _watches.CheckMissing(_watch, 50).State);
+    private IReadOnlyDictionary<long, ImportCheck> Check(bool skipInferior, params long[] ids) => new ImportChecker(_db.Paths).Check(ids, skipInferior);
+
+    [Fact]
+    public void Only_posts_the_site_deleted_or_that_are_lost_and_not_here_are_wanted()
+    {
+        AddPost(1, new string('a', 32), lost: true);               // deleted + lost
+        AddPost(2, new string('b', 32), lost: false);              // still online
+        AddPost(3, new string('c', 32), lost: true);
+        _store.MarkSaved(_store.GetCatalogPost(3)!, LocalPostStatus.Downloaded); // here already
+        _db.Execute(_db.Paths.ServerDatabasePath, $"INSERT INTO Posts (Id, CreatedAt, UpdatedAt, Md5, FileExt, IsDeleted) VALUES (4, '2026-01-01', '2026-01-01', '{new string('4', 32)}', 'png', 1);"); // deleted, nobody's watch
+        _db.Execute(_db.Paths.AppDatabasePath, "INSERT INTO DeletedPosts (PostId, DeletedAt, State, Reason) VALUES (4, '2026-01-01', 1, 'user');");
+        _db.Execute(_db.Paths.ServerDatabasePath, $"INSERT INTO Posts (Id, CreatedAt, UpdatedAt, Md5, FileExt, IsDeleted) VALUES (5, '2026-01-01', '2026-01-01', '{new string('5', 32)}', 'png', 1);");
+
+        var verdicts = Check(false, 1, 2, 3, 4, 5, 99);
+
+        Assert.Equal(ImportVerdict.Wanted, verdicts[1].Verdict);
+        Assert.Equal(ImportVerdict.StillOnline, verdicts[2].Verdict);
+        Assert.Equal(ImportVerdict.AlreadyLocal, verdicts[3].Verdict);
+        Assert.Equal(ImportVerdict.Binned, verdicts[4].Verdict);
+        Assert.Equal(ImportVerdict.Wanted, verdicts[5].Verdict); // deleted posts are wanted even when no artist watches them
+        Assert.Equal(ImportVerdict.NotInCatalog, verdicts[99].Verdict);
+    }
+
+    [Fact]
+    public void Inferior_versions_and_edits_are_refused_only_with_the_setting_on_and_unknown_reasons_are_reported()
+    {
+        foreach (var id in new[] { 1, 2, 3 })
+            _db.Execute(_db.Paths.ServerDatabasePath, $"INSERT INTO Posts (Id, CreatedAt, UpdatedAt, Md5, FileExt, IsDeleted) VALUES ({id}, '2026-01-01', '2026-01-01', '{new string((char)('0' + id), 32)}', 'png', 1);");
+        _store.SaveDeletionReasons(new Dictionary<long, string?>
+        {
+            [1] = "Inferior version/duplicate of post #5",
+            [2] = "Not wanted here",
+        });
+
+        var off = Check(false, 1, 2, 3);
+        Assert.All(off.Values, r => Assert.Equal(ImportVerdict.Wanted, r.Verdict)); // setting off: everything deleted is taken
+
+        var on = Check(true, 1, 2, 3);
+        Assert.Equal(ImportVerdict.Inferior, on[1].Verdict);
+        Assert.Contains("#5", on[1].Message);
+        Assert.Equal(ImportVerdict.Wanted, on[2].Verdict);
+        Assert.Equal(ImportVerdict.ReasonUnknown, on[3].Verdict);
     }
 
     [Fact]

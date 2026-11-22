@@ -399,9 +399,9 @@ div#c-tags div#a-index table.striped.tags-table {
 }
 
 // The missing posts page (/artist/<name>/missing): lost and pending tabs, the upload box and the list.
-.missing-upload {
+.file-import {
   margin: 1rem 0;
-  .missing-drop {
+  .file-import-drop {
     border: 2px dashed themed("color-section-lighten-5");
     border-radius: 0.5rem;
     padding: 1rem;
@@ -409,8 +409,8 @@ div#c-tags div#a-index table.striped.tags-table {
     &.dragging { border-color: palette("text-link"); }
     label.st-button { display: inline-block; margin: 0 0.25rem; cursor: pointer; }
   }
-  .missing-summary { margin: 0.5rem 0; font-weight: bold; }
-  .missing-log {
+  .file-import-summary { margin: 0.5rem 0; font-weight: bold; }
+  .file-import-log {
     list-style: none;
     padding: 0;
     margin: 0;
