@@ -37,22 +37,29 @@
     <form method="post" asp-page-handler="Empty" data-confirm="Remove @Model.Posts.Count post(s) for good? This cannot be undone.">
       <button type="submit" class="st-button" onclick="return confirm('Remove @Model.Posts.Count post(s) for good? This cannot be undone.')">Empty bin (@Model.Posts.Count.ToString("N0"))</button>
     </form>
-    <div class="bin-grid" style="display:flex;flex-wrap:wrap;gap:1em;margin-top:1em">
+    @* The same thumbnails as the post listing; the stats handle holds the Restore button, and the rating cell stays. *@
+    <section class="posts-container bin-posts">
       @foreach (var post in Model.Posts)
       {
         var days = Math.Max(0, (int)Math.Ceiling((post.PurgeAt - DateTimeOffset.UtcNow).TotalDays));
-        <figure style="width:160px;margin:0">
-          <img src="/bin/preview/@post.PostId" alt="Post @post.PostId" loading="lazy" style="max-width:160px;max-height:160px;display:block">
-          <figcaption>
-            <div>#@post.PostId</div>
-            <div class="hint">@(post.State is BinState.RestoreRequested ? "Restoring..." : post.State is BinState.PurgeRequested ? "Removing..." : $"{days} day(s) left")</div>
-            @if (post.State is BinState.Requested or BinState.Binned)
-            {
-              <form method="post" asp-page-handler="Restore"><input type="hidden" name="id" value="@post.PostId"><button type="submit" class="st-button">Restore</button></form>
-            }
-          </figcaption>
-        </figure>
+        var letter = (SpankBank.Core.Models.PostRating)post.Rating switch { SpankBank.Core.Models.PostRating.Safe => "s", SpankBank.Core.Models.PostRating.Questionable => "q", _ => "e" };
+        var ratingClass = letter switch { "s" => "rating-safe", "q" => "rating-questionable", _ => "rating-explicit" };
+        var waiting = post.State is BinState.RestoreRequested or BinState.PurgeRequested;
+        <article class="thumbnail @ratingClass" data-id="@post.PostId" data-rating="@letter">
+          <a class="thm-link" data-hover-text="ID: @post.PostId&#10;Deleted: @post.DeletedAt.ToString("yyyy-MM-dd HH:mm")&#10;Removed for good in @days day(s)">
+            <picture><img src="/bin/preview/@post.PostId" alt="post #@post.PostId" loading="lazy"></picture>
+            <span class="thm-duration" title="Removed for good in @days day(s)">@(post.State is BinState.PurgeRequested ? "..." : days + "d")</span>
+          </a>
+          <form method="post" asp-page-handler="Restore" class="thm-desc thm-rating-@letter">
+            <input type="hidden" name="id" value="@post.PostId">
+            <button type="submit" class="thm-desc-a thm-restore" disabled="@waiting" title="@(post.State is BinState.RestoreRequested ? "Restoring..." : post.State is BinState.PurgeRequested ? "Being removed..." : $"Put post #{post.PostId} back ({days} day(s) left)")">
+              <svg-icon name="undo" width="16" height="16" />
+              @(post.State is BinState.RestoreRequested ? "Restoring..." : post.State is BinState.PurgeRequested ? "Removing..." : "Restore")
+            </button>
+            <span class="thm-desc-b thm-rating">@letter.ToUpperInvariant()</span>
+          </form>
+        </article>
       }
-    </div>
+    </section>
   }
 </div></div>

@@ -1,6 +1,10 @@
 namespace SpankBank.Web.Services;
 
-/// <summary>Page numbers for e621ng's paginator markup (first, last, and a window around the current page).</summary>
+/// <summary>
+/// Page numbers for e621ng's paginator markup (first, last, and a window around the current page). A gap that would hide
+/// only one page shows that page instead of the <c>…</c> (e621ng pull request 2836, by the SpankBank author), so
+/// <c>1 … 3 [4] 5</c> reads <c>1 2 3 [4] 5</c>; gaps of two or more pages keep the <c>…</c>.
+/// </summary>
 public static class Pager
 {
     public static IReadOnlyList<(int Page, bool Spacer)> NumberedPages(int current, int last)
@@ -13,7 +17,9 @@ public static class Pager
         var previous = 0;
         foreach (var page in pages)
         {
-            if (previous != 0 && page - previous > 1)
+            if (previous != 0 && page - previous == 2)
+                result.Add((previous + 1, false)); // a single hidden page is shown, not hidden behind a spacer
+            else if (previous != 0 && page - previous > 2)
                 result.Add((0, true));
             result.Add((page, false));
             previous = page;

@@ -18,7 +18,7 @@ public enum BinState
     PurgeRequested = 4,
 }
 
-public sealed record BinnedPost(long PostId, string Md5, string Ext, DateTimeOffset DeletedAt, BinState State)
+public sealed record BinnedPost(long PostId, string Md5, string Ext, DateTimeOffset DeletedAt, BinState State, int Rating = 0)
 {
     public DateTimeOffset PurgeAt => DeletedAt + BinStore.Retention;
 }
@@ -78,14 +78,14 @@ public sealed class BinStore
         using var connection = OpenAppWithDevice();
         using var cmd = connection.CreateCommand();
         cmd.CommandText = """
-            SELECT x.PostId, COALESCE(d.Md5, ''), COALESCE(d.FileExt, ''), x.DeletedAt, x.State
+            SELECT x.PostId, COALESCE(d.Md5, ''), COALESCE(d.FileExt, ''), x.DeletedAt, x.State, COALESCE(d.Rating, 0)
             FROM DeletedPosts x LEFT JOIN dev.Posts d ON d.Id = x.PostId
             WHERE x.State <> 3 ORDER BY x.DeletedAt DESC;
             """;
         using var reader = cmd.ExecuteReader();
         var posts = new List<BinnedPost>();
         while (reader.Read())
-            posts.Add(new BinnedPost(reader.GetInt64(0), reader.GetString(1), reader.GetString(2), DateTimeOffset.Parse(reader.GetString(3)), (BinState)reader.GetInt32(4)));
+            posts.Add(new BinnedPost(reader.GetInt64(0), reader.GetString(1), reader.GetString(2), DateTimeOffset.Parse(reader.GetString(3)), (BinState)reader.GetInt32(4), reader.GetInt32(5)));
         return posts;
     }
 

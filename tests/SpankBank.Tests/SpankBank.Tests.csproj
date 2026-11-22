@@ -18,6 +18,11 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- Pure page-number logic of the web app, tested without referencing the whole web project. -->
+    <Compile Include="..\..\src\Web\Services\Pager.cs" Link="Pager.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\..\src\Data\SpankBank.Data.csproj" />
     <ProjectReference Include="..\..\src\Core\SpankBank.Core.csproj" />
   </ItemGroup>

@@ -36,3 +36,18 @@ article.thumbnail .thm-duration {
 
   @include st-radius-left;
 }
+
+// The rubbish bin: the post listing's thumbnails, with a Restore button in the stats handle (its rating cell stays).
+article.thumbnail .thm-desc form, article.thumbnail form.thm-desc { margin: 0; }
+article.thumbnail .thm-restore {
+  align-items: center;
+  gap: 0.25rem;
+  border: 0;
+  font: inherit;
+  color: themed("color-text");
+  cursor: pointer;
+
+  svg { flex: none; }
+  &:hover:not(:disabled) { color: palette("text-white"); background: themed("color-section-lighten-10"); }
+  &:disabled { cursor: default; opacity: 0.6; }
+}
