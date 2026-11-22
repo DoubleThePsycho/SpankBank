@@ -3,41 +3,49 @@
 @using SpankBank.Data.RubbishBin
 @{
     ViewData["Title"] = "Rubbish bin";
-    ViewData["BodyClass"] = "c-status";
+    ViewData["BodyClass"] = "c-posts a-index"; // the listing's page layout, so the thumbnails are as big as there
 }
 @section SecondaryNav {
   <partial name="_AreaNav" model='"posts"' />
 }
-<div id="c-bin" class="container"><div id="a-index">
-  <h1>Rubbish bin</h1>
+<div id="c-posts"><div id="a-index"><div class="post-index bin-index">
+  @* The post listing's layout, so the thumbnails are as big as there at the chosen size; the left column holds the text and buttons where the listing has its search box and sidebar. *@
+  <div class="search bin-info">
+    <h1>Rubbish bin</h1>
 
-  @if (Model.Message is not null) { <div class="notice notice-info">@Model.Message</div> }
-  @if (Model.Error is not null) { <div class="notice notice-error">@Model.Error</div> }
+    @if (Model.Message is not null) { <div class="notice notice-info">@Model.Message</div> }
+    @if (Model.Error is not null) { <div class="notice notice-error">@Model.Error</div> }
 
-  <p>Deleted posts stay here for 30 days, then their files are removed for good. A deleted post is never downloaded again, even after it leaves the bin.</p>
+    <p>Deleted posts stay here for 30 days, then their files are removed for good. A deleted post is never downloaded again, even after it leaves the bin.</p>
 
-  @if (Model.StrayCount > 0)
-  {
-    <section class="box-section">
-      <h2>Stray posts</h2>
-      <p>@Model.StrayCount.ToString("N0") downloaded post(s) are not matched by any enabled watch and are not favorites.
-        <a href="/posts?tags=stray%3Atrue">Look at them</a> first, favorite the ones you want to keep, then:</p>
-      <form method="post" asp-page-handler="BinStrays">
-        <button type="submit" class="st-button" onclick="return confirm('Move @Model.StrayCount.ToString("N0") stray post(s) to the bin? They stay there for 30 days.')">Move all strays to the bin (@Model.StrayCount.ToString("N0"))</button>
+    @if (Model.StrayCount > 0)
+    {
+      <section class="box-section">
+        <h2>Stray posts</h2>
+        <p>@Model.StrayCount.ToString("N0") downloaded post(s) are not matched by any enabled watch and are not favorites.
+          <a href="/posts?tags=stray%3Atrue">Look at them</a> first, favorite the ones you want to keep, then:</p>
+        <form method="post" asp-page-handler="BinStrays">
+          <button type="submit" class="st-button" onclick="return confirm('Move @Model.StrayCount.ToString("N0") stray post(s) to the bin? They stay there for 30 days.')">Move all strays to the bin (@Model.StrayCount.ToString("N0"))</button>
+        </form>
+      </section>
+    }
+
+    @if (Model.Posts.Count > 0)
+    {
+      <form method="post" asp-page-handler="Empty">
+        <button type="submit" class="st-button" onclick="return confirm('Remove @Model.Posts.Count post(s) for good? This cannot be undone.')">Empty bin (@Model.Posts.Count.ToString("N0"))</button>
       </form>
-    </section>
-  }
+    }
+  </div>
 
-  @if (Model.Posts.Count == 0)
-  {
-    <p>The bin is empty.</p>
-  }
-  else
-  {
-    <form method="post" asp-page-handler="Empty" data-confirm="Remove @Model.Posts.Count post(s) for good? This cannot be undone.">
-      <button type="submit" class="st-button" onclick="return confirm('Remove @Model.Posts.Count post(s) for good? This cannot be undone.')">Empty bin (@Model.Posts.Count.ToString("N0"))</button>
-    </form>
-    @* The same thumbnails as the post listing; the stats handle holds the Restore button, and the rating cell stays. *@
+  <div class="content">
+  <div id="posts" class="post-index-gallery">
+    @if (Model.Posts.Count == 0)
+    {
+      <p>The bin is empty.</p>
+    }
+    else
+    {
     <section class="posts-container bin-posts">
       @foreach (var post in Model.Posts)
       {
@@ -61,5 +69,7 @@
         </article>
       }
     </section>
-  }
-</div></div>
+    }
+  </div>
+  </div>
+</div></div></div>
