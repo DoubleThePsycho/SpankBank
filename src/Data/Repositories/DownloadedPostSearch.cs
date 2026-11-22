@@ -90,13 +90,14 @@ public sealed class DownloadedPostSearch
             where.Append(" AND ").Append(term.Negated ? $"NOT ({condition})" : $"({condition})");
         }
 
-        if (error is null && query.StatusSpecified)
+        if (error is null && query.StatusSpecified && query.Statuses != PostStatuses.Any)
         {
-            switch (query.Status)
-            {
-                case PostStatusMode.Deleted: where.Append(" AND COALESCE(s.IsDeleted, 0) = 1"); break;
-                case PostStatusMode.Active: where.Append(" AND COALESCE(s.IsDeleted, 0) = 0"); break;
-            }
+            // Three exclusive kinds: a custom file (the user's own edit), else deleted on the site, else active.
+            var kinds = new List<string>();
+            if (query.Statuses.HasFlag(PostStatuses.Custom)) kinds.Add("d.Status = 4");
+            if (query.Statuses.HasFlag(PostStatuses.Deleted)) kinds.Add("(d.Status <> 4 AND COALESCE(s.IsDeleted, 0) = 1)");
+            if (query.Statuses.HasFlag(PostStatuses.Active)) kinds.Add("(d.Status <> 4 AND COALESCE(s.IsDeleted, 0) = 0)");
+            where.Append(" AND (").Append(string.Join(" OR ", kinds)).Append(')');
         }
 
         var orderBy = OrderClause(query.Order, ref error);

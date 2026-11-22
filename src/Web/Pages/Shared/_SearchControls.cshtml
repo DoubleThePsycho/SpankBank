@@ -101,22 +101,6 @@
         </div>
       </div>
 
-      <div class="ssc-entry">
-
-        <div class="ssc-label">
-          <label for="ssc-status">Status</label>
-        </div>
-
-        <div class="ssc-body">
-          @* Any / Active / Deleted as icons (layers, circle-check, trash; lucide.dev): the words do not fit the segments. *@
-          <label class="sto-toggle sto-toggle--tri" id="ssc-status" data-advanced-search="status" data-state="unset">
-            <span class="sto-tri" title="Any status"><svg-icon name="layers" width="16" height="16" /></span>
-            <span class="sto-tri" title="Active (not deleted on the site)"><svg-icon name="circle_check" width="16" height="16" /></span>
-            <span class="sto-tri" title="Deleted on the site"><svg-icon name="trash" width="16" height="16" /></span>
-          </label>
-        </div>
-      </div>
-
       <div class="ssc-header">Post relationships</div>
 
       <div class="ssc-entry">
@@ -152,6 +136,35 @@
     </div>
 
     <div class="ssc-column">
+
+      <div class="ssc-entry">
+
+        <div class="ssc-label">
+          <label for="ssc-status-active">Status</label>
+        </div>
+
+        @* Like Rating: each kind is on or off, all on (or all off) is no filter. Icons are lucide (circle-check, trash, sparkles). *@
+        <div class="ssc-body stm-toggle">
+          <input type="checkbox" id="ssc-status-active" name="advanced-search-status" value="active">
+          <label for="ssc-status-active" title="Not deleted on the site">
+            <svg-icon name="circle_check" />
+            Active
+          </label>
+
+          <input type="checkbox" id="ssc-status-deleted" name="advanced-search-status" value="deleted">
+          <label for="ssc-status-deleted" title="Deleted on the site (your own custom files are listed as Custom)">
+            <svg-icon name="trash" />
+            Deleted
+          </label>
+
+          <input type="checkbox" id="ssc-status-custom" name="advanced-search-status" value="custom">
+          <label for="ssc-status-custom" title="Your own edited file, added from your PC">
+            <svg-icon name="sparkles" />
+            Custom
+          </label>
+        </div>
+
+      </div>
 
       <div class="ssc-entry">
 

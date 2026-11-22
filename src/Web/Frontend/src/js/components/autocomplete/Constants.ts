@@ -8,7 +8,7 @@ export default class Constants {
 
   static readonly STATIC_METATAGS = {
     order: Constants.ORDER_METATAGS,
-    status: ["any", "deleted", "active", "pending", "flagged", "modqueue"],
+    status: ["any", "deleted", "active", "custom", "pending", "flagged", "modqueue"],
     rating: ["safe", "questionable", "explicit"],
     locked: ["rating", "note", "status"],
     child: ["any", "none"],

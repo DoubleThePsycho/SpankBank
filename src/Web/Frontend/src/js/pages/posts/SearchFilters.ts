@@ -1,6 +1,6 @@
 import SVGIcon from "../../utility/SVGIcon";
 import SearchQuery, {
-  MEDIA_ALL, MEDIA_LETTERS, ORDER_ASC, ORDER_CUSTOM, ORDER_DESC, ORDER_VALUES, RATINGS,
+  MEDIA_ALL, MEDIA_LETTERS, ORDER_ASC, ORDER_CUSTOM, ORDER_DESC, ORDER_VALUES, RATINGS, STATUSES,
   SOUND_BOTH, SOUND_NO_SOUND, SOUND_ONLY, SOUND_WARNING_ONLY,
 } from "./SearchQuery";
 
@@ -9,10 +9,6 @@ const SORT_CUSTOM_ID = "advanced-search-sort-custom";
 const TOGGLE_STATES = ["unset", "yes", "no"];
 const TOGGLE_VALUES: Record<string, string> = { unset: "", yes: "true", no: "false" };
 const TOGGLE_STATE_MAP: Record<string, string> = { "": "unset", "true": "yes", "false": "no" };
-// Status reads left to right as Any / Active / Deleted, on the same unset / yes / no segments.
-const STATUS_VALUES: Record<string, string> = { unset: "", yes: "active", no: "deleted" };
-const STATUS_STATE_MAP: Record<string, string> = { "": "unset", "active": "yes", "deleted": "no" };
-const STATUS_LABELS: Record<string, string> = { unset: "any", yes: "active", no: "deleted" };
 
 
 export default class SearchFilters {
@@ -32,7 +28,8 @@ export default class SearchFilters {
   private $inpoolToggle: JQuery<HTMLLabelElement>;
   private $ischildToggle: JQuery<HTMLLabelElement>;
   private $isparentToggle: JQuery<HTMLLabelElement>;
-  private $statusToggle: JQuery<HTMLLabelElement>;
+  private $statusCheckboxes: JQuery<HTMLInputElement>;
+  private statusUpdateInProgress = false;
   private $ratingCheckboxes: JQuery<HTMLInputElement>;
   private $mediaCheckboxes: JQuery<HTMLInputElement>;
   private $soundCheckboxes: JQuery<HTMLInputElement>;
@@ -45,7 +42,7 @@ export default class SearchFilters {
     this.$inpoolToggle = this.$controls.find<HTMLLabelElement>("[data-advanced-search=inpool]").first();
     this.$ischildToggle = this.$controls.find<HTMLLabelElement>("[data-advanced-search=ischild]").first();
     this.$isparentToggle = this.$controls.find<HTMLLabelElement>("[data-advanced-search=isparent]").first();
-    this.$statusToggle = this.$controls.find<HTMLLabelElement>("[data-advanced-search=status]").first();
+    this.$statusCheckboxes = this.$controls.find<HTMLInputElement>("[name='advanced-search-status']");
     this.$ratingCheckboxes = this.$controls.find<HTMLInputElement>("[name='advanced-search-rating']");
     this.$mediaCheckboxes = this.$controls.find<HTMLInputElement>("[name='advanced-search-media']");
     this.$soundCheckboxes = this.$controls.find<HTMLInputElement>("[name='advanced-search-sound']");
@@ -71,7 +68,7 @@ export default class SearchFilters {
     this.$controls.on("click", "[data-advanced-search=inpool]", (event) => this.updateInpool(event));
     this.$controls.on("click", "[data-advanced-search=ischild]", (event) => this.updateIschild(event));
     this.$controls.on("click", "[data-advanced-search=isparent]", (event) => this.updateIsparent(event));
-    this.$controls.on("click", "[data-advanced-search=status]", (event) => this.updateStatus(event));
+    this.$statusCheckboxes.on("change", () => this.updateStatuses());
     this.$ratingCheckboxes.on("change", () => this.updateRatings());
     this.$mediaCheckboxes.on("change", () => this.updateMediaTypes());
     this.$soundCheckboxes.on("change", (event) => this.updateSound(event));
@@ -85,7 +82,7 @@ export default class SearchFilters {
     if (this.$inpoolToggle.length) this.setInpoolState(q.inpool);
     if (this.$ischildToggle.length) this.setIschildState(q.ischild);
     if (this.$isparentToggle.length) this.setIsparentState(q.isparent);
-    if (this.$statusToggle.length) this.setStatusState(q.status);
+    this.syncStatusControls(q.statuses);
     this.syncRatingControls(q.ratings);
     this.syncMediaControls(q.media, q.mediaCustom);
     this.syncSoundControls(q.sound);
@@ -124,9 +121,11 @@ export default class SearchFilters {
     this.$ischildToggle.attr("data-state", state).attr("aria-label", `Has parent: ${state}`);
   }
 
-  private setStatusState (value: string): void {
-    const state = STATUS_STATE_MAP[value] || "unset";
-    this.$statusToggle.attr("data-state", state).attr("aria-label", `Status: ${STATUS_LABELS[state]}`);
+  private syncStatusControls (statuses: string[]): void {
+    if (!this.$statusCheckboxes.length || this.statusUpdateInProgress) return;
+    this.$statusCheckboxes.each((_index, element) => {
+      $(element).prop("checked", statuses.includes(element.value));
+    });
   }
 
   private setIsparentState (value: string): void {
@@ -222,18 +221,18 @@ export default class SearchFilters {
     this.query = this.query.withIschild(TOGGLE_VALUES[next]);
   }
 
-  private updateStatus (event: JQuery.ClickEvent): void {
-    const $el = $(event.currentTarget);
-    // A click on an icon lands on the svg inside the segment, so look up the segment that contains the target.
-    const spanIndex = $el.find(".sto-tri").toArray().findIndex((span) => span.contains(event.target));
-    let next: string;
-    if (spanIndex >= 0) {
-      next = TOGGLE_STATES[spanIndex];
-    } else {
-      const cur = TOGGLE_STATES.indexOf($el.attr("data-state") || "");
-      next = TOGGLE_STATES[(cur < 0 ? 1 : cur + 1) % TOGGLE_STATES.length];
+  private updateStatuses (): void {
+    const checked = this.$statusCheckboxes
+      .filter(":checked")
+      .map((_index, element) => element.value)
+      .get()
+      .sort((a, b) => STATUSES.indexOf(a) - STATUSES.indexOf(b));
+    this.statusUpdateInProgress = true;
+    try {
+      this.query = this.query.withStatuses(checked);
+    } finally {
+      this.statusUpdateInProgress = false;
     }
-    this.query = this.query.withStatus(STATUS_VALUES[next]);
   }
 
   private updateIsparent (event: JQuery.ClickEvent): void {

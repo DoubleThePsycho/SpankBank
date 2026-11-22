@@ -22,11 +22,18 @@ public readonly record struct PostMatchRow(
 /// <summary>A metatag as written: name:value, possibly negated (-name:value).</summary>
 public sealed record MetaTerm(string Name, string Value, bool Negated);
 
-public enum PostStatusMode
+/// <summary>
+/// What a post is on this device, as three exclusive kinds: <see cref="Custom"/> (the user's own edited file, filed through the
+/// importer), else <see cref="Deleted"/> (deleted on the site), else <see cref="Active"/>.
+/// </summary>
+[Flags]
+public enum PostStatuses
 {
-    Active,
-    Deleted,
-    Any,
+    None = 0,
+    Active = 1,
+    Deleted = 2,
+    Custom = 4,
+    Any = Active | Deleted | Custom,
 }
 
 /// <summary>
@@ -47,7 +54,8 @@ public sealed class PostSearchQuery
     /// </summary>
     public IReadOnlyList<IReadOnlyList<string>> AnyOfGroups { get; private init; } = [];
     public IReadOnlyList<Func<PostMatchRow, bool>> Filters { get; private init; } = [];
-    public PostStatusMode Status { get; private init; } = PostStatusMode.Active;
+    /// <summary>The kinds of post wanted; without a status: term only active posts (the default of watches).</summary>
+    public PostStatuses Statuses { get; private init; } = PostStatuses.Active;
     public bool StatusSpecified { get; private init; }
     /// <summary>The filtering metatags in order, for callers that build their own query (SQL).</summary>
     public IReadOnlyList<MetaTerm> Terms { get; private init; } = [];
@@ -62,12 +70,9 @@ public sealed class PostSearchQuery
     /// <summary>Column-only part of the search (everything except tag terms).</summary>
     public bool MatchesRow(in PostMatchRow row)
     {
-        switch (Status)
-        {
-            case PostStatusMode.Active when row.IsDeleted:
-            case PostStatusMode.Deleted when !row.IsDeleted:
-                return false;
-        }
+        // A watch has no idea what is on this device, so a custom file counts with the deleted posts here.
+        if (!Statuses.HasFlag(row.IsDeleted ? PostStatuses.Deleted : PostStatuses.Active) && !(row.IsDeleted && Statuses.HasFlag(PostStatuses.Custom)))
+            return false;
 
         foreach (var filter in Filters)
             if (!filter(row)) return false;
@@ -83,7 +88,8 @@ public sealed class PostSearchQuery
         var loose = new List<string>();
         List<string>? open = null;
         var filters = new List<Func<PostMatchRow, bool>>();
-        var status = PostStatusMode.Active;
+        var wanted = PostStatuses.None;
+        var unwanted = PostStatuses.None;
         var statusSpecified = false;
         var terms = new List<MetaTerm>();
         string? order = null;
@@ -135,15 +141,10 @@ public sealed class PostSearchQuery
             if (name == "status")
             {
                 statusSpecified = true;
-                var mode = value switch { "deleted" => PostStatusMode.Deleted, "any" => PostStatusMode.Any, "active" => PostStatusMode.Active, _ => (PostStatusMode?)null };
-                if (mode is null) { error ??= $"Unsupported status:{value}"; continue; }
-                if (negated)
-                {
-                    // Only two states exist, so excluding one is asking for the other; excluding every status matches nothing.
-                    mode = mode switch { PostStatusMode.Deleted => PostStatusMode.Active, PostStatusMode.Active => PostStatusMode.Deleted, _ => null };
-                    if (mode is null) { error ??= "-status:any would exclude every post."; continue; }
-                }
-                status = mode.Value;
+                var kind = value switch { "deleted" => PostStatuses.Deleted, "any" => PostStatuses.Any, "active" => PostStatuses.Active, "custom" => PostStatuses.Custom, _ => (PostStatuses?)null };
+                if (kind is null) { error ??= $"Unsupported status:{value}"; continue; }
+                // Several status: terms add up (status:active status:custom); -status: takes a kind away.
+                if (negated) unwanted |= kind.Value; else wanted |= kind.Value;
                 continue;
             }
 
@@ -173,6 +174,9 @@ public sealed class PostSearchQuery
         if (open is not null) error ??= "A parenthesis is not closed.";
         if (loose.Count > 0) groups.Add(loose);
 
+        var statuses = statusSpecified ? ((wanted == PostStatuses.None ? PostStatuses.Any : wanted) & ~unwanted) : PostStatuses.Active;
+        if (statuses == PostStatuses.None) error ??= "That status search would exclude every post.";
+
         return new PostSearchQuery
         {
             Required = required,
@@ -180,7 +184,7 @@ public sealed class PostSearchQuery
             AnyOf = anyOf,
             AnyOfGroups = groups,
             Filters = filters,
-            Status = status,
+            Statuses = statuses,
             StatusSpecified = statusSpecified,
             Terms = terms,
             Order = order,

@@ -42,6 +42,8 @@ export const ORDER_VALUES: Record<string, { label: string; icon: string; flat?: 
 const SUPPORTED_ORDER_VALUES: string[] = Object.entries(ORDER_VALUES)
   .flatMap(([key, val]) => (val.flat ? [key] : [key, key + "_asc"]));
 
+export const STATUSES = ["active", "deleted", "custom"];
+
 export const RATINGS = ["s", "q", "e"];
 const RATING_ALL = RATINGS.join("");
 
@@ -222,7 +224,7 @@ interface ParsedState {
   inpool: string;
   ischild: string;
   isparent: string;
-  status: string;
+  statuses: string[];
   ratings: string;
   media: string;
   mediaCustom: boolean;
@@ -250,8 +252,8 @@ export default class SearchQuery {
   get inpool (): string { return this._state.inpool; }
   get ischild (): string { return this._state.ischild; }
   get isparent (): string { return this._state.isparent; }
-  /** "active", "deleted", or "" for any (also for an explicit status:any). */
-  get status (): string { return this._state.status; }
+  /** The kinds of post shown, of "active", "deleted" and "custom" (all of them when the query has no status). */
+  get statuses (): string[] { return this._state.statuses; }
   get ratings (): string { return this._state.ratings; }
   get media (): string { return this._state.media; }
   get mediaCustom (): boolean { return this._state.mediaCustom; }
@@ -274,8 +276,8 @@ export default class SearchQuery {
     return new SearchQuery(SearchQuery.replaceIsparentMetatags(this._raw, value));
   }
 
-  withStatus (value: string): SearchQuery {
-    return new SearchQuery(SearchQuery.replaceStatusMetatags(this._raw, value));
+  withStatuses (values: string[]): SearchQuery {
+    return new SearchQuery(SearchQuery.replaceStatusMetatags(this._raw, values));
   }
 
   withRatings (ratings: string[]): SearchQuery {
@@ -301,7 +303,7 @@ export default class SearchQuery {
       inpool: "",
       ischild: "",
       isparent: "",
-      status: "",
+      statuses: [...STATUSES],
       ratings: RATING_ALL,
       media: MEDIA_ALL,
       mediaCustom: false,
@@ -310,6 +312,8 @@ export default class SearchQuery {
     };
 
     const tokens = SearchQuery.scanTopLevelTokens(raw);
+    const statusWanted: string[] = [];
+    const statusUnwanted: string[] = [];
 
     for (const token of tokens) {
       const order = SearchQuery.parseOrderToken(token.text);
@@ -328,13 +332,20 @@ export default class SearchQuery {
       if (isparent !== null) state.isparent = isparent;
 
       const status = SearchQuery.parseStatusToken(token.text);
-      if (status !== null) state.status = status === "any" ? "" : status;
+      if (status) {
+        // Like the server: positive terms add up, a negated one takes a kind away.
+        if (status.negated) statusUnwanted.push(...status.values);
+        else statusWanted.push(...status.values);
+      }
 
       const rating = SearchQuery.parseRatingToken(token.text);
       if (rating) state.ratings = SearchQuery.applyRatingToken(state.ratings, rating);
     }
 
     if (!state.ratings) state.ratings = RATING_ALL;
+    const statusBase = statusWanted.length > 0 ? statusWanted : STATUSES;
+    state.statuses = STATUSES.filter((value) => statusBase.includes(value) && !statusUnwanted.includes(value));
+    if (state.statuses.length === 0) state.statuses = [...STATUSES];
 
     const media = SearchQuery.resolveMediaState(SearchQuery.collectMediaSignals(tokens));
     state.media = media.media;
@@ -434,17 +445,13 @@ export default class SearchQuery {
     return { value, negated: match[1] === "-" };
   }
 
-  // SpankBank's own (e621ng's toggles stop at inpool / ischild / isparent): active, deleted, or any (the default).
-  private static parseStatusToken (text: string): string | null {
-    const match = text.match(/^(-?)status:(active|deleted|any)$/i);
+  // SpankBank's own (e621ng's toggles stop at inpool / ischild / isparent): status:active, deleted, custom (or any, which is all three).
+  private static parseStatusToken (text: string): { negated: boolean; values: string[] } | null {
+    const match = text.match(/^(-?)status:(active|deleted|custom|any)$/i);
     if (!match) return null;
 
     const value = match[2].toLowerCase();
-    if (!match[1]) return value;
-    // -status:deleted is the same as status:active (and the other way round); -status:any means nothing and is left alone.
-    if (value === "deleted") return "active";
-    if (value === "active") return "deleted";
-    return null;
+    return { negated: match[1] === "-", values: value === "any" ? [...STATUSES] : [value] };
   }
 
   private static parseIschildToken (text: string): string | null {
@@ -493,13 +500,20 @@ export default class SearchQuery {
     );
   }
 
-  private static replaceStatusMetatags (query: string, value: string): string {
-    const newToken = value ? "status:" + value : "";
+  private static replaceStatusMetatags (query: string, values: string[]): string {
     return SearchQuery.replaceTopLevelMetatags(
       query,
       (token) => SearchQuery.parseStatusToken(token) !== null,
-      newToken,
+      SearchQuery.statusMetatagToken(values),
     );
+  }
+
+  /** All or none of the kinds is no filter; one is status:x; two are written as taking the third away (-status:x). */
+  private static statusMetatagToken (values: string[]): string {
+    const chosen = STATUSES.filter((value) => values.includes(value));
+    if (chosen.length === 0 || chosen.length === STATUSES.length) return "";
+    if (chosen.length === 1) return "status:" + chosen[0];
+    return "-status:" + STATUSES.find((value) => !chosen.includes(value));
   }
 
   private static replaceIschildMetatags (query: string, value: string): string {
