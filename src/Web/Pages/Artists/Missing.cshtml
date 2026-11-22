@@ -1,0 +1,86 @@
+@page "/artist/{name}/missing"
+@model SpankBank.Web.Pages.Artists.MissingModel
+@using SpankBank.Core.Models
+@{
+    ViewData["Title"] = $"Missing posts - {Model.Name.Replace('_', ' ')}";
+    var lost = Model.Kind == SpankBank.Data.Repositories.WatchesRepository.MissingLost;
+    var artistUrl = "/artist/" + Uri.EscapeDataString(Model.Name);
+}
+@section SecondaryNav {
+  <partial name="_AreaNav" model='"artists"' />
+}
+@section Scripts {
+  <script type="module" src="~/dist/missing.js" asp-append-version="true"></script>
+}
+<div id="c-artists" class="container-fluid">
+  <div id="a-missing">
+    <h1 class="category-1"><a href="@artistUrl">@Model.Name.Replace('_', ' ')</a></h1>
+
+    <nav class="missing-tabs" aria-label="Kind of missing post">
+      <a href="@artistUrl/missing?kind=lost" class="@(lost ? "active" : "")" aria-current="@(lost ? "page" : null)"><svg-icon name="skull" width="16" height="16" /> Lost (@Model.Stats.Lost.ToString("N0"))</a>
+      <a href="@artistUrl/missing?kind=pending" class="@(lost ? "" : "active")" aria-current="@(lost ? null : "page")"><svg-icon name="hourglass" width="16" height="16" /> Pending (@Model.Stats.Pending.ToString("N0"))</a>
+    </nav>
+
+    <p class="hint">
+      @if (lost) { <text><strong>Lost</strong>: deleted on @SiteConfig.Name and no archive or source has the file.</text> }
+      else { <text><strong>Pending</strong>: not downloaded yet or waiting for a retry. Posts that are deleted on @SiteConfig.Name and not found anywhere move to Lost.</text> }
+      Files you have on your PC can be added below.
+    </p>
+
+    <section class="missing-upload" id="missing-upload" data-url="@artistUrl/missing">
+      <h2>Add files from this PC</h2>
+      <div class="missing-drop" tabindex="0">
+        <p>Drop files or folders here, or
+          <label class="st-button"><input type="file" multiple hidden data-pick="files"> Choose files</label>
+          <label class="st-button"><input type="file" multiple webkitdirectory hidden data-pick="folder"> Choose a folder</label>
+        </p>
+        <p class="hint">
+          File names are matched to the posts by id: <code>03469863.jpg</code>, <code>[001] 03469863.jpg</code> or <code>03469863.raw.jpg</code>.
+          A file whose MD5 is the post's is filed as the original; any other is kept as your own edited version (marked custom).
+          Files for posts that are not on these lists are skipped. When an id has a <code>.raw</code> file, that one is used.
+        </p>
+      </div>
+      <div class="missing-summary" hidden></div>
+      <ul class="missing-log"></ul>
+    </section>
+
+    @if (Model.Posts.Total == 0)
+    {
+      <p>@(lost ? "No lost posts." : "No pending posts.")</p>
+    }
+    else
+    {
+      <div class="table-wrap">
+        <table class="striped missing-table">
+          <thead>
+            <tr><th>Post</th><th>Rating</th><th>Posted</th><th>File</th><th>@(lost ? "Why it is lost" : "Status")</th><th>Tags</th></tr>
+          </thead>
+          <tbody>
+            @foreach (var post in Model.Posts.Items)
+            {
+              var rating = (PostRating)post.Rating switch { PostRating.Safe => "s", PostRating.Questionable => "q", _ => "e" };
+              <tr data-id="@post.Id">
+                <td><a href="@SiteConfig.Url("posts/" + post.Id)" rel="nofollow noopener">#@post.Id</a>@if (post.IsDeleted) { <span class="missing-deleted" title="Deleted on @SiteConfig.Name"><svg-icon name="trash" width="14" height="14" /></span> }</td>
+                <td><span class="rating-@(rating)">@rating.ToUpperInvariant()</span></td>
+                <td>@(post.CreatedAt.Length >= 10 ? post.CreatedAt[..10] : post.CreatedAt)</td>
+                <td>@post.Ext.ToUpperInvariant() @(post.Width is { } w && post.Height is { } h ? $"{w}x{h}" : "") <span class="muted">@MissingModel.Size(post.FileSize)</span></td>
+                <td>
+                  @if (post.ImportError is { } importError) { <span class="missing-error">Upload failed: @importError</span> }
+                  else if (post.QueuedImport) { <span class="missing-queued">Your file is waiting to be filed</span> }
+                  else { @(post.LastError ?? (lost ? "" : "Not tried yet")) }
+                </td>
+                <td class="missing-tags">@(post.TagString.Length > 120 ? post.TagString[..120] + "..." : post.TagString)</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+      @if (Model.Posts.LastPage > 1)
+      {
+        <div class="list-footer">
+          <partial name="_Paginator" model="new SpankBank.Web.Services.PagerModel(Model.Posts.Page, Model.Posts.LastPage, Model.PageUrl)" />
+        </div>
+      }
+    }
+  </div>
+</div>

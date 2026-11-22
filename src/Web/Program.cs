@@ -42,6 +42,7 @@ builder.Services.AddSingleton(new TagsRepository(paths.ServerDatabasePath));
 var watchesRepository = new WatchesRepository(paths.AppDatabasePath, paths.ServerDatabasePath);
 builder.Services.AddSingleton(watchesRepository);
 builder.Services.AddSingleton(new DownloadStore(paths));
+builder.Services.AddSingleton(sp => new SpankBank.Data.Downloads.LocalImportStore(paths, sp.GetRequiredService<DownloadStore>()));
 var settingsRepository = new SettingsRepository(paths.AppDatabasePath);
 builder.Services.AddSingleton(settingsRepository);
 builder.Services.AddSingleton(new ThemeSettings(settingsRepository));
@@ -116,6 +117,60 @@ app.MapDelete("/posts/{id:long}", async (long id, SettingsRepository settings, S
     favorites.Remove(id); // a binned post is no longer a favorite; restoring does not bring the star back
     await worker.NotifyAsync("bin");
     return Results.Ok(new { deleted = true });
+});
+
+// Missing posts: one uploaded file (the raw request body) for a lost or pending post of the artist. The body is staged under
+// <data>/uploads with its MD5 worked out on the way; the worker files it under the media root (the web app never writes there).
+app.MapPost("/artist/{name}/missing/{id:long}", async (string name, long id, HttpRequest request, WatchesRepository watches, LocalImportStore imports, WorkerClient worker, CancellationToken cancel) =>
+{
+    var watch = SpankBank.Web.Pages.Artists.MissingModel.FindWatch(watches, name);
+    if (watch is null) return Results.NotFound();
+
+    var fileName = Uri.UnescapeDataString(request.Headers["X-File-Name"].ToString());
+    var ext = LocalImportStore.NormalizeExtension(fileName);
+    if (ext is null) return Results.Json(new { error = "Not a file type " + SiteConfig.Name + " hosts (jpg, png, gif, webp, webm, mp4, swf)." }, statusCode: 400);
+
+    var (missing, catalogMd5) = watches.CheckMissing(watch.Id, id);
+    if (!missing || catalogMd5.Length != 32) return Results.Json(new { error = "Not on this artist's lost or pending list (or already here)." }, statusCode: 409);
+
+    if (request.HttpContext.Features.Get<Microsoft.AspNetCore.Http.Features.IHttpMaxRequestBodySizeFeature>() is { IsReadOnly: false } limit)
+        limit.MaxRequestBodySize = null; // videos are big
+
+    var folder = SpankBankPaths.Current.UploadsDir;
+    Directory.CreateDirectory(folder);
+    var staged = Path.Combine(folder, $"{id}-{Guid.NewGuid():N}.{ext}");
+    var part = staged + ".part";
+    string md5;
+    long size = 0;
+    try
+    {
+        using var hash = System.Security.Cryptography.IncrementalHash.CreateHash(System.Security.Cryptography.HashAlgorithmName.MD5);
+        await using (var file = File.Create(part))
+        {
+            var buffer = new byte[81920];
+            int read;
+            while ((read = await request.Body.ReadAsync(buffer, cancel)) > 0)
+            {
+                hash.AppendData(buffer, 0, read);
+                await file.WriteAsync(buffer.AsMemory(0, read), cancel);
+                size += read;
+            }
+        }
+        if (size == 0) { File.Delete(part); return Results.Json(new { error = "The file is empty." }, statusCode: 400); }
+        md5 = Convert.ToHexStringLower(hash.GetHashAndReset());
+        File.Move(part, staged);
+    }
+    catch
+    {
+        try { File.Delete(part); } catch (IOException) { }
+        throw;
+    }
+
+    var earlier = imports.GetAll().FirstOrDefault(i => i.PostId == id);
+    imports.Queue(id, staged, md5, ext, size, Path.GetFileName(fileName));
+    if (earlier is not null && earlier.StagedPath != staged) { try { File.Delete(earlier.StagedPath); } catch (IOException) { } }
+    await worker.NotifyAsync("import");
+    return Results.Ok(new { id, original = LocalImportStore.IsOriginal(md5, catalogMd5), md5 });
 });
 
 // Thumbnails of binned posts, read from <media>/.bin (the media folder's static route never serves dot folders).

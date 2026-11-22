@@ -20,6 +20,8 @@ public sealed class SpankBankPaths
     public string MediaDir { get; }
     public string DbDir => Path.Combine(DataDir, "db");
     public string ImportsDir => Path.Combine(DataDir, "imports");
+    /// <summary>Files uploaded for missing posts, waiting for the worker to file them under the media root.</summary>
+    public string UploadsDir => Path.Combine(DataDir, "uploads");
     /// <summary>ASP.NET Data Protection key ring (antiforgery tokens).</summary>
     public string KeysDir => Path.Combine(DataDir, "keys");
 

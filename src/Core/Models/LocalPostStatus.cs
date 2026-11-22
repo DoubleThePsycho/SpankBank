@@ -10,5 +10,7 @@ namespace SpankBank.Core.Models
         Recovered = 2,
         /// <summary>Only e621's downsized sample could be recovered; a stand-in for the original.</summary>
         SampleOnly = 3,
+        /// <summary>The user's own file, imported from their PC; its md5 is not the catalog's (edited or post-processed).</summary>
+        Custom = 4,
     }
 }

@@ -299,6 +299,21 @@ public static class DatabaseInitializer
         // removed with their posts) leaves no trace after the purge, so adding the artist again downloads them again.
         EnsureColumn(connection, "DeletedPosts", "Reason", "TEXT NOT NULL DEFAULT 'user'");
 
+        // Files the user uploaded for missing (lost or pending) posts: the web app stages the file and adds a row, the worker
+        // files it under the media root and removes the row. Error is set when the worker could not use the file.
+        Execute(connection, """
+            CREATE TABLE IF NOT EXISTS LocalImports (
+                PostId     INTEGER PRIMARY KEY,
+                StagedPath TEXT    NOT NULL,
+                Md5        TEXT    NOT NULL,
+                Ext        TEXT    NOT NULL,
+                FileSize   INTEGER NOT NULL,
+                FileName   TEXT,
+                AddedAt    TEXT    NOT NULL,
+                Error      TEXT
+            );
+            """);
+
         // Why e621 deleted a post (its latest deletion flag), looked up through the API for deleted posts the downloader would
         // otherwise try to recover. Kind says what the reason means to the "skip inferior versions and low-effort edits"
         // setting: 'inferior' or 'edit', empty for any other reason (or none found).

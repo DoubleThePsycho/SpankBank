@@ -43,6 +43,7 @@ public class ShowModel : PageModel
         get
         {
             var version = Post.Status == LocalPostStatus.SampleOnly || ShowingSample ? "sample" : Post.Status == LocalPostStatus.Recovered ? "original" : null;
+            if (Post.Status == LocalPostStatus.Custom) return "Using your own edited file.";
             if (version is null) return null;
             // Earlier versions stored "the Wayback Machine"; the article is left out here to keep the line short.
             var from = Post.RestoredFrom is { Length: > 0 } stored ? (stored.StartsWith("the ", StringComparison.OrdinalIgnoreCase) ? stored[4..] : stored) : null;

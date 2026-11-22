@@ -12,6 +12,7 @@ namespace SpankBank.Worker;
 ///   POST /commands/run-export    refresh the e621 exports now
 ///   POST /commands/match         re-match the watches that changed
 ///   POST /commands/downloads     look for posts to download
+///   POST /commands/import        file the uploads for missing posts
 ///   POST /commands/settings      settings were saved; re-read them
 /// A command only wakes the loop that does the work; the work itself and its durable flags live in the Settings table,
 /// so a command sent while the worker is down is still picked up when it starts.
@@ -102,6 +103,9 @@ public sealed class CommandServer : BackgroundService
                     break;
                 case "bin":
                     _signals.Bin.Notify();
+                    break;
+                case "import":
+                    _signals.Imports.Notify();
                     break;
                 case "downloads":
                     _signals.Downloads.Notify();

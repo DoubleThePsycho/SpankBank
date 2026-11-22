@@ -54,7 +54,7 @@ public sealed partial class WatchesRepository
         cmd.CommandText = $"""
             SELECT m.WatchedItemId,
                    COALESCE(SUM(d.Status = 1), 0),
-                   COALESCE(SUM(d.Status IN (2, 3)), 0),
+                   COALESCE(SUM(d.Status IN (2, 3, 4)), 0),
                    COALESCE(SUM(d.Id IS NULL AND x.PostId IS NOT NULL), 0),
                    COALESCE(SUM(d.Id IS NULL AND x.PostId IS NULL AND b.PostId IS NULL AND g.PostId IS NULL), 0)
             FROM WatchMatches m

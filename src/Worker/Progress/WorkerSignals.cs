@@ -11,4 +11,7 @@ public sealed class WorkerSignals
 
     /// <summary>Something for the rubbish bin: a delete, restore or empty request.</summary>
     public Signal Bin { get; } = new();
+
+    /// <summary>Files the user uploaded for missing posts are waiting to be put in place.</summary>
+    public Signal Imports { get; } = new();
 }

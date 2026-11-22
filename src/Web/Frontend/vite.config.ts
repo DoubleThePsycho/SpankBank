@@ -45,6 +45,7 @@ export default defineConfig({
         status: `${root}src/status.ts`,
         settings: `${root}src/settings.ts`,
         flash: `${root}src/flash.ts`,
+        missing: `${root}src/missing.ts`,
       },
       output: {
         entryFileNames: "[name].js",
