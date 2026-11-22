@@ -435,6 +435,7 @@ div#c-tags div#a-index table.striped.tags-table {
   }
 }
 .missing-table {
+  td:nth-child(-n + 4) { white-space: nowrap; }
   .missing-tags { max-width: 28rem; overflow: hidden; text-overflow: ellipsis; color: themed("color-text-muted"); font-size: 0.8125rem; }
   .missing-deleted { margin-left: 0.25rem; color: $count-red; svg { vertical-align: middle; } }
   .missing-error { color: $count-red; }
