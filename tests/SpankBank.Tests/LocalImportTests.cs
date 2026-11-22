@@ -58,15 +58,16 @@ public class LocalImportTests : IDisposable
         => Assert.Equal(expected, LocalImportStore.NormalizeExtension(name));
 
     [Fact]
-    public void Lost_and_pending_lists_split_the_matched_posts_that_are_not_local()
+    public void Lost_and_pending_posts_are_listed_together_and_local_ones_are_left_out()
     {
         AddPost(1, new string('a', 32), lost: true);
         AddPost(2, new string('b', 32), lost: false);
         AddPost(3, new string('c', 32), lost: false);
         _store.MarkSaved(_store.GetCatalogPost(3)!, LocalPostStatus.Downloaded);
 
-        Assert.Equal([1L], _watches.GetMissingPosts(_watch, WatchesRepository.MissingLost, 1, 50).Items.Select(p => p.Id).ToArray());
-        Assert.Equal([2L], _watches.GetMissingPosts(_watch, WatchesRepository.MissingPending, 1, 50).Items.Select(p => p.Id).ToArray());
+        var missing = _watches.GetMissingPosts(_watch, 1, 50).Items;
+        Assert.Equal([2L, 1L], missing.Select(p => p.Id).ToArray());
+        Assert.Equal([false, true], missing.Select(p => p.IsLost).ToArray());
         Assert.Equal(MissingState.Missing, _watches.CheckMissing(_watch, 1).State);
         Assert.Equal(MissingState.Missing, _watches.CheckMissing(_watch, 2).State);
         Assert.Equal(MissingState.AlreadyLocal, _watches.CheckMissing(_watch, 3).State);
@@ -89,7 +90,7 @@ public class LocalImportTests : IDisposable
         Assert.True(File.Exists(MediaPaths.Original(_folder + "/media", md5, "png")));
         Assert.Equal((long)LocalPostStatus.Recovered, _db.Scalar(_db.Paths.DeviceDatabasePath, "SELECT Status FROM Posts WHERE Id = 1;"));
         Assert.Empty(_imports.GetAll());
-        Assert.Empty(_watches.GetMissingPosts(_watch, WatchesRepository.MissingLost, 1, 50).Items);
+        Assert.Empty(_watches.GetMissingPosts(_watch, 1, 50).Items);
     }
 
     [Fact]

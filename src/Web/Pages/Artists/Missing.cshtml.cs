@@ -20,23 +20,21 @@ public class MissingModel : PageModel
     }
 
     public string Name { get; private set; } = "";
-    public string Kind { get; private set; } = WatchesRepository.MissingLost;
     public WatchPostStats Stats { get; private set; } = WatchPostStats.None;
     public WatchPage<MissingPost> Posts { get; private set; } = new([], 0, 1, 1);
     public int PageNumber { get; private set; } = 1;
 
-    public string PageUrl(int page) => $"/artist/{Uri.EscapeDataString(Name)}/missing?kind={Kind}&page={page}";
+    public string PageUrl(int page) => $"/artist/{Uri.EscapeDataString(Name)}/missing?page={page}";
 
-    public IActionResult OnGet(string name, string? kind)
+    public IActionResult OnGet(string name)
     {
         var watch = FindWatch(_watches, name);
         if (watch is null) return NotFound();
 
         Name = watch.SourceValue;
-        Kind = kind == WatchesRepository.MissingPending ? WatchesRepository.MissingPending : WatchesRepository.MissingLost;
         PageNumber = int.TryParse(Request.Query["page"], out var page) ? Math.Max(1, page) : 1;
         Stats = _watches.GetPostStats(WatchedItemType.Artist, [watch.Id]).GetValueOrDefault(watch.Id, WatchPostStats.None);
-        Posts = _watches.GetMissingPosts(watch.Id, Kind, PageNumber, ListView.PageSize(_settings.Get(WorkerSettingsKeys.ListPageSize)));
+        Posts = _watches.GetMissingPosts(watch.Id, PageNumber, ListView.PageSize(_settings.Get(WorkerSettingsKeys.ListPageSize)));
         return Page();
     }
 

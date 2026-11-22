@@ -30,8 +30,8 @@
                 <span class="count-db" title="Posts in the @SiteConfig.Name exports"><svg-icon name="database" width="16" height="16" /> @(statsWatch.Matched ? statsWatch.MatchCount.ToString("N0") : "-") <span class="stat-label">in the exports</span></span>
                 <span class="count-downloaded" title="Downloaded from @SiteConfig.Name"><svg-icon name="download" width="16" height="16" /> @Model.Stats.Downloaded.ToString("N0") <span class="stat-label">downloaded</span></span>
                 <span class="count-restored" title="Restored from a source site or the Wayback Machine"><svg-icon name="history" width="16" height="16" /> @Model.Stats.Restored.ToString("N0") <span class="stat-label">restored</span></span>
-                <span class="count-lost" title="Deleted on @SiteConfig.Name and not recoverable. Click to see them and add your own files"><a href="/artist/@Uri.EscapeDataString(artist.Name)/missing?kind=lost"><svg-icon name="skull" width="16" height="16" /> @Model.Stats.Lost.ToString("N0") <span class="stat-label">lost</span></a></span>
-                <span class="count-pending" title="Still to be fetched: not tried yet or waiting for a retry. Click to see them and add your own files"><a href="/artist/@Uri.EscapeDataString(artist.Name)/missing?kind=pending"><svg-icon name="hourglass" width="16" height="16" /> @Model.Stats.Pending.ToString("N0") <span class="stat-label">pending</span></a></span>
+                <span class="count-lost" title="Deleted on @SiteConfig.Name and not recoverable. Click to see them and add your own files"><a href="/artist/@Uri.EscapeDataString(artist.Name)/missing"><svg-icon name="skull" width="16" height="16" /> @Model.Stats.Lost.ToString("N0") <span class="stat-label">lost</span></a></span>
+                <span class="count-pending" title="Still to be fetched: not tried yet or waiting for a retry. Click to see them and add your own files"><a href="/artist/@Uri.EscapeDataString(artist.Name)/missing"><svg-icon name="hourglass" width="16" height="16" /> @Model.Stats.Pending.ToString("N0") <span class="stat-label">pending</span></a></span>
               </span>
             </td>
           </tr>

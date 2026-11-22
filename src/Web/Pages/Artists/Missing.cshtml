@@ -3,7 +3,6 @@
 @using SpankBank.Core.Models
 @{
     ViewData["Title"] = $"Missing posts - {Model.Name.Replace('_', ' ')}";
-    var lost = Model.Kind == SpankBank.Data.Repositories.WatchesRepository.MissingLost;
     var artistUrl = "/artist/" + Uri.EscapeDataString(Model.Name);
 }
 @section SecondaryNav {
@@ -16,14 +15,9 @@
   <div id="a-missing">
     <h1 class="category-1"><a href="@artistUrl">@Model.Name.Replace('_', ' ')</a></h1>
 
-    <nav class="missing-tabs" aria-label="Kind of missing post">
-      <a href="@artistUrl/missing?kind=lost" class="@(lost ? "active" : "")" aria-current="@(lost ? "page" : null)"><svg-icon name="skull" width="16" height="16" /> Lost (@Model.Stats.Lost.ToString("N0"))</a>
-      <a href="@artistUrl/missing?kind=pending" class="@(lost ? "" : "active")" aria-current="@(lost ? null : "page")"><svg-icon name="hourglass" width="16" height="16" /> Pending (@Model.Stats.Pending.ToString("N0"))</a>
-    </nav>
-
     <p class="hint">
-      @if (lost) { <text><strong>Lost</strong>: deleted on @SiteConfig.Name and no archive or source has the file.</text> }
-      else { <text><strong>Pending</strong>: not downloaded yet or waiting for a retry. Posts that are deleted on @SiteConfig.Name and not found anywhere move to Lost.</text> }
+      <span class="count-lost"><svg-icon name="skull" width="16" height="16" /> <strong>@Model.Stats.Lost.ToString("N0") lost</strong></span>: deleted on @SiteConfig.Name and no archive or source has the file.
+      <span class="count-pending"><svg-icon name="hourglass" width="16" height="16" /> <strong>@Model.Stats.Pending.ToString("N0") pending</strong></span>: not downloaded yet or waiting for a retry; when deleted and not found anywhere they become lost.
       Files you have on your PC can be added below.
     </p>
 
@@ -37,7 +31,7 @@
         <p class="hint">
           File names are matched to the posts by id: <code>03469863.jpg</code>, <code>[001] 03469863.jpg</code> or <code>03469863.raw.jpg</code>.
           A file whose MD5 is the post's is filed as the original; any other is kept as your own edited version (marked custom).
-          Files for posts that are not on these lists are skipped. When an id has a <code>.raw</code> file, that one is used.
+          Files for posts that are not on this list are skipped, and the reason is shown. When an id has a <code>.raw</code> file, that one is used.
         </p>
       </div>
       <div class="missing-summary" hidden></div>
@@ -46,14 +40,14 @@
 
     @if (Model.Posts.Total == 0)
     {
-      <p>@(lost ? "No lost posts." : "No pending posts.")</p>
+      <p>No lost or pending posts.</p>
     }
     else
     {
       <div class="table-wrap">
         <table class="striped missing-table">
           <thead>
-            <tr><th>Post</th><th>Rating</th><th>Posted</th><th>File</th><th>@(lost ? "Why it is lost" : "Status")</th><th>Tags</th></tr>
+            <tr><th>Post</th><th>Rating</th><th>Posted</th><th>File</th><th>Status</th><th>Tags</th></tr>
           </thead>
           <tbody>
             @foreach (var post in Model.Posts.Items)
@@ -65,9 +59,11 @@
                 <td>@(post.CreatedAt.Length >= 10 ? post.CreatedAt[..10] : post.CreatedAt)</td>
                 <td>@post.Ext.ToUpperInvariant() @(post.Width is { } w && post.Height is { } h ? $"{w}x{h}" : "") <span class="muted">@MissingModel.Size(post.FileSize)</span></td>
                 <td>
+                  <span class="@(post.IsLost ? "count-lost" : "count-pending")"><svg-icon name="@(post.IsLost ? "skull" : "hourglass")" width="14" height="14" /> @(post.IsLost ? "Lost" : "Pending")</span>
                   @if (post.ImportError is { } importError) { <span class="missing-error">Upload failed: @importError</span> }
                   else if (post.QueuedImport) { <span class="missing-queued">Your file is waiting to be filed</span> }
-                  else { @(post.LastError ?? (lost ? "" : "Not tried yet")) }
+                  else if (post.IsLost) { <span class="muted">@post.LastError</span> }
+                  else if (post.LastError is null) { <span class="muted">Not tried yet</span> }
                 </td>
                 <td class="missing-tags">@(post.TagString.Length > 120 ? post.TagString[..120] + "..." : post.TagString)</td>
               </tr>

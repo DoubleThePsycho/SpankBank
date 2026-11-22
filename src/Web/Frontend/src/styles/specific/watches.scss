@@ -399,18 +399,6 @@ div#c-tags div#a-index table.striped.tags-table {
 }
 
 // The missing posts page (/artist/<name>/missing): lost and pending tabs, the upload box and the list.
-.missing-tabs {
-  display: flex;
-  gap: 0.5rem;
-  margin: 0.5rem 0;
-  a {
-    padding: 0.25rem 0.75rem;
-    border-radius: 0.25rem;
-    border: 1px solid themed("color-section-lighten-5");
-    &.active { background: themed("color-section-lighten-5"); }
-    svg { vertical-align: middle; }
-  }
-}
 .missing-upload {
   margin: 1rem 0;
   .missing-drop {
@@ -444,4 +432,10 @@ div#c-tags div#a-index table.striped.tags-table {
 }
 @include window-smaller-than(40rem) {
   .missing-table { thead { display: none; } .missing-tags { display: none; } }
+}
+
+#a-missing {
+  .count-lost { color: $count-red; }
+  .count-pending { color: $count-orange; }
+  svg { vertical-align: middle; }
 }
