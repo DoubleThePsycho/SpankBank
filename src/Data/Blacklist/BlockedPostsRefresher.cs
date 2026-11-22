@@ -114,25 +114,31 @@ public sealed class BlockedPostsRefresher
         using var reader = cmd.ExecuteReader();
         while (reader.Read())
         {
-            var tagString = reader.IsDBNull(1) ? "" : reader.GetString(1);
-            var tagCount = tagString.Split(' ', StringSplitOptions.RemoveEmptyEntries).Length;
-            var row = new PostMatchRow(
-                Id: reader.GetInt64(0),
-                Rating: reader.GetInt32(2),
-                Score: reader.GetInt32(3),
-                FavCount: reader.GetInt32(4),
-                FileExt: reader.IsDBNull(5) ? null : reader.GetString(5),
-                Width: reader.IsDBNull(6) ? 0 : reader.GetInt32(6),
-                Height: reader.IsDBNull(7) ? 0 : reader.GetInt32(7),
-                ParentId: reader.IsDBNull(8) ? null : reader.GetInt64(8),
-                FileSize: reader.IsDBNull(9) ? 0 : reader.GetInt64(9),
-                IsDeleted: reader.GetInt32(10) != 0,
-                CommentCount: reader.GetInt32(11),
-                CreatedAt: reader.GetString(12),
-                Md5: reader.IsDBNull(13) ? null : reader.GetString(13),
-                TagCount: tagCount);
+            var row = ReadRow(reader, out var tagString);
             if (rules.Matches(tagString, row)) blocked.Add(row.Id);
         }
         return blocked;
+    }
+
+    /// <summary>The columns of a catalog post a blacklist line can test: Id, TagString, Rating, Score, FavCount, FileExt, ImageWidth,
+    /// ImageHeight, ParentId, FileSize, IsDeleted, CommentCount, CreatedAt, Md5 (in that order, from column 0).</summary>
+    public static PostMatchRow ReadRow(SqliteDataReader reader, out string tagString)
+    {
+        tagString = reader.IsDBNull(1) ? "" : reader.GetString(1);
+        return new PostMatchRow(
+            Id: reader.GetInt64(0),
+            Rating: reader.GetInt32(2),
+            Score: reader.GetInt32(3),
+            FavCount: reader.GetInt32(4),
+            FileExt: reader.IsDBNull(5) ? null : reader.GetString(5),
+            Width: reader.IsDBNull(6) ? 0 : reader.GetInt32(6),
+            Height: reader.IsDBNull(7) ? 0 : reader.GetInt32(7),
+            ParentId: reader.IsDBNull(8) ? null : reader.GetInt64(8),
+            FileSize: reader.IsDBNull(9) ? 0 : reader.GetInt64(9),
+            IsDeleted: reader.GetInt32(10) != 0,
+            CommentCount: reader.GetInt32(11),
+            CreatedAt: reader.GetString(12),
+            Md5: reader.IsDBNull(13) ? null : reader.GetString(13),
+            TagCount: tagString.Split(' ', StringSplitOptions.RemoveEmptyEntries).Length);
     }
 }

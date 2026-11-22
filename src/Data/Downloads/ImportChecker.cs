@@ -1,4 +1,5 @@
 using Microsoft.Data.Sqlite;
+using SpankBank.Data.Blacklist;
 using SpankBank.Data.Repositories;
 
 namespace SpankBank.Data.Downloads;
@@ -13,8 +14,11 @@ public enum ImportVerdict
     AlreadyLocal,
     /// <summary>In the rubbish bin, or deleted by the user (a purged one stays unwanted).</summary>
     Binned,
-    /// <summary>The site still has the post, so the downloader fetches the real original.</summary>
+    /// <summary>The site still has the post and an enabled watch matches it, so the downloader fetches the real original.</summary>
     StillOnline,
+    /// <summary>The site still has the post and no enabled watch matches it, so nothing will download it.</summary>
+    NotWatched,
+    /// <summary>A blacklist line matches the post (and no watch that ignores the blacklist matches it).</summary>
     Blacklisted,
     /// <summary>Deleted as a duplicate or inferior version of another post (only with the "skip inferior" setting).</summary>
     Inferior,
@@ -33,8 +37,9 @@ public sealed record ImportCheck(long PostId, ImportVerdict Verdict, string Md5,
         ImportVerdict.NotInCatalog => "not in the catalog",
         ImportVerdict.AlreadyLocal => "already on this device",
         ImportVerdict.Binned => "in the rubbish bin, or deleted by you",
-        ImportVerdict.StillOnline => "not deleted on the site (not downloaded yet), so the original is not replaced",
-        ImportVerdict.Blacklisted => "hidden by the blacklist",
+        ImportVerdict.StillOnline => "not deleted on the site; an enabled watch matches it, so the downloader gets the original",
+        ImportVerdict.NotWatched => "not deleted on the site and no enabled watch matches it (watch its artist or tag to download it)",
+        ImportVerdict.Blacklisted => "matches a blacklist line",
         ImportVerdict.Inferior => "deleted as an inferior version" + Because + " (the \"skip inferior\" setting is on)",
         ImportVerdict.LowEffortEdit => "deleted as a low-effort edit" + Because + " (the \"skip inferior\" setting is on)",
         _ => "the deletion reason is not known yet",
@@ -68,17 +73,29 @@ public sealed class ImportChecker
             attach.ExecuteNonQuery();
         }
 
+        var entries = new List<string>();
+        using (var lines = connection.CreateCommand())
+        {
+            lines.CommandText = "SELECT Query FROM Blacklist ORDER BY Id;";
+            using var reader = lines.ExecuteReader();
+            while (reader.Read()) entries.Add(reader.GetString(0));
+        }
+        var rules = BlacklistRules.Create(entries);
+
         foreach (var chunk in ids.Chunk(ChunkSize))
         {
             using var cmd = connection.CreateCommand();
             var names = chunk.Select((_, i) => $"$i{i}").ToList();
+            // Columns 0-13 are what the blacklist tests (see BlockedPostsRefresher.ReadRow); the flags follow.
             cmd.CommandText = $"""
-                SELECT p.Id, COALESCE(p.Md5, ''), p.IsDeleted, d.Id IS NOT NULL, g.PostId IS NOT NULL, b.PostId IS NOT NULL, x.PostId IS NOT NULL,
-                       r.PostId IS NOT NULL, r.Kind, r.Reason
+                SELECT p.Id, p.TagString, p.Rating, p.Score, p.FavCount, p.FileExt, p.ImageWidth, p.ImageHeight, p.ParentId, p.FileSize,
+                       p.IsDeleted, p.CommentCount, p.CreatedAt, p.Md5,
+                       d.Id IS NOT NULL, g.PostId IS NOT NULL, x.PostId IS NOT NULL, r.PostId IS NOT NULL, r.Kind, r.Reason,
+                       EXISTS (SELECT 1 FROM WatchMatches m JOIN WatchedItems w ON w.Id = m.WatchedItemId AND w.Enabled = 1 WHERE m.PostId = p.Id),
+                       EXISTS (SELECT 1 FROM WatchMatches m JOIN WatchedItems w ON w.Id = m.WatchedItemId AND w.Enabled = 1 AND w.IgnoreBlacklist = 1 WHERE m.PostId = p.Id)
                 FROM srv.Posts p
                 LEFT JOIN dev.Posts d ON d.Id = p.Id AND d.SavedAt IS NOT NULL
                 LEFT JOIN DeletedPosts g ON g.PostId = p.Id
-                LEFT JOIN BlockedPosts b ON b.PostId = p.Id
                 LEFT JOIN DownloadAttempts x ON x.PostId = p.Id AND {WatchesRepository.LostCondition}
                 LEFT JOIN DeletionReasons r ON r.PostId = p.Id
                 WHERE p.Id IN ({string.Join(", ", names)});
@@ -87,23 +104,25 @@ public sealed class ImportChecker
             using var reader = cmd.ExecuteReader();
             while (reader.Read())
             {
-                var id = reader.GetInt64(0);
-                var md5 = reader.GetString(1);
-                var (deleted, local, binned, blocked, lost, hasReason) = (reader.GetInt32(2) != 0, reader.GetInt32(3) != 0, reader.GetInt32(4) != 0, reader.GetInt32(5) != 0, reader.GetInt32(6) != 0, reader.GetInt32(7) != 0);
-                var kind = reader.IsDBNull(8) ? null : reader.GetString(8);
-                var reason = reader.IsDBNull(9) ? null : DeletionReasons.PlainText(reader.GetString(9));
+                var row = BlockedPostsRefresher.ReadRow(reader, out var tagString);
+                var md5 = row.Md5 ?? "";
+                var (local, binned, lost, hasReason) = (reader.GetInt32(14) != 0, reader.GetInt32(15) != 0, reader.GetInt32(16) != 0, reader.GetInt32(17) != 0);
+                var kind = reader.IsDBNull(18) ? null : reader.GetString(18);
+                var reason = reader.IsDBNull(19) ? null : DeletionReasons.PlainText(reader.GetString(19));
+                var (watched, exempt) = (reader.GetInt32(20) != 0, reader.GetInt32(21) != 0);
+                var blocked = !exempt && rules.Count > 0 && rules.Matches(tagString, row);
 
                 var verdict = local ? ImportVerdict.AlreadyLocal
                     : binned ? ImportVerdict.Binned
-                    : !deleted && !lost ? ImportVerdict.StillOnline
                     : blocked ? ImportVerdict.Blacklisted
+                    : !row.IsDeleted && !lost ? (watched ? ImportVerdict.StillOnline : ImportVerdict.NotWatched)
                     : md5.Length != 32 ? ImportVerdict.NotInCatalog
                     : !skipInferior ? ImportVerdict.Wanted
                     : !hasReason ? ImportVerdict.ReasonUnknown
                     : kind == "inferior" ? ImportVerdict.Inferior
                     : kind == "edit" ? ImportVerdict.LowEffortEdit
                     : ImportVerdict.Wanted;
-                results[id] = new ImportCheck(id, verdict, md5, reason);
+                results[row.Id] = new ImportCheck(row.Id, verdict, md5, reason);
             }
         }
 

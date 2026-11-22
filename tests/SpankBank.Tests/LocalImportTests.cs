@@ -94,6 +94,21 @@ public class LocalImportTests : IDisposable
     }
 
     [Fact]
+    public void Posts_the_site_still_has_say_whether_a_watch_matches_them_and_the_blacklist_applies_to_any_post()
+    {
+        AddPost(1, new string('a', 32), lost: false); // matched by the enabled watch, not deleted
+        _db.Execute(_db.Paths.ServerDatabasePath, $"INSERT INTO Posts (Id, CreatedAt, UpdatedAt, Md5, FileExt, IsDeleted, TagString) VALUES (2, '2026-01-01', '2026-01-01', '{new string('b', 32)}', 'png', 1, 'plain'), (3, '2026-01-01', '2026-01-01', '{new string('c', 32)}', 'png', 0, 'plain'), (4, '2026-01-01', '2026-01-01', '{new string('d', 32)}', 'png', 1, 'unwanted_tag');");
+
+        new SpankBank.Data.Blacklist.BlacklistRepository(_db.Paths.AppDatabasePath).SetAll(["unwanted_tag"]);
+        var verdicts = Check(false, 1, 2, 3, 4);
+
+        Assert.Equal(ImportVerdict.StillOnline, verdicts[1].Verdict);
+        Assert.Equal(ImportVerdict.Wanted, verdicts[2].Verdict);
+        Assert.Equal(ImportVerdict.NotWatched, verdicts[3].Verdict);     // online and nobody's watch matches it
+        Assert.Equal(ImportVerdict.Blacklisted, verdicts[4].Verdict);    // deleted, unmatched, but the blacklist still says no
+    }
+
+    [Fact]
     public void Inferior_versions_and_edits_are_refused_only_with_the_setting_on_and_unknown_reasons_are_reported()
     {
         foreach (var id in new[] { 1, 2, 3 })
