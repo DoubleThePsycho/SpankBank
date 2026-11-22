@@ -18,7 +18,7 @@ public enum ImportVerdict
     StillOnline,
     /// <summary>The site still has the post and no enabled watch matches it, so nothing will download it.</summary>
     NotWatched,
-    /// <summary>A blacklist line matches the post (and no watch that ignores the blacklist matches it).</summary>
+    /// <summary>A blacklist line matches the post (and no watch that ignores the blacklist matches it, enabled or not: you set that on purpose).</summary>
     Blacklisted,
     /// <summary>Deleted as a duplicate or inferior version of another post (only with the "skip inferior" setting).</summary>
     Inferior,
@@ -92,7 +92,7 @@ public sealed class ImportChecker
                        p.IsDeleted, p.CommentCount, p.CreatedAt, p.Md5,
                        d.Id IS NOT NULL, g.PostId IS NOT NULL, x.PostId IS NOT NULL, r.PostId IS NOT NULL, r.Kind, r.Reason,
                        EXISTS (SELECT 1 FROM WatchMatches m JOIN WatchedItems w ON w.Id = m.WatchedItemId AND w.Enabled = 1 WHERE m.PostId = p.Id),
-                       EXISTS (SELECT 1 FROM WatchMatches m JOIN WatchedItems w ON w.Id = m.WatchedItemId AND w.Enabled = 1 AND w.IgnoreBlacklist = 1 WHERE m.PostId = p.Id)
+                       EXISTS (SELECT 1 FROM WatchMatches m JOIN WatchedItems w ON w.Id = m.WatchedItemId AND w.IgnoreBlacklist = 1 WHERE m.PostId = p.Id)
                 FROM srv.Posts p
                 LEFT JOIN dev.Posts d ON d.Id = p.Id AND d.SavedAt IS NOT NULL
                 LEFT JOIN DeletedPosts g ON g.PostId = p.Id

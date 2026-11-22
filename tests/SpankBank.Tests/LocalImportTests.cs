@@ -106,6 +106,11 @@ public class LocalImportTests : IDisposable
         Assert.Equal(ImportVerdict.Wanted, verdicts[2].Verdict);
         Assert.Equal(ImportVerdict.NotWatched, verdicts[3].Verdict);     // online and nobody's watch matches it
         Assert.Equal(ImportVerdict.Blacklisted, verdicts[4].Verdict);    // deleted, unmatched, but the blacklist still says no
+
+        // An artist set to ignore the global blacklist exempts the posts they match, even while that artist is disabled.
+        _db.Execute(_db.Paths.AppDatabasePath, $"UPDATE WatchedItems SET IgnoreBlacklist = 1, Enabled = 0 WHERE Id = {_watch};");
+        _db.Execute(_db.Paths.AppDatabasePath, "INSERT INTO WatchMatches (WatchedItemId, PostId) VALUES (" + _watch + ", 4);");
+        Assert.Equal(ImportVerdict.Wanted, Check(false, 4)[4].Verdict);
     }
 
     [Fact]
