@@ -120,12 +120,7 @@
 
           <div class="post-sidebar-label">File</div>
           <div class="post-sidebar-value">
-            @(post.Status switch
-            {
-                LocalPostStatus.Recovered => "Recovered (Wayback Machine)",
-                LocalPostStatus.SampleOnly => "Sample only",
-                _ => "Original",
-            })
+            @Model.FileLabel
           </div>
         </div>
 

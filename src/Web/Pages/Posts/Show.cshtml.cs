@@ -37,13 +37,26 @@ public class ShowModel : PageModel
     /// <summary>The post was deleted on the site, or what is shown here is a restored copy.</summary>
     public bool ShowDeletedNotice => Extras?.IsDeleted == true || Post.Status is LocalPostStatus.Recovered or LocalPostStatus.SampleOnly;
 
+    /// <summary>The file came from the user's own PC (an upload on a lost or pending post), original or edited.</summary>
+    public bool ManualUpload => Post.Status == LocalPostStatus.Custom || Post.RestoredFrom == SpankBank.Data.Downloads.LocalImportStore.Source;
+
+    /// <summary>What the sidebar's File line says.</summary>
+    public string FileLabel => Post.Status switch
+    {
+        LocalPostStatus.Custom => "Manual upload (edited)",
+        LocalPostStatus.Recovered when ManualUpload => "Manual upload (original)",
+        LocalPostStatus.Recovered => $"Recovered ({(Post.RestoredFrom is { Length: > 0 } from ? (from.StartsWith("the ", StringComparison.OrdinalIgnoreCase) ? from[4..] : from) : "Wayback Machine")})",
+        LocalPostStatus.SampleOnly => "Sample only",
+        _ => "Original",
+    };
+
     /// <summary>"Restored original from Wayback Machine." (shown after "Post deleted:"), or null when nothing was restored.</summary>
     public string? RestoredNotice
     {
         get
         {
             var version = Post.Status == LocalPostStatus.SampleOnly || ShowingSample ? "sample" : Post.Status == LocalPostStatus.Recovered ? "original" : null;
-            if (Post.Status == LocalPostStatus.Custom) return "Using your own edited file.";
+            if (ManualUpload) return "Manual upload.";
             if (version is null) return null;
             // Earlier versions stored "the Wayback Machine"; the article is left out here to keep the line short.
             var from = Post.RestoredFrom is { Length: > 0 } stored ? (stored.StartsWith("the ", StringComparison.OrdinalIgnoreCase) ? stored[4..] : stored) : null;
