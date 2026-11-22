@@ -297,8 +297,8 @@ reasons are remembered (table `DeletionReasons`), and switching the setting off 
 **Adding files from your own PC.** On **Status → Downloads** you can drop files or whole folders (it recurses) for posts that
 the site has deleted or that were lost. File names are matched to posts by id: `03469863.jpg`, `[001] 03469863.jpg` and
 `03469863.raw.jpg` all work, and when an id has a `.raw` file the others for it are ignored. The ids are checked before
-anything is uploaded, so files whose post is already on the device, is still served by the site (the downloader fetches the
-real original), is in the rubbish bin or hidden by the blacklist are skipped without being sent. With the skip setting above
+anything is uploaded, so files are skipped without being sent when their post is already on the device, has not been deleted by the site (the
+real original is not replaced), is in the rubbish bin or is hidden by the blacklist. With the skip setting above
 switched on, posts deleted as an inferior version or a low-effort edit are skipped as well (their reasons are looked up
 first). A file whose MD5 is the post's is filed as the original; any other is kept as your own edited version and shown as
 a manual upload on the post page. The web app stages the upload in `<data>/uploads` and the worker files it under the media

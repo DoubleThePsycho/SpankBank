@@ -11,7 +11,7 @@ interface Verdict { id: number; verdict: string; message: string; }
 // Shown in the summary; AlreadyLocal is only counted, the others are listed too.
 const LABELS: Record<string, string> = {
   AlreadyLocal: "already here",
-  StillOnline: "still on the site",
+  StillOnline: "not deleted on the site",
   Binned: "in the bin",
   Blacklisted: "blacklisted",
   Inferior: "inferior versions",
