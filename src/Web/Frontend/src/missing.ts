@@ -11,7 +11,7 @@ if (root) {
   const drop = root.querySelector<HTMLElement>(".missing-drop")!;
   const summary = root.querySelector<HTMLElement>(".missing-summary")!;
   const log = root.querySelector<HTMLElement>(".missing-log")!;
-  const counts = { original: 0, custom: 0, skipped: 0, failed: 0 };
+  const counts = { original: 0, custom: 0, already: 0, skipped: 0, failed: 0 };
   let busy = false;
 
   const line = (text: string, kind: string) => {
@@ -24,7 +24,7 @@ if (root) {
 
   const showSummary = (finished: boolean) => {
     summary.hidden = false;
-    summary.textContent = `${counts.original} original, ${counts.custom} custom, ${counts.skipped} skipped, ${counts.failed} failed` + (finished ? "." : "...");
+    summary.textContent = `${counts.original} original, ${counts.custom} custom, ${counts.already} already here, ${counts.skipped} skipped, ${counts.failed} failed` + (finished ? "." : "...");
     if (finished && counts.original + counts.custom > 0) {
       const reload = document.createElement("a");
       reload.href = location.href;
@@ -57,9 +57,10 @@ if (root) {
         row.className = "ok";
         row.textContent = `${candidate.file.name}: ${original ? "original (MD5 matches)" : "custom (MD5 differs)"}, #${candidate.id}`;
       } else if (response.status === 409) {
-        counts.skipped++;
+        const already = body.reason === "AlreadyLocal";
+        counts[already ? "already" : "skipped"]++;
         row.className = "skipped";
-        row.textContent = `${candidate.file.name}: skipped, ${body.error ?? "not on the list"}`;
+        row.textContent = `${candidate.file.name}: ${already ? "" : "skipped, "}${body.error ?? "not on the list"} (#${candidate.id})`;
       } else {
         counts.failed++;
         row.className = "failed";
@@ -76,7 +77,7 @@ if (root) {
   async function handle(files: File[]) {
     if (busy) return;
     busy = true;
-    counts.original = counts.custom = counts.skipped = counts.failed = 0;
+    counts.original = counts.custom = counts.already = counts.skipped = counts.failed = 0;
     log.replaceChildren();
 
     // Names are matched by id. When an id has a ".raw" file, the others for it are left out: those were post-processed.

@@ -130,8 +130,21 @@ app.MapPost("/artist/{name}/missing/{id:long}", async (string name, long id, Htt
     var ext = LocalImportStore.NormalizeExtension(fileName);
     if (ext is null) return Results.Json(new { error = "Not a file type " + SiteConfig.Name + " hosts (jpg, png, gif, webp, webm, mp4, swf)." }, statusCode: 400);
 
-    var (missing, catalogMd5) = watches.CheckMissing(watch.Id, id);
-    if (!missing || catalogMd5.Length != 32) return Results.Json(new { error = "Not on this artist's lost or pending list (or already here)." }, statusCode: 409);
+    var (state, catalogMd5) = watches.CheckMissing(watch.Id, id);
+    if (state == MissingState.Missing && catalogMd5.Length != 32) state = MissingState.NotInCatalog;
+    if (state != MissingState.Missing)
+        return Results.Json(new
+        {
+            reason = state.ToString(),
+            error = state switch
+            {
+                MissingState.AlreadyLocal => "already on this device",
+                MissingState.NotListed => "not matched by this artist (another artist's post, or not matched at all)",
+                MissingState.NotInCatalog => "not in the catalog",
+                MissingState.Binned => "in the rubbish bin (restore it there)",
+                _ => "hidden by the blacklist, so it is not on the pending list",
+            },
+        }, statusCode: 409);
 
     if (request.HttpContext.Features.Get<Microsoft.AspNetCore.Http.Features.IHttpMaxRequestBodySizeFeature>() is { IsReadOnly: false } limit)
         limit.MaxRequestBodySize = null; // videos are big

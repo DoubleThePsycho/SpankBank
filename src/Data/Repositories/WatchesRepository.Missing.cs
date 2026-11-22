@@ -65,17 +65,48 @@ public sealed partial class WatchesRepository
     }
 
     /// <summary>Whether the post is lost or pending for the watch (so an uploaded file for it is wanted), and its catalog md5.</summary>
-    public (bool Missing, string Md5) CheckMissing(long watchId, long postId)
+    public (MissingState State, string Md5) CheckMissing(long watchId, long postId)
     {
         using var connection = OpenWithDevice(attachServer: true);
         using var cmd = connection.CreateCommand();
         cmd.CommandText = $"""
-            SELECT COALESCE(p.Md5, ''), (d.Id IS NULL AND (x.PostId IS NOT NULL OR (b.PostId IS NULL AND g.PostId IS NULL)))
-            {MissingFrom} WHERE m.WatchedItemId = $watch AND m.PostId = $post;
+            SELECT COALESCE(p.Md5, ''), m.PostId IS NOT NULL, d.Id IS NOT NULL, x.PostId IS NOT NULL, b.PostId IS NOT NULL, g.PostId IS NOT NULL
+            FROM srv.Posts p
+            LEFT JOIN WatchMatches m ON m.PostId = p.Id AND m.WatchedItemId = $watch
+            LEFT JOIN dev.Posts d ON d.Id = p.Id AND d.SavedAt IS NOT NULL
+            LEFT JOIN DownloadAttempts x ON x.PostId = p.Id AND {LostCondition}
+            LEFT JOIN BlockedPosts b ON b.PostId = p.Id
+            LEFT JOIN DeletedPosts g ON g.PostId = p.Id
+            WHERE p.Id = $post;
             """;
         cmd.Parameters.AddWithValue("$watch", watchId);
         cmd.Parameters.AddWithValue("$post", postId);
         using var reader = cmd.ExecuteReader();
-        return reader.Read() ? (reader.GetInt32(1) != 0, reader.GetString(0)) : (false, "");
+        if (!reader.Read()) return (MissingState.NotInCatalog, "");
+
+        var (md5, matched, local, lost, blacklisted, binned) = (reader.GetString(0), reader.GetInt32(1) != 0, reader.GetInt32(2) != 0, reader.GetInt32(3) != 0, reader.GetInt32(4) != 0, reader.GetInt32(5) != 0);
+        var state = local ? MissingState.AlreadyLocal
+            : !matched ? MissingState.NotListed
+            : lost || (!blacklisted && !binned) ? MissingState.Missing
+            : binned ? MissingState.Binned
+            : MissingState.Blacklisted;
+        return (state, md5);
     }
+}
+
+/// <summary>Whether an uploaded file for a post is wanted (<see cref="Missing"/>), or why not.</summary>
+public enum MissingState
+{
+    /// <summary>Lost or pending for the artist: the file is wanted.</summary>
+    Missing,
+    /// <summary>A file for the post is already on this device.</summary>
+    AlreadyLocal,
+    /// <summary>The post is not matched by this artist's watch (another artist's, or not matched at all).</summary>
+    NotListed,
+    /// <summary>The id is not in the catalog.</summary>
+    NotInCatalog,
+    /// <summary>In the rubbish bin or deleted by the user.</summary>
+    Binned,
+    /// <summary>Hidden by the blacklist, so it is not on the pending list.</summary>
+    Blacklisted,
 }

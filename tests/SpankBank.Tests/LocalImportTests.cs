@@ -67,10 +67,13 @@ public class LocalImportTests : IDisposable
 
         Assert.Equal([1L], _watches.GetMissingPosts(_watch, WatchesRepository.MissingLost, 1, 50).Items.Select(p => p.Id).ToArray());
         Assert.Equal([2L], _watches.GetMissingPosts(_watch, WatchesRepository.MissingPending, 1, 50).Items.Select(p => p.Id).ToArray());
-        Assert.True(_watches.CheckMissing(_watch, 1).Missing);
-        Assert.True(_watches.CheckMissing(_watch, 2).Missing);
-        Assert.False(_watches.CheckMissing(_watch, 3).Missing);
-        Assert.False(_watches.CheckMissing(_watch, 99).Missing);
+        Assert.Equal(MissingState.Missing, _watches.CheckMissing(_watch, 1).State);
+        Assert.Equal(MissingState.Missing, _watches.CheckMissing(_watch, 2).State);
+        Assert.Equal(MissingState.AlreadyLocal, _watches.CheckMissing(_watch, 3).State);
+        Assert.Equal(MissingState.NotInCatalog, _watches.CheckMissing(_watch, 99).State);
+
+        _db.Execute(_db.Paths.ServerDatabasePath, $"INSERT INTO Posts (Id, CreatedAt, UpdatedAt, Md5, FileExt) VALUES (50, '2026-01-01', '2026-01-01', '{new string('9', 32)}', 'png');");
+        Assert.Equal(MissingState.NotListed, _watches.CheckMissing(_watch, 50).State);
     }
 
     [Fact]
