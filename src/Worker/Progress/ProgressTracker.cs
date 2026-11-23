@@ -142,10 +142,20 @@ public sealed class ProgressTracker
         }
     }
 
-    /// <summary>More posts turned up while a session was running.</summary>
-    public void DownloadSessionGrew(int more)
+    /// <summary>
+    /// Makes sure the session's total is at least what is done plus <paramref name="batchSize"/>: more posts turn up while a session runs
+    /// (new matches, retries that came due), and the count read at the start would otherwise be passed ("4,428 of 2,579 posts").
+    /// Returns true when the total is too small, so the caller counts what is waiting and calls <see cref="DownloadSessionTotal"/>.
+    /// </summary>
+    public bool DownloadTotalTooSmall(int batchSize)
     {
-        lock (_lock) _downloadTotal += more;
+        lock (_lock) return _downloadActive && _downloadDone + _downloadFailed + batchSize > _downloadTotal;
+    }
+
+    /// <summary>Sets the session's total to the posts finished so far plus the given number still waiting.</summary>
+    public void DownloadSessionTotal(int stillWaiting)
+    {
+        lock (_lock) _downloadTotal = _downloadDone + _downloadFailed + stillWaiting;
     }
 
     public void DownloadSessionIdle(string reason)

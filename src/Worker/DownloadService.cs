@@ -102,6 +102,11 @@ public sealed class DownloadService : BackgroundService
                     inSession = true;
                     _progress.DownloadSessionStarted(Math.Min(_store.CountPending(DateTimeOffset.UtcNow, skipInferior), room));
                 }
+                else if (_progress.DownloadTotalTooSmall(batch.Count))
+                {
+                    // More posts turned up since the session began: count again so "n of N" stays true.
+                    _progress.DownloadSessionTotal(Math.Min(_store.CountPending(DateTimeOffset.UtcNow, skipInferior), room));
+                }
 
                 await Parallel.ForEachAsync(batch,
                     new ParallelOptions { MaxDegreeOfParallelism = parallelism, CancellationToken = stoppingToken },
