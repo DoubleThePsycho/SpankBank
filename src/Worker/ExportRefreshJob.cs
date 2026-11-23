@@ -1,6 +1,7 @@
 using SpankBank.Core;
 using Microsoft.Data.Sqlite;
 using SpankBank.Data;
+using SpankBank.Data.Downloads;
 using SpankBank.Data.Import;
 using SpankBank.Data.Matching;
 using SpankBank.Data.Repositories;
@@ -153,6 +154,13 @@ public sealed class ExportRefreshJob
         else _progress.EndPhase(PhasePosts, PhaseState.Skipped);
 
         var text = summary.Count == 0 ? "Nothing new to import." : "Imported " + string.Join(", ", summary) + ".";
+
+        // The local posts' tags follow the catalog's (searching reads the local copy only).
+        if (detected.PostsPath is not null)
+        {
+            var retagged = await Task.Run(() => new LocalTagSync(_paths).Run(), cancellationToken);
+            if (retagged > 0) text += $" Updated the tags of {retagged:N0} local posts.";
+        }
 
         _progress.StartPhase(PhaseMatch);
         var matched = await Task.Run(() => _matcher.Run(all: true, cancellationToken,

@@ -11,7 +11,7 @@ public class LocalTagCountsTests : IDisposable
     private void Post(int id, string tags, string? savedAt, string? deviceTags = null)
     {
         _db.Execute(_db.Paths.ServerDatabasePath, $"INSERT OR REPLACE INTO Posts (Id, CreatedAt, UpdatedAt, Md5, FileExt, TagString) VALUES ({id}, '2024-01-01', '2024-01-01', '{id:D32}', 'png', '{tags}');");
-        _db.Execute(_db.Paths.DeviceDatabasePath, $"INSERT OR REPLACE INTO Posts (Id, CreatedAt, UpdatedAt, Md5, FileExt, TagString, SavedAt, Status) VALUES ({id}, '2024-01-01', '2024-01-01', '{id:D32}', 'png', {(deviceTags is null ? "NULL" : $"'{deviceTags}'")}, {(savedAt is null ? "NULL" : $"'{savedAt}'")}, 1);");
+        _db.Execute(_db.Paths.DeviceDatabasePath, $"INSERT OR REPLACE INTO Posts (Id, CreatedAt, UpdatedAt, Md5, FileExt, TagString, SavedAt, Status) VALUES ({id}, '2024-01-01', '2024-01-01', '{id:D32}', 'png', '{deviceTags ?? tags}', {(savedAt is null ? "NULL" : $"'{savedAt}'")}, 1);");
     }
 
     [Fact]
@@ -29,10 +29,14 @@ public class LocalTagCountsTests : IDisposable
     }
 
     [Fact]
-    public void Falls_back_to_the_device_tags_when_the_catalog_has_no_row()
+    public void Counts_the_local_copy_of_the_tags_until_the_tag_sync_updates_it()
     {
-        _db.Execute(_db.Paths.DeviceDatabasePath, "INSERT INTO Posts (Id, CreatedAt, UpdatedAt, Md5, FileExt, TagString, SavedAt, Status) VALUES (9, '2024-01-01', '2024-01-01', 'x', 'png', 'otter', '2026-01-01T00:00:00+00:00', 1);");
-        Assert.Equal(1, new LocalTagCounts(_db.Paths).Get("otter"));
+        Post(1, "fox implied_tag", "2026-01-01T00:00:00+00:00", deviceTags: "fox");
+        var counts = new LocalTagCounts(_db.Paths, refreshAfter: TimeSpan.Zero);
+        Assert.Equal(0, counts.Get("implied_tag"));
+
+        Assert.Equal(1, new SpankBank.Data.Downloads.LocalTagSync(_db.Paths).Run());
+        Wait(() => counts.Get("implied_tag") == 1);
     }
 
     [Fact]

@@ -8,16 +8,17 @@ namespace SpankBank.Data.Repositories;
 public sealed record SearchPage(IReadOnlyList<PostListItem> Items, long Total, int PageSize, string? Error);
 
 /// <summary>
-/// e621-style search over the posts on this device. Tags and most columns come from the catalog row of each post
-/// (fresh with every export import), joined to device.sqlite by id.
+/// e621-style search over the posts on this device. Tags are matched against the local copy kept in device.sqlite (the worker's
+/// <c>LocalTagSync</c> keeps it in step with the catalog after every import), so a search never has to look every post up in the
+/// catalog; the catalog row is only joined for the few columns that live there (favorite count, deleted flag, ...).
 /// </summary>
 public sealed class DownloadedPostSearch
 {
     private const int MaxPageSize = 320;
 
     // Tags of the post, space-padded so " tag " matches whole tags only.
-    private const string TagsExpr = "(' ' || COALESCE(s.TagString, d.TagString, '') || ' ')";
-    private const string TagCountExpr = "(length(TRIM(COALESCE(s.TagString, d.TagString, ''))) - length(replace(TRIM(COALESCE(s.TagString, d.TagString, '')), ' ', '')) + 1)";
+    private const string TagsExpr = "(' ' || COALESCE(d.TagString, '') || ' ')";
+    private const string TagCountExpr = "(length(TRIM(COALESCE(d.TagString, ''))) - length(replace(TRIM(COALESCE(d.TagString, '')), ' ', '')) + 1)";
 
     private static readonly Dictionary<string, string> NumericColumns = new()
     {
@@ -105,46 +106,40 @@ public sealed class DownloadedPostSearch
 
         using var connection = OpenWithCatalog();
 
+        // One scan: the ids of everything that matches go into a temp table (it goes with the connection); the count and the
+        // page both come from it, instead of scanning the posts once for each.
+        using (var scan = connection.CreateCommand())
+        {
+            scan.CommandText = $"CREATE TEMP TABLE hits AS SELECT d.Id AS Id FROM Posts d LEFT JOIN srv.Posts s ON s.Id = d.Id WHERE {where};";
+            foreach (var (name, value) in parameters) scan.Parameters.AddWithValue(name, value);
+            scan.ExecuteNonQuery();
+        }
+
         long total;
         using (var count = connection.CreateCommand())
         {
-            count.CommandText = $"SELECT COUNT(*) FROM Posts d LEFT JOIN srv.Posts s ON s.Id = d.Id WHERE {where};";
-            foreach (var (name, value) in parameters) count.Parameters.AddWithValue(name, value);
+            count.CommandText = "SELECT COUNT(*) FROM hits;";
             total = Convert.ToInt64(count.ExecuteScalar());
         }
 
-        var items = new List<PostListItem>();
+        // The ids of the page, in order; only then are the posts themselves read.
+        var pageIds = new List<long>();
         using (var cmd = connection.CreateCommand())
         {
             cmd.CommandText = $"""
-                SELECT d.Id, d.Rating, d.CreatedAt, d.UpdatedAt, d.Score, d.FileExt, d.Md5, COALESCE(s.FavCount, 0),
-                       COALESCE(d.Duration, s.Duration), COALESCE(s.TagString, d.TagString), COALESCE(s.IsDeleted, 0)
-                FROM Posts d LEFT JOIN srv.Posts s ON s.Id = d.Id
-                WHERE {where}
+                SELECT d.Id
+                FROM hits h JOIN Posts d ON d.Id = h.Id LEFT JOIN srv.Posts s ON s.Id = d.Id
                 ORDER BY {orderBy}
                 LIMIT $limit OFFSET $offset;
                 """;
-            foreach (var (name, value) in parameters) cmd.Parameters.AddWithValue(name, value);
             cmd.Parameters.AddWithValue("$limit", pageSize);
             cmd.Parameters.AddWithValue("$offset", (long)Math.Max(0, page - 1) * pageSize);
-
             using var reader = cmd.ExecuteReader();
-            while (reader.Read())
-            {
-                items.Add(new PostListItem(
-                    Id: reader.GetInt64(0),
-                    Rating: (PostRating)reader.GetInt32(1),
-                    CreatedAt: DateTimeOffset.Parse(reader.GetString(2)),
-                    UpdatedAt: DateTimeOffset.Parse(reader.GetString(3)),
-                    Score: reader.GetInt32(4),
-                    FileExt: reader.IsDBNull(5) ? null : reader.GetString(5),
-                    Md5: reader.IsDBNull(6) ? null : reader.GetString(6),
-                    FavCount: reader.GetInt32(7),
-                    Duration: reader.IsDBNull(8) ? null : reader.GetDouble(8),
-                    TagString: reader.IsDBNull(9) ? null : reader.GetString(9),
-                    IsDeleted: reader.GetInt32(10) != 0));
-            }
+            while (reader.Read()) pageIds.Add(reader.GetInt64(0));
         }
+
+        var byId = LoadPosts(connection, pageIds).ToDictionary(p => p.Id);
+        var items = pageIds.Where(byId.ContainsKey).Select(id => byId[id]).ToList();
 
         return new SearchPage(items, total, pageSize, null);
     }
@@ -152,10 +147,16 @@ public sealed class DownloadedPostSearch
     /// <summary>The given posts that are on this device, in no particular order.</summary>
     public IReadOnlyList<PostListItem> GetPosts(IReadOnlyCollection<long> ids)
     {
+        if (ids.Count == 0) return [];
+        using var connection = OpenWithCatalog();
+        return LoadPosts(connection, ids);
+    }
+
+    private static List<PostListItem> LoadPosts(SqliteConnection connection, IReadOnlyCollection<long> ids)
+    {
         var items = new List<PostListItem>();
         if (ids.Count == 0) return items;
 
-        using var connection = OpenWithCatalog();
         using var cmd = connection.CreateCommand();
         var placeholders = ids.Select((_, i) => $"$i{i}").ToList();
         cmd.CommandText = $"""
@@ -179,9 +180,9 @@ public sealed class DownloadedPostSearch
                 FileExt: reader.IsDBNull(5) ? null : reader.GetString(5),
                 Md5: reader.IsDBNull(6) ? null : reader.GetString(6),
                 FavCount: reader.GetInt32(7),
-                    Duration: reader.IsDBNull(8) ? null : reader.GetDouble(8),
-                    TagString: reader.IsDBNull(9) ? null : reader.GetString(9),
-                    IsDeleted: reader.GetInt32(10) != 0));
+                Duration: reader.IsDBNull(8) ? null : reader.GetDouble(8),
+                TagString: reader.IsDBNull(9) ? null : reader.GetString(9),
+                IsDeleted: reader.GetInt32(10) != 0));
         }
         return items;
     }

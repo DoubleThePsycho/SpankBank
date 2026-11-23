@@ -74,20 +74,22 @@ public sealed class LocalTagCounts
             var old = _snapshot!;
             using var connection = Open();
             var (total, newest) = Totals(connection);
-            if (total == old.Posts && newest == old.Newest) return;
+            var stamp = SyncStamp();
+            if (total == old.Posts && newest == old.Newest && stamp == old.SyncStamp) return;
 
-            // Only additions since the last look: the posts saved after the newest one seen, and nothing else changed.
-            if (old.Newest is not null && newest is not null && string.CompareOrdinal(newest, old.Newest) >= 0)
+            // Only additions since the last look: the posts saved after the newest one seen, and nothing else changed
+            // (no tag change by the worker's tag sync either).
+            if (stamp == old.SyncStamp && old.Newest is not null && newest is not null && string.CompareOrdinal(newest, old.Newest) >= 0)
             {
                 var counts = new Dictionary<string, int>(old.Counts, StringComparer.Ordinal);
                 var added = CountInto(connection, counts, old.Newest);
                 if (old.Posts + added == total)
                 {
-                    _snapshot = new Snapshot(counts, total, newest);
+                    _snapshot = new Snapshot(counts, total, newest, stamp);
                     return;
                 }
             }
-            _snapshot = Build(connection);
+            _snapshot = Build(connection, stamp);
         }
         catch (Exception)
         {
@@ -97,17 +99,21 @@ public sealed class LocalTagCounts
 
     private Snapshot Build()
     {
+        var stamp = SyncStamp();
         using var connection = Open();
-        return Build(connection);
+        return Build(connection, stamp);
     }
 
-    private static Snapshot Build(SqliteConnection connection)
+    private static Snapshot Build(SqliteConnection connection, string? stamp)
     {
         var counts = new Dictionary<string, int>(StringComparer.Ordinal);
         CountInto(connection, counts, after: null);
         var (total, newest) = Totals(connection);
-        return new Snapshot(counts, total, newest);
+        return new Snapshot(counts, total, newest, stamp);
     }
+
+    /// <summary>When the worker last changed local posts' tags (to follow the catalog); counts built before that are stale.</summary>
+    private string? SyncStamp() => new SettingsRepository(_paths.AppDatabasePath).Get(WorkerSettingsKeys.LocalTagsSyncedAt);
 
     private static (long Total, string? Newest) Totals(SqliteConnection connection)
     {
@@ -123,8 +129,8 @@ public sealed class LocalTagCounts
     {
         using var cmd = connection.CreateCommand();
         cmd.CommandText = $"""
-            SELECT COALESCE(s.TagString, d.TagString, '')
-            FROM Posts d LEFT JOIN srv.Posts s ON s.Id = d.Id
+            SELECT COALESCE(d.TagString, '')
+            FROM Posts d
             WHERE d.SavedAt IS NOT NULL{(after is null ? "" : " AND d.SavedAt > $after")};
             """;
         if (after is not null) cmd.Parameters.AddWithValue("$after", after);
@@ -152,11 +158,8 @@ public sealed class LocalTagCounts
     {
         var connection = new SqliteConnection($"Data Source={_paths.DeviceDatabasePath};Pooling=False");
         connection.Open();
-        using var cmd = connection.CreateCommand();
-        cmd.CommandText = $"ATTACH DATABASE '{_paths.ServerDatabasePath.Replace("'", "''")}' AS srv;";
-        cmd.ExecuteNonQuery();
         return connection;
     }
 
-    private sealed record Snapshot(Dictionary<string, int> Counts, long Posts, string? Newest);
+    private sealed record Snapshot(Dictionary<string, int> Counts, long Posts, string? Newest, string? SyncStamp);
 }

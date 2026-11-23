@@ -12,6 +12,7 @@ var builder = Host.CreateApplicationBuilder(args);
 var paths = SpankBankPaths.Current.Databases();
 DatabaseInitializer.Initialize(paths);
 SpankBank.Data.Import.PoolPostsIndex.EnsureFilled(paths.ServerDatabasePath);
+new LocalTagSync(paths).Run(); // local posts' tags follow the catalog's (a no-op when nothing differs)
 
 builder.Services.AddSingleton(paths);
 builder.Services.AddSingleton(new SettingsRepository(paths.AppDatabasePath));
