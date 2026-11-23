@@ -80,6 +80,8 @@ document.addEventListener("submit", (event) => {
 });
 
 async function askRemoval (form: HTMLFormElement, name: string): Promise<void> {
+  // Asking again (the button pressed twice) replaces the earlier question instead of adding another.
+  document.querySelectorAll(".removal-choice").forEach((old) => old.remove());
   const id = form.querySelector<HTMLInputElement>("input[name=id]")!.value;
   let counts: RemovalCounts = { total: 0, exclusive: 0, removable: 0, favorites: 0 };
   try {
@@ -105,17 +107,18 @@ async function askRemoval (form: HTMLFormElement, name: string): Promise<void> {
   text.textContent = `${name} has ${counts.total.toLocaleString()} downloaded post(s). Remove them too? They go to the rubbish bin for 30 days.${kept}`;
   panel.appendChild(text);
 
-  const add = (label: string, action: () => void, disabled = false) => {
+  const add = (label: string, action: () => void, disabled = false, why = "") => {
     const button = document.createElement("button");
     button.type = "button";
     button.className = "st-button";
     button.textContent = label;
     button.disabled = disabled;
+    if (disabled && why) button.title = why;
     button.addEventListener("click", () => { panel.remove(); action(); });
     panel.appendChild(button);
   };
-  add(`Yes (${counts.removable.toLocaleString()} posts)`, () => submit("all"), counts.removable === 0);
-  add(`Yes, owned only by ${name} (${counts.exclusive.toLocaleString()})`, () => submit("exclusive"), counts.exclusive === 0);
+  add(`Yes (${counts.removable.toLocaleString()} posts)`, () => submit("all"), counts.removable === 0, "Only favorites are left, and they are always kept.");
+  add(`Yes, owned only by ${name} (${counts.exclusive.toLocaleString()})`, () => submit("exclusive"), counts.exclusive === 0, `Every one of these posts is also matched by another watch or is a favorite.`);
   add("No, keep the posts", () => submit(""));
   add("Cancel", () => { /* nothing removed */ });
 

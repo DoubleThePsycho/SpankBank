@@ -47,6 +47,19 @@ public class ArtistRemovalTests : IDisposable
         => Assert.Equal(new ArtistRemovalCounts(Total: 4, Exclusive: 2, Removable: 3, Favorites: 1), _removal.Counts(_a));
 
     [Fact]
+    public void Pools_added_for_the_artist_do_not_count_as_another_owner_but_other_pools_do()
+    {
+        var own = _watches.Add(WatchedItemType.Pool, "100", "Pool #100")!.Value;
+        var other = _watches.Add(WatchedItemType.Pool, "200", "Pool #200")!.Value;
+        _db.Execute(_db.Paths.AppDatabasePath, $"UPDATE WatchedItems SET Origin = 'auto:alpha' WHERE Id = {own}; UPDATE WatchedItems SET Origin = 'auto:beta' WHERE Id = {other};");
+        foreach (var post in new[] { 1, 2, 4 }) _db.Execute(_db.Paths.AppDatabasePath, $"INSERT INTO WatchMatches (WatchedItemId, PostId) VALUES ({own}, {post});");
+        _db.Execute(_db.Paths.AppDatabasePath, $"INSERT INTO WatchMatches (WatchedItemId, PostId) VALUES ({other}, 4);");
+
+        // 1 is alpha's and in alpha's own pool only; 2 is also beta's; 4 is also in a pool added for beta.
+        Assert.Equal(new ArtistRemovalCounts(Total: 4, Exclusive: 1, Removable: 3, Favorites: 1), _removal.Counts(_a));
+    }
+
+    [Fact]
     public void An_artist_with_nothing_downloaded_has_no_counts()
     {
         var gamma = _watches.Add(WatchedItemType.Artist, "gamma", "gamma")!.Value;

@@ -4,7 +4,7 @@ using SpankBank.Data.RubbishBin;
 namespace SpankBank.Data.Repositories;
 
 /// <param name="Total">Posts on this device that the artist's watch matches (favorites included).</param>
-/// <param name="Exclusive">Of those, the ones no other enabled watch matches (favorites excluded).</param>
+/// <param name="Exclusive">Of those, the ones no other enabled watch matches (favorites excluded). Pools added for this artist do not count as another watch.</param>
 /// <param name="Removable">All of them except favorites.</param>
 /// <param name="Favorites">Favorited posts among them; these are never removed.</param>
 public sealed record ArtistRemovalCounts(int Total, int Exclusive, int Removable, int Favorites);
@@ -52,7 +52,10 @@ public sealed class ArtistPostRemoval
             SELECT m.PostId,
                    EXISTS (SELECT 1 FROM Favorites f WHERE f.PostId = m.PostId),
                    EXISTS (SELECT 1 FROM WatchMatches m2 JOIN WatchedItems w2 ON w2.Id = m2.WatchedItemId AND w2.Enabled = 1
-                           WHERE m2.PostId = m.PostId AND m2.WatchedItemId <> $watch)
+                           WHERE m2.PostId = m.PostId AND m2.WatchedItemId <> $watch
+                             -- pools added for this artist ("auto:name" / "suggested:name") match the artist's own posts: not another owner
+                             AND NOT (w2.ItemType = 0 AND w2.Origin IN ('auto:' || (SELECT SourceValue FROM WatchedItems WHERE Id = $watch) COLLATE NOCASE,
+                                                                        'suggested:' || (SELECT SourceValue FROM WatchedItems WHERE Id = $watch) COLLATE NOCASE)))
             FROM WatchMatches m
             JOIN dev.Posts d ON d.Id = m.PostId AND d.SavedAt IS NOT NULL
             WHERE m.WatchedItemId = $watch
