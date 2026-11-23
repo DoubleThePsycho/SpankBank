@@ -60,6 +60,27 @@ public class ArtistRemovalTests : IDisposable
     }
 
     [Fact]
+    public void Removing_auto_pools_leaves_suggested_and_other_artists_pools()
+    {
+        long Pool(string id, string origin)
+        {
+            var watch = _watches.Add(WatchedItemType.Pool, id, "Pool #" + id)!.Value;
+            _db.Execute(_db.Paths.AppDatabasePath, $"UPDATE WatchedItems SET Origin = '{origin}' WHERE Id = {watch};");
+            return watch;
+        }
+        var auto = Pool("100", "auto:alpha");
+        var suggested = Pool("200", "suggested:alpha");
+        var others = Pool("300", "auto:beta");
+        _db.Execute(_db.Paths.AppDatabasePath, $"INSERT INTO WatchMatches (WatchedItemId, PostId) VALUES ({auto}, 1);");
+
+        Assert.Equal(1, _watches.RemoveAutoPools("alpha"));
+
+        Assert.Equal(0, _db.Scalar(_db.Paths.AppDatabasePath, $"SELECT COUNT(*) FROM WatchedItems WHERE Id = {auto};"));
+        Assert.Equal(0, _db.Scalar(_db.Paths.AppDatabasePath, $"SELECT COUNT(*) FROM WatchMatches WHERE WatchedItemId = {auto};"));
+        Assert.Equal(2, _db.Scalar(_db.Paths.AppDatabasePath, $"SELECT COUNT(*) FROM WatchedItems WHERE Id IN ({suggested}, {others});"));
+    }
+
+    [Fact]
     public void An_artist_with_nothing_downloaded_has_no_counts()
     {
         var gamma = _watches.Add(WatchedItemType.Artist, "gamma", "gamma")!.Value;

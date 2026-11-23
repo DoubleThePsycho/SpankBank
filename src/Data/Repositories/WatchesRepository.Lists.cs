@@ -209,6 +209,26 @@ public sealed partial class WatchesRepository
     }
 
     /// <summary>
+    /// Removes the pool watches the app added on its own for this artist ("auto:name"); pools the user accepted from a suggestion stay.
+    /// Posts already downloaded stay; any that nothing else keeps become strays.
+    /// </summary>
+    /// <returns>How many pool watches were removed.</returns>
+    public int RemoveAutoPools(string artistTag)
+    {
+        using var connection = new SqliteConnection(_appConnectionString);
+        connection.Open();
+        using (var pragma = connection.CreateCommand())
+        {
+            pragma.CommandText = "PRAGMA foreign_keys = ON;";
+            pragma.ExecuteNonQuery();
+        }
+        using var cmd = connection.CreateCommand();
+        cmd.CommandText = "DELETE FROM WatchedItems WHERE ItemType = 0 AND Origin = $origin COLLATE NOCASE;";
+        cmd.Parameters.AddWithValue("$origin", $"auto:{artistTag}");
+        return cmd.ExecuteNonQuery();
+    }
+
+    /// <summary>
     /// Removes pool watches that were added for a marker tag treated as an artist (unknown_artist, conditional_dnp...).
     /// Posts already downloaded stay; any that nothing else keeps become strays.
     /// </summary>

@@ -172,10 +172,13 @@ public class ShowModel : PageModel
 
     public async Task<IActionResult> OnPostDeleteAsync(string name, long id, string? posts)
     {
-        if (posts is "all" or "exclusive" && _removal.Remove(id, exclusiveOnly: posts == "exclusive") > 0)
+        var removePosts = posts is "all" or "exclusive";
+        if (removePosts && _removal.Remove(id, exclusiveOnly: posts == "exclusive") > 0)
             await _worker.NotifyAsync("bin");
         _watches.Delete(id);
-        TempData["Message"] = $"Removed {name}.";
+        // Pools the app added on its own for this artist go with their posts (those the user accepted from a suggestion stay).
+        var pools = removePosts ? _watches.RemoveAutoPools(name) : 0;
+        TempData["Message"] = $"Removed {name}" + (pools > 0 ? $" and {pools} pool{(pools == 1 ? "" : "s")} added for them." : ".");
         return Redirect("/artists/local");
     }
 }

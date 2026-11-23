@@ -104,7 +104,7 @@ async function askRemoval (form: HTMLFormElement, name: string): Promise<void> {
   panel.className = "removal-choice";
   const text = document.createElement("p");
   const kept = counts.favorites > 0 ? ` ${counts.favorites.toLocaleString()} favorite(s) are always kept.` : "";
-  text.textContent = `${name} has ${counts.total.toLocaleString()} downloaded post(s). Remove them too? They go to the rubbish bin for 30 days.${kept}`;
+  text.textContent = `${name} has ${counts.total.toLocaleString()} downloaded post(s). Remove them too? They go to the rubbish bin for 30 days, and the pools added automatically for ${name} are removed with them.${kept}`;
   panel.appendChild(text);
 
   const add = (label: string, action: () => void, disabled = false, why = "") => {
