@@ -8,6 +8,8 @@
     var post = Model.Post;
     ViewData["Title"] = $"Post #{post.Id}";
     ViewData["BodyClass"] = "c-posts a-show";
+    // On a phone the sidebar shows either the tags or the post's information; the choice is remembered in a cookie (set by PostMobileTabs.ts).
+    var tab = Model.Request.Cookies["post_tab"] == "information" ? "information" : "tags";
     var ratingLetter = post.Rating switch { PostRating.Safe => "s", PostRating.Questionable => "q", _ => "e" };
     var ratingName = post.Rating switch { PostRating.Safe => "Safe", PostRating.Questionable => "Questionable", _ => "Explicit" };
     var scoreClass = post.Score == 0 ? "neutral" : post.Score > 0 ? "positive" : "negative";
@@ -24,7 +26,7 @@
 }
 
 <div id="c-posts"><div id="a-show">
-  <div class="post-display" id="post-show-display" data-tab-state="tags">
+  <div class="post-display" id="post-show-display" data-tab-state="@tab">
 
     <div class="search">
       <section class="post-search">
@@ -83,50 +85,50 @@
 
         <div class="post-sidebar-info post-sidebar-grid">
           <div class="post-sidebar-label">ID</div>
-          <div class="post-sidebar-value selectable">@post.Id</div>
+          <div class="post-sidebar-value">@post.Id</div>
 
           <div class="post-sidebar-label">MD5</div>
-          <div class="post-sidebar-value selectable no-overflow">@post.Md5</div>
+          <div class="post-sidebar-value no-overflow">@post.Md5</div>
 
           <div class="post-sidebar-label">Size</div>
-          <div class="post-sidebar-value">
-            <span class="selectable">@post.Width x @post.Height</span>
-            @if (post.FileSize is { } size) { <text>(<span class="selectable">@ShowModel.HumanSize(size)</span>)</text> }
-          </div>
+          <div class="post-sidebar-value">@post.Width x @post.Height@if (post.FileSize is { } size) { <text> (@ShowModel.HumanSize(size))</text> }</div>
 
           <div class="post-sidebar-label">Type</div>
-          <div class="post-sidebar-value selectable">@post.FileExt.ToUpperInvariant()</div>
+          <div class="post-sidebar-value">@post.FileExt.ToUpperInvariant()</div>
 
           <div class="post-sidebar-label">Status</div>
-          <div class="post-sidebar-value">
-            <span class="selectable">@(Model.Extras?.IsDeleted == true ? "Deleted" : "Active")</span>
-          </div>
+          <div class="post-sidebar-value">@(Model.Extras?.IsDeleted == true ? "Deleted" : "Active")</div>
 
           <div class="post-sidebar-break"></div>
 
           <div class="post-sidebar-label">Rating</div>
-          <div class="post-sidebar-value"><span class="selectable rating-@ratingLetter" id="sidebar-rating">@ratingName</span></div>
+          <div class="post-sidebar-value rating-@ratingLetter" id="sidebar-rating">@ratingName</div>
 
           <div class="post-sidebar-label">Score</div>
-          <div class="post-sidebar-value"><span class="selectable" id="sidebar-score">@post.Score</span></div>
+          <div class="post-sidebar-value" id="sidebar-score">@post.Score</div>
 
           @if (Model.Extras is { } favs)
           {
             <div class="post-sidebar-label">Faves</div>
-            <div class="post-sidebar-value"><span class="selectable" id="sidebar-favcount">@favs.FavCount</span></div>
+            <div class="post-sidebar-value" id="sidebar-favcount">@favs.FavCount</div>
           }
 
           <div class="post-sidebar-break"></div>
 
           <div class="post-sidebar-label">File</div>
-          <div class="post-sidebar-value">
-            @Model.FileLabel
-          </div>
+          <div class="post-sidebar-value">@Model.FileLabel</div>
+
+          <div class="post-sidebar-break"></div>
+
+          <div class="post-sidebar-label">Posted:</div>
+          <div class="post-sidebar-value">@post.CreatedAt.ToString("dd/MM/yyyy")</div>
+
+          <div class="post-sidebar-label">Saved:</div>
+          <div class="post-sidebar-value">@post.SavedAt.ToString("dd/MM/yyyy")</div>
+
         </div>
 
         <ul class="post-sidebar-info">
-          <li>Posted: <span title="@post.CreatedAt.ToString("u")">@post.CreatedAt.ToString("yyyy-MM-dd")</span></li>
-          <li>Saved: <span title="@post.SavedAt.ToString("u")">@post.SavedAt.ToString("yyyy-MM-dd")</span></li>
           <li><a href="@(SiteConfig.Url("posts/" + post.Id))" rel="nofollow noopener">View on @SiteConfig.Name</a></li>
         </ul>
       </section>
@@ -253,6 +255,12 @@
           </details>
         </div>
       }
+    </div>
+
+    @* Phone only (hidden from 50rem up): splits the sidebar into the tags and the information, like e621ng's tabs split tags and comments. *@
+    <div class="tabs" role="tablist">
+      <button type="button" role="tab" data-action="tags" aria-selected="@(tab == "tags" ? "true" : "false")">Tags</button>
+      <button type="button" role="tab" data-action="information" aria-selected="@(tab == "information" ? "true" : "false")">Information</button>
     </div>
   </div>
 </div></div>

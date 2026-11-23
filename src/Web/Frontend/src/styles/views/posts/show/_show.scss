@@ -215,18 +215,14 @@ body.c-posts.a-show-seq {
   }
 }
 
-// Mobile tab UI
-.post-display[data-tab-state="comments"] {
-  & > .tabs button[data-action="comments"] {
-    background: themed("color-section");
-    pointer-events: none;
-  }
-  & > .sidebar { display: none; }
+// Mobile tab UI: the sidebar shows either the tags or the post's information (from 50rem up everything shows, see _show.desktop.scss).
+.post-display > .tabs button[aria-selected="true"] {
+  background: themed("color-section");
+  pointer-events: none;
 }
-.post-display[data-tab-state="tags"] {
-  & > .tabs button[data-action="tags"] {
-    background: themed("color-section");
-    pointer-events: none;
+@include window-smaller-than(49.99rem) {
+  .post-display[data-tab-state="information"] > .sidebar {
+    #mode-box, #tag-list { display: none; }
   }
-  & > .comments { display: none; }
+  .post-display[data-tab-state="tags"] > .sidebar #post-information { display: none; }
 }

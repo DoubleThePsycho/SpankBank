@@ -90,7 +90,7 @@ public sealed partial class PostFetcher : IDisposable
         if (await RecoverFromSourcesAsync(post, original, cancellationToken, onProgress) is { } fromSource)
             return fromSource;
 
-        onStage?.Invoke("Not at its sources; looking in the Wayback Machine");
+        onStage?.Invoke("Finding replacement...");
         return await RecoverAsync(post, mediaRoot, original, cancellationToken, onProgress);
     }
 

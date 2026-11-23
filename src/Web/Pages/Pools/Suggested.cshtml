@@ -1,0 +1,54 @@
+@page "/pools/suggested"
+@model SpankBank.Web.Pages.Pools.SuggestedModel
+@{
+    ViewData["Title"] = "Suggested pools";
+}
+@section SecondaryNav {
+  <partial name="_AreaNav" model='"pools"' />
+}
+@section Scripts {
+  <script type="module" src="~/dist/watches.js" asp-append-version="true"></script>
+}
+<div id="c-pools" class="container-fluid">
+  <div id="a-index">
+    <h1>Suggested pools</h1>
+
+    @if (Model.Message is not null) { <div class="notice notice-info">@Model.Message</div> }
+
+    <section class="watch-suggestions">
+      <p class="hint">Pools that contain posts from your watched artists. Pools that are mostly an artist's work are added on their own (see Settings); the rest wait here for you.</p>
+      @if (Model.Suggestions.Count == 0)
+      {
+        <p>Nothing to review.</p>
+      }
+      else
+      {
+        <table class="striped">
+          <thead><tr><th>Pool</th><th>Type</th><th>Artist</th><th>Their share</th><th></th></tr></thead>
+          <tbody>
+            @foreach (var suggestion in Model.Suggestions)
+            {
+              <tr>
+                <td><a href="@(SiteConfig.Url("pools/" + suggestion.PoolId))" rel="nofollow noopener">@suggestion.PoolName</a></td>
+                <td>@suggestion.Category</td>
+                <td>@suggestion.Artist</td>
+                <td>@suggestion.ArtistPosts of @suggestion.PoolPosts (@suggestion.SharePercent.ToString("0")%)@(suggestion.IsRoot ? "" : " · part of a larger pool")</td>
+                <td class="watch-row-actions">
+                  <form method="post" asp-page-handler="AcceptSuggestion">
+                    <input type="hidden" name="poolId" value="@suggestion.PoolId"><input type="hidden" name="artist" value="@suggestion.Artist">
+                    <a href="#" data-submit>Add</a>
+                  </form>
+                  <form method="post" asp-page-handler="IgnoreSuggestion">
+                    <input type="hidden" name="artistId" value="@suggestion.ArtistWatchId"><input type="hidden" name="poolId" value="@suggestion.PoolId">
+                    <a href="#" data-submit>Ignore</a>
+                  </form>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      }
+      <p><a href="@(Model.ShowAll ? "/pools/suggested" : "/pools/suggested?all=1")">@(Model.ShowAll ? "Show only likely pools" : "Show every pool with at least two of their posts")</a></p>
+    </section>
+  </div>
+</div>

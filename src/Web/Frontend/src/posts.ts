@@ -3,6 +3,7 @@ import SearchFilters from "@/pages/posts/SearchFilters";
 import PostToolbar from "@/pages/posts/PostToolbar";
 import PostModes from "@/pages/posts/PostModes";
 import "@/pages/posts/WikiExcerpt";
+import "@/pages/posts/PostMobileTabs";
 import "@/pages/posts/SearchInput";
 import "@/pages/posts/FavoriteFolderDrag";
 import "@/pages/posts/FavoriteFolderOverlay";

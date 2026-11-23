@@ -121,7 +121,7 @@
       var characters = cw.ArtistTags.Where(t => t.Kind == ArtistTagKind.Character).ToList();
       var enabledCharacters = characters.Count(c => c.Enabled);
       <aside class="artist-side">
-        <details class="artist-characters" open data-artist-characters>
+        <details id="artist-characters" class="artist-characters" open data-artist-characters>
           <summary>Characters <span class="count" data-char-count>@enabledCharacters / @characters.Count enabled</span></summary>
           <p class="hint">Character tags ending in <code>_(@artist.Name)</code> or one of the other names. A character that is switched off is not part of this artist's posts.</p>
 

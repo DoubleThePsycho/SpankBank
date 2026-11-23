@@ -9,7 +9,7 @@
         "status" => [("Overview", "/status"), ("Downloads", "/status/downloads")],
         "tags" => [("Tags", "/tags"), ("Searches", "/tags/searches")],
         "artists" => [("Local", "/artists/local"), ("Online", "/artists/online")],
-        "pools" => [("Local", "/pools/local"), ("Local gallery", "/pools/local/gallery"), ("Online", "/pools/online"), ("Online gallery", "/pools/online/gallery")],
+        "pools" => [("Local", "/pools/local"), ("Local gallery", "/pools/local/gallery"), ("Suggested", "/pools/suggested"), ("Online", "/pools/online"), ("Online gallery", "/pools/online/gallery")],
         _ => [],
     };
     var suggested = Model == "pools" ? Watches.CountPoolSuggestions() : 0;
@@ -17,5 +17,5 @@
 @foreach (var (text, url) in items)
 {
   var id = "subnav-" + text.ToLowerInvariant().Replace(' ', '-');
-  <li id="@id" class="@(path.Equals(url, StringComparison.OrdinalIgnoreCase) ? "current" : null)"><a href="@url" id="@id-link">@text@if (url == "/pools/local" && suggested > 0) { <span class="watch-badge">@suggested</span> }</a></li>
+  <li id="@id" class="@(path.Equals(url, StringComparison.OrdinalIgnoreCase) ? "current" : null)"><a href="@url" id="@id-link">@text@if (url == "/pools/suggested" && suggested > 0) { <span class="watch-badge">@suggested</span> }</a></li>
 }

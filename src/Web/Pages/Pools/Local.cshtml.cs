@@ -21,8 +21,6 @@ public partial class LocalModel : WatchPageModel
     public ListView View { get; private set; } = new("/pools/local", null, null, 1, "id", true);
     public bool ShowDisabled { get; private set; }
     public int DisabledCount { get; private set; }
-    public IReadOnlyList<PoolSuggestion> Suggestions { get; private set; } = [];
-    public bool ShowAll { get; private set; }
 
     // The folded search form: pool name (or id) and the artist a pool was added for.
     public string? Name { get; private set; }
@@ -31,7 +29,6 @@ public partial class LocalModel : WatchPageModel
 
     public void OnGet(string? sort = null, string? dir = null, string? show = null)
     {
-        ShowAll = Request.Query["all"] == "1";
         ShowDisabled = show == "disabled";
         Name = Request.Query["name"].ToString().Trim();
         Artist = Request.Query["artist"].ToString().Trim();
@@ -39,7 +36,6 @@ public partial class LocalModel : WatchPageModel
         View = new ListView("/pools/local", sort, dir, int.TryParse(Request.Query["page"], out var page) ? page : 1, defaultSort: "id", defaultDescending: true, extraQuery: extra);
         Pools = Watches.GetPoolPage(View.Sort, View.Descending, View.Page, ListView.PageSize(_settings.Get(WorkerSettingsKeys.ListPageSize)), ShowDisabled, Name, Artist);
         DisabledCount = Watches.CountDisabledPools();
-        Suggestions = Watches.GetPoolSuggestions(ShowAll);
     }
 
     /// <summary>The artist a pool was added for ("auto:name" or "suggested:name"), else null.</summary>
@@ -58,18 +54,6 @@ public partial class LocalModel : WatchPageModel
         _ when origin.StartsWith("suggested:") => $"added from a suggestion for {origin[10..]}",
         _ => null,
     };
-
-    public IActionResult OnPostAcceptSuggestion(long poolId, string? artist)
-    {
-        Watches.AcceptPoolSuggestion(poolId, artist ?? "");
-        return Done($"Added pool #{poolId}.");
-    }
-
-    public IActionResult OnPostIgnoreSuggestion(long artistId, long poolId)
-    {
-        Watches.IgnorePoolSuggestion(artistId, poolId);
-        return RedirectToPage(null, null, null, "suggested");
-    }
 
     public IActionResult OnPostAdd(string? pool)
     {

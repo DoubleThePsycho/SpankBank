@@ -47,10 +47,6 @@
   .go-up { display: none; }
 }
 
-// Override tab-state styles
-.post-display[data-tab-state] {
-  & > .sidebar, & > .comments { display: flex; }
-}
 
 .c-posts.a-show div#page div#news  {
   margin: 0;
