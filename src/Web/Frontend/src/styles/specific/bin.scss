@@ -51,3 +51,8 @@ article.thumbnail .thm-restore {
   &:hover:not(:disabled) { color: palette("text-white"); background: themed("color-section-lighten-10"); }
   &:disabled { cursor: default; opacity: 0.6; }
 }
+
+// The bin has no sidebar below its text, so the text column takes both grid rows and the separator runs the full height.
+@include window-larger-than(50rem) {
+  .post-index.bin-index > .bin-info { grid-area: 1 / 1 / span 2 / 1; }
+}
