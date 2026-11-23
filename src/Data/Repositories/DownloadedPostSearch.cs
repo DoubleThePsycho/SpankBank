@@ -9,8 +9,8 @@ public sealed record SearchPage(IReadOnlyList<PostListItem> Items, long Total, i
 
 /// <summary>
 /// e621-style search over the posts on this device. Tags are matched against the local copy kept in device.sqlite (the worker's
-/// <c>LocalTagSync</c> keeps it in step with the catalog after every import), so a search never has to look every post up in the
-/// catalog; the catalog row is only joined for the few columns that live there (favorite count, deleted flag, ...).
+/// <c>LocalCatalogSync</c> keeps it in step with the catalog after every import), so a search never has to look every post up in the
+/// catalog; the catalog row is only joined for the columns that are not copied (the comment count) and to show fresh values on the page.
 /// </summary>
 public sealed class DownloadedPostSearch
 {
@@ -27,7 +27,7 @@ public sealed class DownloadedPostSearch
         ["width"] = "d.ImageWidth",
         ["height"] = "d.ImageHeight",
         ["filesize"] = "d.FileSize",
-        ["favcount"] = "COALESCE(s.FavCount, 0)",
+        ["favcount"] = "d.FavCount",
         ["comment_count"] = "COALESCE(s.CommentCount, 0)",
         ["tagcount"] = TagCountExpr,
     };
@@ -36,7 +36,7 @@ public sealed class DownloadedPostSearch
     {
         ["id"] = "d.Id",
         ["score"] = "d.Score",
-        ["favcount"] = "COALESCE(s.FavCount, 0)",
+        ["favcount"] = "d.FavCount",
         ["filesize"] = "d.FileSize",
         ["mpixels"] = "(d.ImageWidth * d.ImageHeight)",
         ["tagcount"] = TagCountExpr,
@@ -96,8 +96,8 @@ public sealed class DownloadedPostSearch
             // Three exclusive kinds: a custom file (the user's own edit), else deleted on the site, else active.
             var kinds = new List<string>();
             if (query.Statuses.HasFlag(PostStatuses.Custom)) kinds.Add("d.Status = 4");
-            if (query.Statuses.HasFlag(PostStatuses.Deleted)) kinds.Add("(d.Status <> 4 AND COALESCE(s.IsDeleted, 0) = 1)");
-            if (query.Statuses.HasFlag(PostStatuses.Active)) kinds.Add("(d.Status <> 4 AND COALESCE(s.IsDeleted, 0) = 0)");
+            if (query.Statuses.HasFlag(PostStatuses.Deleted)) kinds.Add("(d.Status <> 4 AND d.IsDeleted = 1)");
+            if (query.Statuses.HasFlag(PostStatuses.Active)) kinds.Add("(d.Status <> 4 AND d.IsDeleted = 0)");
             where.Append(" AND (").Append(string.Join(" OR ", kinds)).Append(')');
         }
 

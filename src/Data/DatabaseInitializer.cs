@@ -178,6 +178,10 @@ public static class DatabaseInitializer
         // Where a file that e621 had deleted was restored from (shown on the post page): "the Wayback Machine", "Inkbunny", ...
         EnsureColumn(connection, "Posts", "RestoredFrom", "TEXT");
 
+        // Copied from the catalog by LocalCatalogSync (and when a post is saved), so searching never has to read the catalog per post.
+        EnsureColumn(connection, "Posts", "FavCount", "INTEGER NOT NULL DEFAULT 0");
+        EnsureColumn(connection, "Posts", "IsDeleted", "INTEGER NOT NULL DEFAULT 0");
+
         Execute(connection, "CREATE INDEX IF NOT EXISTS IX_DevicePosts_SavedAt ON Posts (SavedAt);");
         Execute(connection, "CREATE INDEX IF NOT EXISTS IX_DevicePosts_Status ON Posts (Status);");
         Execute(connection, "CREATE INDEX IF NOT EXISTS IX_DevicePosts_Md5 ON Posts (Md5);");

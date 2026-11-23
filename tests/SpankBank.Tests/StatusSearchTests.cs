@@ -14,7 +14,7 @@ public class StatusSearchTests : IDisposable
         {
             var md5 = new string((char)('a' + id), 32);
             _db.Execute(_db.Paths.DeviceDatabasePath,
-                $"INSERT INTO Posts (Id, CreatedAt, UpdatedAt, Md5, Rating, Score, FileExt, TagString, SavedAt, Status) VALUES ({id}, '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z', '{md5}', 0, 1, 'png', 'solo', '2026-01-02T00:00:00Z', {(id == 4 ? 4 : 0)});");
+                $"INSERT INTO Posts (Id, CreatedAt, UpdatedAt, Md5, Rating, Score, FileExt, TagString, SavedAt, Status, IsDeleted) VALUES ({id}, '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z', '{md5}', 0, 1, 'png', 'solo', '2026-01-02T00:00:00Z', {(id == 4 ? 4 : 0)}, {(id >= 3 ? 1 : 0)});");
             _db.Execute(_db.Paths.ServerDatabasePath,
                 $"INSERT INTO Posts (Id, CreatedAt, UpdatedAt, Md5, FileExt, TagString, IsDeleted) VALUES ({id}, '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z', '{md5}', 'png', 'solo', {(id >= 3 ? 1 : 0)});");
         }

@@ -35,7 +35,7 @@ public class LocalTagCountsTests : IDisposable
         var counts = new LocalTagCounts(_db.Paths, refreshAfter: TimeSpan.Zero);
         Assert.Equal(0, counts.Get("implied_tag"));
 
-        Assert.Equal(1, new SpankBank.Data.Downloads.LocalTagSync(_db.Paths).Run());
+        Assert.Equal(1, new SpankBank.Data.Downloads.LocalCatalogSync(_db.Paths).Run().Tags);
         Wait(() => counts.Get("implied_tag") == 1);
     }
 

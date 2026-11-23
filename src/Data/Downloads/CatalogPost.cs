@@ -17,4 +17,5 @@ public sealed record CatalogPost(
     string? Description,
     double? Duration,
     long? ParentId,
-    string? Source = null);
+    string? Source = null,
+    int FavCount = 0);

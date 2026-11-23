@@ -155,11 +155,11 @@ public sealed class ExportRefreshJob
 
         var text = summary.Count == 0 ? "Nothing new to import." : "Imported " + string.Join(", ", summary) + ".";
 
-        // The local posts' tags follow the catalog's (searching reads the local copy only).
+        // The local posts' tags, favorite counts and deleted flags follow the catalog's (searching reads the local copy only).
         if (detected.PostsPath is not null)
         {
-            var retagged = await Task.Run(() => new LocalTagSync(_paths).Run(), cancellationToken);
-            if (retagged > 0) text += $" Updated the tags of {retagged:N0} local posts.";
+            var synced = await Task.Run(() => new LocalCatalogSync(_paths).Run(), cancellationToken);
+            if (synced.Tags > 0) text += $" Updated the tags of {synced.Tags:N0} local posts.";
         }
 
         _progress.StartPhase(PhaseMatch);

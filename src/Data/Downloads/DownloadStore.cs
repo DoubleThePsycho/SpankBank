@@ -223,7 +223,7 @@ public sealed class DownloadStore
         using var cmd = connection.CreateCommand();
         cmd.CommandText = """
             SELECT Id, Md5, FileExt, IsDeleted, Rating, Score, ImageWidth, ImageHeight, FileSize,
-                   CreatedAt, UpdatedAt, TagString, Description, Duration, ParentId, Source
+                   CreatedAt, UpdatedAt, TagString, Description, Duration, ParentId, Source, FavCount
             FROM Posts WHERE Id = $id;
             """;
         cmd.Parameters.AddWithValue("$id", id);
@@ -246,7 +246,8 @@ public sealed class DownloadStore
             reader.IsDBNull(12) ? null : reader.GetString(12),
             reader.IsDBNull(13) ? null : reader.GetDouble(13),
             reader.IsDBNull(14) ? null : reader.GetInt64(14),
-            reader.IsDBNull(15) ? null : reader.GetString(15));
+            reader.IsDBNull(15) ? null : reader.GetString(15),
+            reader.IsDBNull(16) ? 0 : reader.GetInt32(16));
     }
 
     /// <summary>
@@ -265,12 +266,13 @@ public sealed class DownloadStore
             cmd.CommandText = """
                 INSERT OR REPLACE INTO Posts
                     (Id, CreatedAt, UpdatedAt, Md5, Rating, Score, ImageWidth, ImageHeight, FileSize, FileExt,
-                     TagString, Description, Duration, ParentId, SavedAt, Status, RestoredFrom)
+                     TagString, Description, Duration, ParentId, SavedAt, Status, RestoredFrom, FavCount, IsDeleted)
                 VALUES
                     ($id, $created, $updated, $md5, $rating, $score, $width, $height, $size, $ext,
                      $tags, $description, $duration, $parent,
                      COALESCE((SELECT SavedAt FROM Posts WHERE Id = $id), $saved), $status,
-                     COALESCE($from, (SELECT RestoredFrom FROM Posts WHERE Id = $id)));
+                     COALESCE($from, (SELECT RestoredFrom FROM Posts WHERE Id = $id)),
+                     $favs, $deleted);
                 """;
             cmd.Parameters.AddWithValue("$id", post.Id);
             cmd.Parameters.AddWithValue("$created", post.CreatedAt);
@@ -289,6 +291,8 @@ public sealed class DownloadStore
             cmd.Parameters.AddWithValue("$saved", now);
             cmd.Parameters.AddWithValue("$status", (int)status);
             cmd.Parameters.AddWithValue("$from", (object?)restoredFrom ?? DBNull.Value);
+            cmd.Parameters.AddWithValue("$favs", post.FavCount);
+            cmd.Parameters.AddWithValue("$deleted", post.IsDeleted ? 1 : 0);
             cmd.ExecuteNonQuery();
         }
 

@@ -5,7 +5,7 @@ using SpankBank.Data.Repositories;
 
 namespace SpankBank.Tests;
 
-public class LocalTagSyncTests : IDisposable
+public class LocalCatalogSyncTests : IDisposable
 {
     private readonly TempDatabases _db = new();
 
@@ -35,13 +35,13 @@ public class LocalTagSyncTests : IDisposable
         Post(3, "otter", null);                          // never had a local copy
         Post(4, null, "only_local");                     // not in the catalog
 
-        Assert.Equal(2, new LocalTagSync(_db.Paths).Run());
+        Assert.Equal(2, new LocalCatalogSync(_db.Paths).Run().Tags);
 
         Assert.Equal("fox perissodactyl", LocalTags(1));
         Assert.Equal("wolf", LocalTags(2));
         Assert.Equal("otter", LocalTags(3));
         Assert.Equal("only_local", LocalTags(4));
-        Assert.Equal(0, new LocalTagSync(_db.Paths).Run());
+        Assert.Equal(0, new LocalCatalogSync(_db.Paths).Run().Tags);
     }
 
     [Fact]
@@ -49,12 +49,30 @@ public class LocalTagSyncTests : IDisposable
     {
         var settings = new SettingsRepository(_db.Paths.AppDatabasePath);
         Post(1, "fox", "fox");
-        new LocalTagSync(_db.Paths).Run();
+        new LocalCatalogSync(_db.Paths).Run();
         Assert.Null(settings.Get(WorkerSettingsKeys.LocalTagsSyncedAt));
 
         _db.Execute(_db.Paths.ServerDatabasePath, "UPDATE Posts SET TagString = 'fox male' WHERE Id = 1;");
-        new LocalTagSync(_db.Paths).Run();
+        new LocalCatalogSync(_db.Paths).Run();
         Assert.NotNull(settings.Get(WorkerSettingsKeys.LocalTagsSyncedAt));
+    }
+
+    [Fact]
+    public void Copies_favorite_counts_and_deleted_flags_and_search_uses_them()
+    {
+        Post(1, "fox", "fox");
+        Post(2, "fox", "fox");
+        Post(3, "fox", "fox");
+        _db.Execute(_db.Paths.ServerDatabasePath, "UPDATE Posts SET FavCount = 50, IsDeleted = 1 WHERE Id = 1; UPDATE Posts SET FavCount = 7 WHERE Id = 2;");
+        var search = new DownloadedPostSearch(_db.Paths);
+
+        var result = new LocalCatalogSync(_db.Paths).Run();
+        Assert.Equal(0, result.Tags);
+        Assert.Equal(2, result.Counters);
+        Assert.Equal([1L, 2L, 3L], search.Search("order:favcount", 1, 10).Items.Select(i => i.Id).ToArray());
+        Assert.Equal([2L, 3L], search.Search("status:active order:favcount", 1, 10).Items.Select(i => i.Id).ToArray());
+        Assert.Equal([1L], search.Search("favcount:>10", 1, 10).Items.Select(i => i.Id).ToArray());
+        Assert.Equal([1L], search.Search("status:deleted", 1, 10).Items.Select(i => i.Id).ToArray());
     }
 
     [Fact]

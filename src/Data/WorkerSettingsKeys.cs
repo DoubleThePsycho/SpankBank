@@ -21,7 +21,7 @@ public static class WorkerSettingsKeys
     public const string UiTheme = "Ui.Theme";
     /// <summary>The embellishment drawn over the theme (hexagon, none, autumn, ...); default hexagon.</summary>
     public const string UiThemeExtra = "Ui.ThemeExtra";
-    /// <summary>When the tags of the local posts were last changed to match the catalog's (<c>LocalTagSync</c>); the web rebuilds its local tag counts when it changes.</summary>
+    /// <summary>When the tags of the local posts were last changed to match the catalog's (<c>LocalCatalogSync</c>); the web rebuilds its local tag counts when it changes.</summary>
     public const string LocalTagsSyncedAt = "Library.LocalTagsSyncedAt";
     public const string DailyRunTimeUtc = "Worker.DailyRunTimeUtc";
     public const string LastRunStartedAt = "Worker.LastRunStartedAt";
